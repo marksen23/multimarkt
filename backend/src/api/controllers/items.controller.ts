@@ -18,6 +18,7 @@ import { ResponseEnvelopeInterceptor } from '../interceptors/response-envelope.i
 import {
   AnalyzeItemDto,
   BundleItemsDto,
+  ConfirmAttributeDto,
   ConfirmTruthDto,
   CreateItemDto,
   PrepareListingDto,
@@ -36,6 +37,7 @@ import {
   DispositionEngineService,
   DispositionRecommendation,
 } from '../../application/disposition/disposition-engine.service';
+import { ItemAttributeConfirmationService } from '../../application/product-analysis/item-attribute-confirmation.service';
 import { ProductAnalysisService } from '../../application/product-analysis/product-analysis.service';
 import { StateGuardService } from '../../application/state-guard/state-guard.service';
 import {
@@ -62,6 +64,7 @@ export class ItemsController {
     private readonly conflictResolution: ConflictResolutionService,
     private readonly dispositionEngine: DispositionEngineService,
     private readonly listingSummary: ListingSummaryService,
+    private readonly attributeConfirmation: ItemAttributeConfirmationService,
   ) {}
 
   @Post()
@@ -133,6 +136,22 @@ export class ItemsController {
       actor,
       condition: dto.condition,
     });
+  }
+
+  /**
+   * Bewusste Doc-04-Erweiterung — siehe ItemAttributeConfirmationService.
+   * `:key` ist der `attribute_key` (z.B. "brand", "color"), nicht "condition"
+   * (dafür bleibt `confirm-truth` zuständig, da es zusätzlich eine
+   * State-Machine-Transition auf dem Item auslöst).
+   */
+  @Post(':id/attributes/:key/confirm')
+  async confirmAttribute(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('key') key: string,
+    @Body() dto: ConfirmAttributeDto,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<ItemAttributeEntity> {
+    return this.attributeConfirmation.confirm(id, key, dto.value, actor);
   }
 
   @Post(':id/prepare-listing')

@@ -81,6 +81,24 @@ export function ConfidenceCenterDemoPage() {
         setDetail((prev) => ({ ...prev, item: { ...prev.item, condition } }));
         setSaving(false);
       }}
+      onConfirmAttribute={async (key, value) => {
+        setSaving(true);
+        await new Promise((r) => setTimeout(r, 400));
+        setDetail((prev) => ({
+          ...prev,
+          attributes: prev.attributes.map((a) =>
+            a.attributeKey === key
+              ? {
+                  ...a,
+                  attributeValue: value ?? a.attributeValue,
+                  truthState: 'USER_CONFIRMED',
+                  source: 'USER_INPUT',
+                }
+              : a,
+          ),
+        }));
+        setSaving(false);
+      }}
     />
   );
 }

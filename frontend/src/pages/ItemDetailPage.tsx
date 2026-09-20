@@ -75,6 +75,7 @@ export function ItemDetailPage() {
           detail={detail}
           saving={busy}
           onConfirmCondition={(condition) => run(() => itemsApi.confirmTruth(id, condition))}
+          onConfirmAttribute={(key, value) => run(() => itemsApi.confirmAttribute(id, key, value))}
         />
       )}
 

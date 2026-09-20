@@ -6,6 +6,7 @@ import {
   UnconfirmedConditionException,
 } from '../../src/domain/errors/state-transition.errors';
 import { CapabilityCheckService } from '../../src/application/capability-check/capability-check.service';
+import { ItemAttributeConfirmationService } from '../../src/application/product-analysis/item-attribute-confirmation.service';
 import { ProductAnalysisService } from '../../src/application/product-analysis/product-analysis.service';
 import { StateGuardService } from '../../src/application/state-guard/state-guard.service';
 import {
@@ -136,6 +137,55 @@ describe('T02 Epistemic Integrity', () => {
       const reloaded = await dataSource.manager.findOneByOrFail(ItemEntity, { id: itemId });
       expect(reloaded.status).toBe('REVIEW_REQUIRED');
       expect(reloaded.condition).toBeNull();
+    });
+  });
+
+  describe('T02-1 (Attribute Confirmation Human-Gate)', () => {
+    it('rejects a WEBHOOK/SYSTEM actor confirming an individual attribute, only USER may promote INFERRED -> USER_CONFIRMED', async () => {
+      await dataSource.manager.save(ItemAttributeEntity, {
+        itemId,
+        attributeKey: 'color',
+        attributeValue: 'Schwarz',
+        truthState: 'INFERRED',
+        source: 'mock-gemini-vision-stub-v1',
+      });
+      const service = new ItemAttributeConfirmationService(dataSource);
+
+      await expect(
+        service.confirm(itemId, 'color', undefined, { type: 'WEBHOOK' }),
+      ).rejects.toThrow(HumanGateBypassException);
+      await expect(
+        service.confirm(itemId, 'color', undefined, { type: 'SYSTEM' }),
+      ).rejects.toThrow(HumanGateBypassException);
+
+      const reloaded = await dataSource.manager.findOneByOrFail(ItemAttributeEntity, {
+        itemId,
+        attributeKey: 'color',
+      });
+      expect(reloaded.truthState).toBe('INFERRED');
+
+      // Happy path control: a genuine USER can confirm it.
+      const confirmed = await service.confirm(itemId, 'color', undefined, { type: 'USER' });
+      expect(confirmed.truthState).toBe('USER_CONFIRMED');
+      expect(confirmed.attributeValue).toBe('Schwarz');
+    });
+
+    it('lets a USER correct the value while confirming it', async () => {
+      await dataSource.manager.save(ItemAttributeEntity, {
+        itemId,
+        attributeKey: 'material',
+        attributeValue: 'Polyester',
+        truthState: 'INFERRED',
+        source: 'mock-gemini-vision-stub-v1',
+      });
+      const service = new ItemAttributeConfirmationService(dataSource);
+
+      const confirmed = await service.confirm(itemId, 'material', 'Baumwolle', {
+        type: 'USER',
+      });
+      expect(confirmed.truthState).toBe('USER_CONFIRMED');
+      expect(confirmed.attributeValue).toBe('Baumwolle');
+      expect(confirmed.source).toBe('USER_INPUT');
     });
   });
 

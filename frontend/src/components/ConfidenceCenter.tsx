@@ -6,24 +6,32 @@ const CONDITION_OPTIONS = ['Neu', 'Wie neu', 'Gut', 'Gebraucht', 'Defekt'];
 interface Props {
   detail: ItemDetail;
   onConfirmCondition: (condition: string) => Promise<void>;
+  onConfirmAttribute: (key: string, value?: string) => Promise<void>;
   saving: boolean;
 }
 
 /**
  * Confidence Center (Freeze §7 Stufe 1, "Never silently invent"). Angepasst
- * aus `docs/confidence_center_ui_react.md`, aber an das reale Backend
- * angebunden statt an Mock-Daten.
+ * aus `docs/confidence_center_ui_react.md`, an das reale Backend angebunden.
  *
- * WICHTIG (siehe Abschlussbericht): Doc 04 definiert nur EINEN
- * Bestätigungs-Endpunkt (`POST /items/:id/confirm-truth` für `condition`).
- * Es gibt keinen Endpunkt, um einzelne KI-Claims (Marke, Farbe, ...)
- * individuell zu bestätigen — dieser Vertrag müsste um z.B.
- * `POST /items/:id/attributes/:key/confirm` erweitert werden. Bis dahin
- * zeigt diese Komponente INFERRED-Attribute bewusst nur LESEND an (echte
- * Transparenz statt vorgetäuschter Interaktivität).
+ * `condition` läuft über `confirm-truth` (löst zusätzlich die
+ * REVIEW_REQUIRED->READY-Transition aus). Alle anderen Attribute laufen
+ * über `POST /items/:id/attributes/:key/confirm` — eine bewusste,
+ * dokumentierte Doc-04-Erweiterung (siehe items.controller.ts), ohne die
+ * "Stimmt"/"Ändern"-Interaktion aus dem ursprünglichen Mockup nur
+ * vorgetäuscht wäre.
  */
-export function ConfidenceCenter({ detail, onConfirmCondition, saving }: Props) {
+export function ConfidenceCenter({
+  detail,
+  onConfirmCondition,
+  onConfirmAttribute,
+  saving,
+}: Props) {
   const [selectedCondition, setSelectedCondition] = useState<string | null>(detail.item.condition);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [missingDrafts, setMissingDrafts] = useState<Record<string, string>>({});
 
   const missing = useMemo(
     () => detail.attributes.filter((a) => a.truthState === 'UNKNOWN'),
@@ -40,6 +48,17 @@ export function ConfidenceCenter({ detail, onConfirmCondition, saving }: Props) 
 
   const isConditionConfirmed = detail.item.condition !== null;
   const canSave = selectedCondition !== null && selectedCondition !== detail.item.condition;
+
+  const confirmAttr = async (key: string, value?: string) => {
+    setSavingKey(key);
+    try {
+      await onConfirmAttribute(key, value);
+      setEditingKey(null);
+      setEditValue('');
+    } finally {
+      setSavingKey(null);
+    }
+  };
 
   return (
     <div className="max-w-md mx-auto bg-gray-50 min-h-screen pb-24">
@@ -85,38 +104,89 @@ export function ConfidenceCenter({ detail, onConfirmCondition, saving }: Props) 
             </div>
           </div>
 
-          {missing.length > 0 && (
-            <div className="bg-red-50 p-4 rounded-xl border border-red-100">
-              <p className="text-sm font-bold text-gray-800 mb-1">
-                {missing.length} weitere Angabe(n) fehlen
-              </p>
-              <ul className="text-xs text-gray-600 list-disc list-inside">
-                {missing.map((a) => (
-                  <li key={a.id} className="capitalize">
-                    {a.attributeKey}
-                  </li>
-                ))}
-              </ul>
+          {missing.map((a) => (
+            <div key={a.id} className="bg-red-50 p-4 rounded-xl border border-red-100 space-y-2">
+              <label className="block text-sm font-bold text-gray-800 capitalize">
+                Welche(s) {a.attributeKey} hat der Artikel?
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder={`${a.attributeKey} eingeben…`}
+                  value={missingDrafts[a.attributeKey] ?? ''}
+                  onChange={(e) =>
+                    setMissingDrafts((prev) => ({ ...prev, [a.attributeKey]: e.target.value }))
+                  }
+                  className="flex-1 p-2 border border-red-200 rounded-lg text-sm outline-none focus:border-red-500"
+                />
+                <button
+                  type="button"
+                  disabled={savingKey === a.attributeKey || !missingDrafts[a.attributeKey]}
+                  onClick={() => confirmAttr(a.attributeKey, missingDrafts[a.attributeKey])}
+                  className="px-3 py-2 bg-red-600 text-white rounded-lg font-bold text-xs disabled:bg-gray-300"
+                >
+                  {savingKey === a.attributeKey ? '…' : 'Sichern'}
+                </button>
+              </div>
             </div>
-          )}
+          ))}
         </section>
 
         {inferred.length > 0 && (
           <section className="space-y-3">
             <h2 className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-yellow-400" />
-              KI-Vermutungen
+              KI-Vermutungen (Bitte prüfen)
             </h2>
             <div className="bg-yellow-50 rounded-xl border border-yellow-200 divide-y divide-yellow-100 overflow-hidden">
               {inferred.map((a) => (
-                <div key={a.id} className="p-3 flex items-center justify-between">
-                  <div>
-                    <span className="text-xs text-yellow-800 capitalize font-medium block">
-                      {a.attributeKey}
-                    </span>
-                    <span className="font-bold text-gray-800">{a.attributeValue}</span>
+                <div key={a.id} className="p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs text-yellow-800 capitalize font-medium block">
+                        {a.attributeKey}
+                      </span>
+                      <span className="font-bold text-gray-800">{a.attributeValue}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingKey(editingKey === a.attributeKey ? null : a.attributeKey);
+                          setEditValue(a.attributeValue ?? '');
+                        }}
+                        className="p-2 bg-white rounded-lg border border-yellow-200 text-gray-500 hover:bg-gray-100 text-xs font-bold"
+                      >
+                        Ändern
+                      </button>
+                      <button
+                        type="button"
+                        disabled={savingKey === a.attributeKey}
+                        onClick={() => confirmAttr(a.attributeKey)}
+                        className="px-3 py-2 bg-yellow-400 text-yellow-900 rounded-lg font-bold text-sm shadow-sm hover:bg-yellow-500 disabled:opacity-50"
+                      >
+                        {savingKey === a.attributeKey ? '…' : 'Stimmt'}
+                      </button>
+                    </div>
                   </div>
-                  <span className="text-[10px] text-yellow-700 uppercase font-bold">Vorschlag</span>
+                  {editingKey === a.attributeKey && (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        className="flex-1 p-2 border border-yellow-200 rounded-lg text-sm outline-none focus:border-yellow-500"
+                      />
+                      <button
+                        type="button"
+                        disabled={!editValue || savingKey === a.attributeKey}
+                        onClick={() => confirmAttr(a.attributeKey, editValue)}
+                        className="px-3 py-2 bg-yellow-500 text-white rounded-lg font-bold text-xs disabled:opacity-50"
+                      >
+                        Speichern
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

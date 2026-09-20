@@ -32,6 +32,16 @@ export class PrepareListingDto {
   descriptionText?: string;
 }
 
+export class ConfirmAttributeDto {
+  // Optional: fehlt, wird der bestehende (INFERRED) Wert unverändert
+  // übernommen — nur die Provenienz hebt sich auf USER_CONFIRMED ("Stimmt"-
+  // Button). Gesetzt: Nutzer korrigiert/ergänzt den Wert direkt.
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  value?: string;
+}
+
 export class BundleItemsDto {
   @IsString()
   @MinLength(1)

@@ -2,6 +2,7 @@ import { api } from './client';
 import type {
   CanonicalListing,
   Item,
+  ItemAttribute,
   ItemDetail,
   ItemListEntry,
   ItemLifecycleState,
@@ -17,6 +18,8 @@ export const itemsApi = {
     api.post<Item>(`/items/${id}/analyze`, { imageUrls }),
   confirmTruth: (id: string, condition: string) =>
     api.post<Item>(`/items/${id}/confirm-truth`, { condition }),
+  confirmAttribute: (id: string, key: string, value?: string) =>
+    api.post<ItemAttribute>(`/items/${id}/attributes/${key}/confirm`, { value }),
   prepareListing: (id: string, sellingPrice: number, descriptionText?: string) =>
     api.post<CanonicalListing>(`/items/${id}/prepare-listing`, {
       sellingPrice,
