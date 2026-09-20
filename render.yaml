@@ -21,6 +21,16 @@
 # schlafen zudem nach ~15 Min. Inaktivität ein (Cold-Start beim nächsten
 # Request) — für eine Einzelnutzer-App akzeptabel.
 # Region ist einheitlich auf `frankfurt` gesetzt (Zielnutzer: Deutschland).
+#
+# Zwei weitere Free-Tier-Korrekturen (nach echtem Deploy-Versuch, September
+# 2026), beide von Render beim Blueprint-Sync selbst gemeldet bzw. in der
+# Doku bestätigt:
+# 1. `preDeployCommand` wird auf kostenlosen Web-Services NICHT unterstützt
+#    -> die Migration läuft jetzt als Teil von `buildCommand`.
+# 2. Background-Worker-Services unterstützen GAR KEINEN kostenlosen Plan
+#    (render.com/docs/free listet nur Web Service/Postgres/Key Value) ->
+#    der BullMQ-Consumer läuft jetzt im selben Prozess wie die HTTP-API
+#    (siehe app.module.ts), der separate `worker`-Service entfällt hier.
 
 databases:
   - name: resale-os-db
@@ -96,10 +106,12 @@ services:
     region: frankfurt
     plan: free
     rootDir: backend
-    buildCommand: npm ci && npm run build
-    # Migrationen laufen explizit als eigener Deploy-Schritt (Doc 01 Strict
-    # Rule: kein `synchronize`, kein implizites `migrationsRun` im Prozess-Boot).
-    preDeployCommand: npm run migration:run
+    # Migrationen laufen weiterhin explizit vor dem Start, nur nicht mehr
+    # über `preDeployCommand` (kostenlose Web-Services unterstützen das
+    # Feld nicht) — stattdessen als letzter Schritt von `buildCommand`.
+    # Bleibt trotzdem "Doc 01 Strict Rule"-konform: kein `synchronize`,
+    # kein implizites `migrationsRun` im Prozess selbst.
+    buildCommand: npm ci && npm run build && npm run migration:run
     startCommand: npm run start:prod
     healthCheckPath: /
     envVars:
@@ -115,27 +127,13 @@ services:
           property: connectionString
 
   # ------------------------------------------------------------------------
-  # Background Worker (BullMQ Consumer) — kein HTTP-Listener.
+  # KEIN separater Background-Worker-Service mehr (siehe Kommentar oben):
+  # Render Background Worker unterstützen keinen kostenlosen Plan. Der
+  # BullMQ-Consumer läuft stattdessen im Backend-Web-Service-Prozess mit
+  # (app.module.ts importiert SaleConflictWorkerModule direkt). `worker.ts`
+  # bleibt im Repo für einen künftigen Wechsel auf einen bezahlten Plan mit
+  # getrenntem Worker.
   # ------------------------------------------------------------------------
-  - type: worker
-    name: resale-os-worker
-    runtime: node
-    region: frankfurt
-    plan: free
-    rootDir: backend
-    buildCommand: npm ci && npm run build
-    startCommand: npm run worker:prod
-    envVars:
-      - fromGroup: resale-os-shared
-      - key: DATABASE_URL
-        fromDatabase:
-          name: resale-os-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: resale-os-redis
-          property: connectionString
 
   # ------------------------------------------------------------------------
   # Frontend Static Site (Vite/React PWA, Schritt 6).

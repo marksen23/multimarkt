@@ -9,8 +9,18 @@ import { ProductAnalysisModule } from './application/product-analysis/product-an
 import { CapabilityCheckModule } from './application/capability-check/capability-check.module';
 import { DispositionEngineModule } from './application/disposition/disposition-engine.module';
 import { SaleIngestionModule } from './application/sale-conflict/sale-ingestion.module';
+import { SaleConflictWorkerModule } from './application/sale-conflict/sale-conflict-worker.module';
 import { ApiModule } from './api/api.module';
 
+/**
+ * Free-Tier-Anpassung (render.yaml, September 2026): Render Background
+ * Worker unterstützen KEINEN kostenlosen Plan (nur Web Services, Postgres,
+ * Key Value — siehe render.com/docs/free). `SaleConflictWorkerModule`
+ * (BullMQ-Consumer) läuft deshalb hier im selben Prozess wie die HTTP-API,
+ * statt in einem separaten `worker.ts`-Prozess. `worker.ts`/`worker.module.ts`
+ * bleiben im Repo nutzbar, falls später auf einen bezahlten Plan mit
+ * getrenntem Worker umgestellt wird.
+ */
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -24,6 +34,7 @@ import { ApiModule } from './api/api.module';
     CapabilityCheckModule,
     DispositionEngineModule,
     SaleIngestionModule,
+    SaleConflictWorkerModule,
     ApiModule,
   ],
   controllers: [AppController],
