@@ -28,11 +28,39 @@ envVarGroups:
       # JWT-Sessions (Actor-Context, Doc 03 §11) verwendet.
       - key: JWT_SECRET
         generateValue: true
-      # Platzhalter für Schritt 4 (KI-Service-Anbindung, Doc 16). sync:false
-      # -> Render fragt den Wert beim ersten Blueprint-Deploy im Dashboard ab,
-      # er wird niemals in diese Datei geschrieben.
+      # Platzhalter für die künftige echte Gemini-Anbindung (aktuell wird
+      # MockGeminiVisionProvider verwendet, dieser Wert wird von KEINEM
+      # Code gelesen). Bewusst ein fester Platzhalter statt `sync: false`,
+      # damit der erste Blueprint-Deploy nicht unnötig nach einem Wert
+      # fragt, den es noch gar nicht gibt — beim echten Gemini-Anschluss
+      # hier auf `sync: false` umstellen.
       - key: GEMINI_API_KEY
-        sync: false
+        value: unused-mock-provider-active
+      # --- Actor Authority Model (Doc 03 §2/§4) — ohne diese Werte lehnt
+      # ActorContextGuard jeden Request ab, die App wäre nach dem Deploy
+      # komplett unbenutzbar. APP_USER_ID ist bewusst FEST (nicht
+      # generateValue), weil sie exakt mit der Zeile übereinstimmen muss,
+      # die die Migration 003_seed_single_user anlegt.
+      - key: APP_ACCESS_TOKEN
+        generateValue: true
+      - key: APP_USER_ID
+        value: "00000000-0000-0000-0000-000000000000"
+      - key: INTERNAL_SERVICE_TOKEN
+        generateValue: true
+      # Einziger aktiver Verkaufskanal (docs/README.md §4e-Revision,
+      # September 2026) — kein WEBHOOK_SECRET_EBAY mehr nötig.
+      - key: WEBHOOK_SECRET_KLEINANZEIGEN
+        generateValue: true
+      - key: SALE_CONFLICT_DEBOUNCE_MS
+        value: "15000"
+      # ACHTUNG (siehe LocalDiskStorageProvider-Doku): Render-Webservices
+      # haben ein FLÜCHTIGES Dateisystem — hochgeladene Fotos unter
+      # UPLOAD_DIR gehen bei jedem Redeploy/Neustart verloren. Für einen
+      # echten Go-Live muss das durch einen S3-artigen StorageProvider
+      # ersetzt werden (siehe Abschlussbericht) — für den ersten Web-Test
+      # bewusst unverändert gelassen.
+      - key: UPLOAD_DIR
+        value: uploads
 
 services:
   # ------------------------------------------------------------------------
