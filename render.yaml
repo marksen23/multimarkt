@@ -111,7 +111,16 @@ services:
     # Feld nicht) — stattdessen als letzter Schritt von `buildCommand`.
     # Bleibt trotzdem "Doc 01 Strict Rule"-konform: kein `synchronize`,
     # kein implizites `migrationsRun` im Prozess selbst.
-    buildCommand: npm ci && npm run build && npm run migration:run
+    #
+    # `--include=dev` ist Pflicht, kein Stilmittel: NODE_ENV=production
+    # (siehe envVarGroup oben) lässt `npm ci` sonst alle devDependencies
+    # weglassen — genau dort liegen aber @nestjs/cli (`nest build`),
+    # typescript UND ts-node (`npm run migration:run` braucht es für die
+    # .ts-Migrationsdateien). Ohne das Flag schlägt der Build mit
+    # "nest: not found" fehl (so beim ersten echten Deploy-Versuch
+    # passiert). Zur Laufzeit stört das Mehr an installierten Paketen
+    # nicht — `start:prod` führt nur die kompilierten dist/*.js aus.
+    buildCommand: npm ci --include=dev && npm run build && npm run migration:run
     startCommand: npm run start:prod
     healthCheckPath: /
     envVars:
