@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { bundlesApi } from '../api/bundles';
 import { ApiRequestError } from '../api/client';
 import type { BundleDetail } from '../api/types';
+import { ListingsManager } from '../components/ListingsManager';
 import { StatusBadge } from '../components/StatusBadge';
 
 export function BundleDetailPage() {
@@ -26,6 +27,19 @@ export function BundleDetailPage() {
     void reload();
   }, [reload]);
 
+  const run = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+      await reload();
+    } catch (e) {
+      setError(e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!detail || !id) {
     return (
       <div className="p-6 text-center text-sm text-gray-400">{error ?? 'Lädt…'}</div>
@@ -34,18 +48,8 @@ export function BundleDetailPage() {
 
   const { bundle, items, listings } = detail;
 
-  const prepareListing = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await bundlesApi.prepareListing(id, Number(price), description);
-      await reload();
-    } catch (e) {
-      setError(e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler');
-    } finally {
-      setBusy(false);
-    }
-  };
+  const prepareListing = () =>
+    run(() => bundlesApi.prepareListing(id, Number(price), description));
 
   return (
     <div className="max-w-md mx-auto p-4 space-y-4">
@@ -81,23 +85,12 @@ export function BundleDetailPage() {
       {listings.length > 0 && (
         <div>
           <p className="text-xs font-bold text-gray-500 uppercase mb-2">Listings</p>
-          {listings.map((listing) => (
-            <div key={listing.id} className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="font-bold text-gray-900">{listing.sellingPrice.toFixed(2)} €</p>
-              <p className="text-xs text-gray-500 mb-2">{listing.descriptionText}</p>
-              <div className="flex flex-wrap gap-2">
-                {listing.projections.map((p) => (
-                  <span
-                    key={p.id}
-                    className="text-[11px] px-2 py-1 rounded-lg bg-gray-50 border border-gray-100 text-gray-600 flex items-center gap-1"
-                  >
-                    {p.marketplaceId}
-                    <StatusBadge status={p.status} />
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
+          <ListingsManager
+            listings={listings}
+            busy={busy}
+            run={run}
+            emptyLabel="Noch kein Canonical Listing vorhanden."
+          />
         </div>
       )}
 
