@@ -6,6 +6,7 @@ import type { ItemDetail, SaleEvent } from '../api/types';
 import { ConfidenceCenter } from '../components/ConfidenceCenter';
 import { DispositionPanel } from '../components/DispositionPanel';
 import { ListingsManager } from '../components/ListingsManager';
+import { PhotoCapture } from '../components/PhotoCapture';
 import { StatusBadge } from '../components/StatusBadge';
 
 export function ItemDetailPage() {
@@ -65,7 +66,10 @@ export function ItemDetailPage() {
       )}
 
       {(item.status === 'NEW' || item.status === 'ANALYZING') && (
-        <AnalyzeStep busy={busy || item.status === 'ANALYZING'} onAnalyze={(urls) => run(() => itemsApi.analyze(id, urls))} />
+        <AnalyzeStep
+          busy={busy || item.status === 'ANALYZING'}
+          onAnalyze={(files) => run(() => itemsApi.analyze(id, files))}
+        />
       )}
 
       {item.status === 'REVIEW_REQUIRED' && (
@@ -137,33 +141,16 @@ function Centered({ title, message }: { title: string; message: string }) {
   );
 }
 
-function AnalyzeStep({ busy, onAnalyze }: { busy: boolean; onAnalyze: (imageUrls: string[]) => Promise<void> }) {
-  const [urlsText, setUrlsText] = useState('');
+function AnalyzeStep({ busy, onAnalyze }: { busy: boolean; onAnalyze: (files: File[]) => Promise<void> }) {
+  const [photos, setPhotos] = useState<File[]>([]);
   return (
     <div className="p-4 space-y-4">
       <h1 className="text-lg font-bold text-gray-900">Fotos hinzufügen</h1>
-      <p className="text-xs text-gray-500">
-        Noch kein echter Upload angebunden (kein S3-Adapter in diesem Projektstand) — bis dahin:
-        Bild-URLs, eine pro Zeile.
-      </p>
-      <textarea
-        rows={4}
-        value={urlsText}
-        onChange={(e) => setUrlsText(e.target.value)}
-        placeholder={'https://example.com/foto1.jpg\nhttps://example.com/foto2.jpg'}
-        className="w-full p-3 border border-gray-200 rounded-lg text-sm outline-none focus:border-black"
-      />
+      <PhotoCapture files={photos} onChange={setPhotos} />
       <button
         type="button"
-        disabled={busy}
-        onClick={() =>
-          onAnalyze(
-            urlsText
-              .split('\n')
-              .map((l) => l.trim())
-              .filter(Boolean),
-          )
-        }
+        disabled={busy || photos.length === 0}
+        onClick={() => onAnalyze(photos)}
         className="w-full p-3 rounded-lg font-bold bg-black text-white disabled:bg-gray-300"
       >
         {busy ? 'Analysiert…' : 'Analysieren'}

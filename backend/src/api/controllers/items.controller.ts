@@ -1,22 +1,26 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
+  Inject,
   NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
   Query,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { memoryStorage } from 'multer';
 import { CurrentActor } from '../auth/actor.decorator';
 import { ActorContextGuard } from '../auth/actor-context.guard';
 import { ResponseEnvelopeInterceptor } from '../interceptors/response-envelope.interceptor';
 import {
-  AnalyzeItemDto,
   BundleItemsDto,
   ConfirmAttributeDto,
   ConfirmTruthDto,
@@ -40,6 +44,7 @@ import {
 import { ItemAttributeConfirmationService } from '../../application/product-analysis/item-attribute-confirmation.service';
 import { ProductAnalysisService } from '../../application/product-analysis/product-analysis.service';
 import { StateGuardService } from '../../application/state-guard/state-guard.service';
+import { STORAGE_PROVIDER, StorageProvider } from '../../domain/storage/storage-provider.interface';
 import {
   BundleEntity,
   CanonicalListingEntity,
@@ -49,6 +54,10 @@ import {
   SaleEventEntity,
 } from '../../infrastructure/database/entities';
 import { ResolveConflictDto } from '../dto/sale-events.dto';
+
+const MAX_PHOTOS_PER_UPLOAD = 10;
+const MAX_PHOTO_SIZE_BYTES = 15 * 1024 * 1024;
+const ALLOWED_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic']);
 
 /** Doc 04 §7/§8/§12 — Item-Aggregat. */
 @Controller('items')
@@ -65,6 +74,7 @@ export class ItemsController {
     private readonly dispositionEngine: DispositionEngineService,
     private readonly listingSummary: ListingSummaryService,
     private readonly attributeConfirmation: ItemAttributeConfirmationService,
+    @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
   ) {}
 
   @Post()
@@ -112,17 +122,50 @@ export class ItemsController {
     return { item, attributes, listings };
   }
 
+  /**
+   * README §3 Schritt 1 "Foto-Erfassung": der Workflow beginnt mit dem Foto.
+   * `multipart/form-data`, Feldname `files` — echter Upload über
+   * StorageProvider (austauschbar, siehe Doku dort) statt der früheren
+   * Platzhalter-Lösung (rohe Bild-URLs per Hand einfügen).
+   */
   @Post(':id/analyze')
+  @UseInterceptors(
+    FilesInterceptor('files', MAX_PHOTOS_PER_UPLOAD, {
+      storage: memoryStorage(),
+      limits: { fileSize: MAX_PHOTO_SIZE_BYTES },
+    }),
+  )
   async analyze(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: AnalyzeItemDto,
+    @UploadedFiles() files: Express.Multer.File[],
     @CurrentActor() actor: ActorContext,
   ): Promise<ItemEntity> {
-    // Foto-Upload (NEW -> ANALYZING) ist Teil desselben User-Requests, da
-    // es noch keinen separaten Upload-Endpoint gibt (kein S3-Adapter in
-    // diesem Projektstand — siehe Abschlussbericht).
+    if (!files?.length) {
+      throw new BadRequestException('At least one photo is required (field "files")');
+    }
+    for (const file of files) {
+      if (!ALLOWED_PHOTO_MIME_TYPES.has(file.mimetype)) {
+        throw new BadRequestException(`Unsupported image type: ${file.mimetype}`);
+      }
+    }
+
     await this.stateGuard.transitionItem(id, { type: 'UPLOAD_PHOTO', actor });
-    return this.productAnalysis.analyze(id, dto.imageUrls, { type: 'SYSTEM' });
+
+    const uploaded = await Promise.all(
+      files.map((file) =>
+        this.storage.upload({
+          buffer: file.buffer,
+          mimeType: file.mimetype,
+          originalName: file.originalname,
+        }),
+      ),
+    );
+
+    return this.productAnalysis.analyze(
+      id,
+      uploaded.map((f) => f.url),
+      { type: 'SYSTEM' },
+    );
   }
 
   @Post(':id/confirm-truth')

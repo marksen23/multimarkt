@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -21,6 +22,11 @@ async function bootstrap() {
   // alle echten API-Routen (Doc 04) liegen unter /api — passend zum
   // Frontend-Dev-Proxy (vite.config.ts).
   app.setGlobalPrefix('api', { exclude: ['/'] });
+  // LocalDiskStorageProvider (Dev/Demo — siehe dortige Doku zum flüchtigen
+  // Render-Dateisystem). UPLOAD_DIR muss mit dem Provider übereinstimmen.
+  app.useStaticAssets(join(process.cwd(), process.env.UPLOAD_DIR ?? 'uploads'), {
+    prefix: '/uploads/',
+  });
   app.enableCors();
   await app.listen(process.env.PORT ?? 3000);
 }

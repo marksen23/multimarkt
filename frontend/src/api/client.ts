@@ -43,8 +43,28 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (body?.data ?? body) as T;
 }
 
+async function requestForm<T>(path: string, formData: FormData): Promise<T> {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    // Kein 'Content-Type' setzen — der Browser generiert die korrekte
+    // multipart/form-data-Boundary automatisch (Doc 04 §7 "Foto-Erfassung").
+    headers: { ...authHeader() },
+    body: formData,
+  });
+
+  const body = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiRequestError(
+      response.status,
+      body ?? { error_code: 'ERR_UNKNOWN', message: response.statusText, details: {} },
+    );
+  }
+  return (body?.data ?? body) as T;
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path, { method: 'GET' }),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
+  postForm: <T>(path: string, formData: FormData) => requestForm<T>(path, formData),
 };

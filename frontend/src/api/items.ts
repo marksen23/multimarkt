@@ -14,8 +14,11 @@ export const itemsApi = {
     api.get<ItemListEntry[]>(status ? `/items?status=${status}` : '/items'),
   create: (title?: string) => api.post<Item>('/items', { title }),
   get: (id: string) => api.get<ItemDetail>(`/items/${id}`),
-  analyze: (id: string, imageUrls: string[]) =>
-    api.post<Item>(`/items/${id}/analyze`, { imageUrls }),
+  analyze: (id: string, files: File[]) => {
+    const form = new FormData();
+    files.forEach((file) => form.append('files', file));
+    return api.postForm<Item>(`/items/${id}/analyze`, form);
+  },
   confirmTruth: (id: string, condition: string) =>
     api.post<Item>(`/items/${id}/confirm-truth`, { condition }),
   confirmAttribute: (id: string, key: string, value?: string) =>

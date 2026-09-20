@@ -14,6 +14,9 @@ npm-debug.log*
 # coverage
 /coverage
 
+# local file uploads (LocalDiskStorageProvider dev/demo storage)
+/uploads
+
 # IDE
 .vscode/*
 !.vscode/extensions.json

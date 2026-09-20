@@ -6,13 +6,6 @@ export class CreateItemDto {
   title?: string;
 }
 
-export class AnalyzeItemDto {
-  @IsArray()
-  @ArrayNotEmpty()
-  @IsString({ each: true })
-  imageUrls: string[];
-}
-
 export class ConfirmTruthDto {
   // Doc 03 §4: fehlt dieses Feld, blockiert der StateGuardService selbst
   // (422) — die Validierung hier ist nur die erste, schnellste Fehlerquelle
