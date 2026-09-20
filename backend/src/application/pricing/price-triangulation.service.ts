@@ -107,6 +107,9 @@ export class PriceTriangulationService {
       p75: result.p75,
       sampleSize: result.sampleSize,
       currency: result.currency,
+      // §9e-Ergänzung (September 2026): eBay dient auch dem Titel-/
+      // Beschreibungsvergleich, nicht nur der Preisrecherche.
+      detail: { comparableListings: result.comparableListings },
     };
   }
 

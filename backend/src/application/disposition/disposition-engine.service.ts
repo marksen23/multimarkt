@@ -40,7 +40,6 @@ export interface DispositionRecommendation {
 
 const LOW_VALUE_THRESHOLD_EUR = 10;
 const BUYBACK_CATEGORIES = ['electronics', 'books', 'media'];
-const FASHION_CATEGORIES = ['fashion', 'shoes'];
 
 @Injectable()
 export class DispositionEngineService {
@@ -75,31 +74,17 @@ export class DispositionEngineService {
       }
     }
 
-    const platforms: PlatformRecommendation[] = [];
-
-    if (!product.isBulky) {
-      platforms.push({
-        key: 'EBAY',
-        netExpectedValue: marketPrice * 0.95 - 2.5,
-        reasoning: 'Maximale bundesweite Reichweite für den Versandverkauf.',
-      });
-    }
-
-    platforms.push({
-      key: 'KLEINANZEIGEN',
-      netExpectedValue: marketPrice * 1.0 - (product.isBulky ? 0 : 1.5),
-      reasoning: 'Ideal für lokale Abholung (kein Versandaufwand) oder schnelle Käufer.',
-    });
-
-    if (FASHION_CATEGORIES.includes(product.category)) {
-      platforms.push({
-        key: 'VINTED',
-        netExpectedValue: marketPrice,
-        reasoning: 'Passende Zielgruppe für Mode; Käufer zahlt die Käuferschutzgebühr, nicht der Verkäufer.',
-      });
-    }
-
-    platforms.sort((a, b) => b.netExpectedValue - a.netExpectedValue);
+    // Vertriebskanal-Entscheidung (docs/README.md §4e-Ergänzung, September
+    // 2026): Kleinanzeigen ist der einzige Verkaufskanal — eBay/Vinted
+    // werden hier bewusst nicht mehr als Plattform empfohlen (eBay dient
+    // nur noch als Recherche-Quelle, siehe PriceTriangulationService).
+    const platforms: PlatformRecommendation[] = [
+      {
+        key: 'KLEINANZEIGEN',
+        netExpectedValue: marketPrice * 1.0 - (product.isBulky ? 0 : 1.5),
+        reasoning: 'Einziger aktiver Verkaufskanal — ideal für lokale Abholung (kein Versandaufwand) oder schnelle Käufer.',
+      },
+    ];
 
     return {
       action: product.isBulky ? 'LOCAL_PICKUP_ONLY' : 'SELL_ONLINE',

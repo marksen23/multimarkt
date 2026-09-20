@@ -742,6 +742,23 @@ enges Warensegment):
 Kanäle — nicht "eBay + Etsy" wie in der ursprünglichen, noch
 zielgruppen-unabhängigen Fassung von Abschnitt 5 formuliert.
 
+**Revidiert (September 2026) — Kleinanzeigen als einziger Verkaufskanal,
+eBay nur noch Recherche-Quelle:** Die oben getroffene Priorität-1-
+Entscheidung für eBay als zweiten, gleichrangigen Live-API-Verkaufskanal
+wird zurückgenommen. **Kleinanzeigen.de (Formatierungs-Hilfe) ist jetzt
+der einzige aktive Verkaufskanal der App.** eBay wird stattdessen
+ausschließlich als Recherche-Quelle genutzt — Preisvergleich (§9d/§9e)
+und Titel-/Beschreibungsvergleich (§9e) über die offizielle Browse API,
+kein Publishing über den eBay-Adapter. Begründung: eine bewusste
+Vereinfachung auf einen Kanal, nicht ein neu gefundenes Problem mit
+eBay selbst — die eBay-Browse-API bleibt genau deshalb weiter im Einsatz,
+weil sie (im Gegensatz zu Kleinanzeigen, siehe §4b) offiziell und frei
+zugänglich ist; nur die *Publish*-Seite (Sell-API) wird nicht mehr
+genutzt. `MockEbayAdapter` bleibt im Code (`marketplaces/ebay/`), ist
+aber nicht mehr in der aktiven `MARKETPLACE_ADAPTERS`-Registry gebunden.
+Vinted ist von dieser Revision unberührt weiterhin nicht Teil des MVP
+(war es auch vorher nicht, siehe oben).
+
 ---
 
 ## 5. Funktionsübersicht
@@ -1490,6 +1507,14 @@ eine Plattform", sondern in drei anderen Stellschrauben:**
      Reichweite zu verzichten (sie kommt nur leicht zeitversetzt).
 
    Konkrete Tier-Logik für die MVP-Zielrichtung aus Abschnitt 4e:
+
+   **Überholt durch die §4e-Revision (September 2026):** Die
+   Mehr-Plattform-Staffelung unten setzt eBay als zweiten Live-
+   Verkaufskanal voraus — das gilt seit der Kleinanzeigen-exklusiven
+   Entscheidung nicht mehr. Mit nur einem aktiven Kanal entfällt die
+   Tier-Logik faktisch (nichts zum Staffeln). Als Konzept für einen
+   späteren zweiten/dritten Kanal bleibt sie unten dokumentiert, nicht
+   gelöscht.
 
    ```
    Tier 0 (sofort):      eBay (Live-API) + Kleinanzeigen.de

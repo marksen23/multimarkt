@@ -24,6 +24,11 @@ export class MockEbayBrowseProvider implements MarketDistributionProvider {
       sampleSize: 12,
       currency: 'EUR',
       providerLabel: 'eBay Browse API (Mock)',
+      comparableListings: [
+        { title: `${query.keywords} - sehr guter Zustand, kaum getragen`, price: 38 },
+        { title: `${query.keywords} TOP Zustand mit OVP`, price: 41 },
+        { title: `${query.keywords} gebraucht, Gebrauchsspuren`, price: 28 },
+      ],
     };
   }
 }

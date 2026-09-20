@@ -1,9 +1,11 @@
-import { useState } from 'react';
 import { listingsApi } from '../api/listings';
 import type { ListingSummary } from '../api/types';
 import { StatusBadge } from './StatusBadge';
 
-const MARKETPLACES = ['EBAY', 'KLEINANZEIGEN'];
+// Vertriebskanal-Entscheidung (docs/README.md §4e-Ergänzung, September
+// 2026): Kleinanzeigen ist der einzige Verkaufskanal — eBay dient nur noch
+// als Recherche-Quelle (Preis-/Beschreibungsvergleich), nicht als Publish-Ziel.
+const MARKETPLACE = 'KLEINANZEIGEN';
 
 /**
  * Verwaltet Marketplace Projections eines Canonical Listings — geteilt
@@ -40,8 +42,6 @@ function ListingCard({
   busy: boolean;
   run: (fn: () => Promise<unknown>) => Promise<void>;
 }) {
-  const [marketplace, setMarketplace] = useState(MARKETPLACES[0]);
-
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
       <div>
@@ -90,22 +90,11 @@ function ListingCard({
             </div>
           </div>
         ))}
-        {!listing.projections.some((p) => p.marketplaceId === marketplace) && (
+        {!listing.projections.some((p) => p.marketplaceId === MARKETPLACE) && (
           <div className="flex gap-2 items-center pt-1">
-            <select
-              value={marketplace}
-              onChange={(e) => setMarketplace(e.target.value)}
-              className="flex-1 p-2 border border-gray-200 rounded-lg text-xs"
-            >
-              {MARKETPLACES.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
             <ActionButton
-              label="+ Listing"
-              onClick={() => run(() => listingsApi.create(listing.id, marketplace))}
+              label="+ Kleinanzeigen-Listing"
+              onClick={() => run(() => listingsApi.create(listing.id, MARKETPLACE))}
               disabled={busy}
             />
           </div>

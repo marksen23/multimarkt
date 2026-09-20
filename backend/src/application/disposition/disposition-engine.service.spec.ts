@@ -47,20 +47,13 @@ describe('DispositionEngineService', () => {
     expect(result.action).toBe('SELL_ONLINE');
   });
 
-  it('routes bulky items to LOCAL_PICKUP_ONLY and excludes eBay', () => {
+  it('routes bulky items to LOCAL_PICKUP_ONLY', () => {
     const result = service.evaluate({ ...baseProfile, isBulky: true, marketMedianPrice: 80 });
     expect(result.action).toBe('LOCAL_PICKUP_ONLY');
-    expect(result.recommendedPlatforms.some((p) => p.key === 'EBAY')).toBe(false);
   });
 
-  it('adds Vinted as a channel for fashion items', () => {
+  it('only ever recommends Kleinanzeigen — the sole active sales channel (§4e-Ergänzung)', () => {
     const result = service.evaluate({ ...baseProfile, category: 'fashion', marketMedianPrice: 40 });
-    expect(result.recommendedPlatforms.some((p) => p.key === 'VINTED')).toBe(true);
-  });
-
-  it('sorts recommended platforms by descending net expected value', () => {
-    const result = service.evaluate({ ...baseProfile, marketMedianPrice: 60 });
-    const values = result.recommendedPlatforms.map((p) => p.netExpectedValue);
-    expect(values).toEqual([...values].sort((a, b) => b - a));
+    expect(result.recommendedPlatforms.map((p) => p.key)).toEqual(['KLEINANZEIGEN']);
   });
 });

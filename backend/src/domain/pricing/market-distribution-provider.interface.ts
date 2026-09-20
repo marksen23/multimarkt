@@ -10,6 +10,20 @@ export interface MarketDistributionQuery {
   condition: string | null;
 }
 
+/**
+ * Titel eines Vergleichsangebots — kommt kostenlos aus derselben
+ * Suchanfrage wie die Preisverteilung (kein zusätzlicher API-Call). Volle
+ * Beschreibungstexte bräuchten pro Angebot einen separaten Detail-Call
+ * (eBay Item API) und sind bewusst NICHT Teil des MVP (§9e-Ergänzung,
+ * September 2026: eBay dient nur zum Preis- UND Titel-/Beschreibungs-
+ * vergleich, aber die MVP-Version vergleicht nur, was ohnehin schon
+ * abgerufen wird — kein zusätzlicher Kostenfaktor).
+ */
+export interface ComparableListing {
+  title: string;
+  price: number;
+}
+
 export interface MarketDistributionResult {
   median: number;
   p25: number;
@@ -18,6 +32,8 @@ export interface MarketDistributionResult {
   sampleSize: number;
   currency: string;
   providerLabel: string;
+  /** Beispieltitel zum Abgleich ("wie beschreiben andere das?"), keine vollen Beschreibungstexte. */
+  comparableListings: ComparableListing[];
 }
 
 export interface MarketDistributionProvider {

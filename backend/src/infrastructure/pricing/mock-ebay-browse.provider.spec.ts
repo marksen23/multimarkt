@@ -13,4 +13,10 @@ describe('MockEbayBrowseProvider', () => {
     expect(result?.providerLabel).toContain('Mock');
     expect(result?.sampleSize).toBeGreaterThan(0);
   });
+
+  it('includes comparable listing titles for description comparison (§9e-Ergänzung)', async () => {
+    const result = await provider.search({ keywords: 'Nike Sneaker', condition: 'good' });
+    expect(result?.comparableListings.length).toBeGreaterThan(0);
+    expect(result?.comparableListings[0].title).toContain('Nike Sneaker');
+  });
 });

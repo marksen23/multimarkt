@@ -48,6 +48,7 @@ describe('PriceTriangulationService', () => {
       sampleSize: 12,
       currency: 'EUR',
       providerLabel: 'eBay Browse API (Mock)',
+      comparableListings: [{ title: 'Nike Sneaker, guter Zustand', price: 34 }],
     });
     buybackProvider.quote.mockResolvedValue({
       buybackPrice: 15,
@@ -62,6 +63,7 @@ describe('PriceTriangulationService', () => {
     const market = result.sources.find((s) => s.source === 'EBAY_ACTIVE_LISTINGS');
     const buyback = result.sources.find((s) => s.source === 'ANKAUF_PORTAL');
     expect(market?.median).toBe(34);
+    expect(market?.detail?.comparableListings).toHaveLength(1);
     expect(buyback?.median).toBe(15 * BUYBACK_TO_RESALE_MULTIPLIER);
     expect(marketProvider.search).toHaveBeenCalledWith({ keywords: 'Nike Sneaker', condition: 'good' });
     expect(insert).toHaveBeenCalledTimes(1);
@@ -81,6 +83,7 @@ describe('PriceTriangulationService', () => {
       sampleSize: 2, // unter MIN_MARKET_SAMPLE_SIZE (5)
       currency: 'EUR',
       providerLabel: 'eBay Browse API (Mock)',
+      comparableListings: [],
     });
     buybackProvider.quote.mockResolvedValue(null);
 
@@ -116,6 +119,7 @@ describe('PriceTriangulationService', () => {
       sampleSize: 12,
       currency: 'EUR',
       providerLabel: 'eBay Browse API (Mock)',
+      comparableListings: [{ title: 'Nike Sneaker, guter Zustand', price: 34 }],
     });
     buybackProvider.quote.mockResolvedValue(null);
 
