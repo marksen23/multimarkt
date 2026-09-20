@@ -3,11 +3,23 @@
 # Struktur: Monorepo mit separaten Ordnern `backend/` (NestJS) und `frontend/`
 # (Vite/React). Jeder Service referenziert seinen Ordner über `rootDir`.
 #
-# Plan-/Region-Hinweis: Es wird bewusst kein `plan:` gesetzt (Render nutzt dann
-# den Default: 0.5 CPU/512MB für Web/Worker, 0.1 CPU/256MB für Postgres,
-# 256MB für Key Value). Für einen dauerhaften Betrieb (v.a. Postgres — der
-# kostenlose Plan läuft nach 30 Tagen ab und wird nicht automatisch erneuert!)
-# sollte vor dem produktiven Go-Live bewusst ein bezahlter Plan gewählt werden.
+# Plan-/Kosten-Korrektur (September 2026): Frühere Fassung dieser Datei
+# setzte bewusst KEIN `plan:` — das war ein echter Fehler, kein neutraler
+# Default. Laut Render-Doku (render.com/docs/blueprint-spec, Feld `plan`)
+# ist der Default beim Weglassen NICHT der kostenlose Plan, sondern:
+#   Web/Worker  -> 0.5c-512mb  = 7 $/Monat JE Service
+#   Key Value   -> 256mb       = 10 $/Monat
+#   Postgres    -> 0.1c-256mb  = 6 $/Monat
+# Macht zusammen ~30 $/Monat für Backend+Worker+Redis+Postgres, obwohl nie
+# bewusst ein bezahlter Plan gewählt wurde — das erklärt die volle Rechnung.
+# Jeder Service unten hat deshalb jetzt explizit `plan: free` — macht den
+# ganzen Stack (inkl. der ohnehin immer kostenlosen Static-Site-Frontend)
+# nominell 0 $/Monat. Der einzige verbleibende Haken: der kostenlose
+# Postgres-Plan läuft 30 Tage nach Erstellung ab und wird NICHT automatisch
+# verlängert (danach: Daten weg, außer man exportiert/upgraded vorher
+# bewusst auf einen bezahlten Plan, ~6-7 $/Monat). Freie Web-Services
+# schlafen zudem nach ~15 Min. Inaktivität ein (Cold-Start beim nächsten
+# Request) — für eine Einzelnutzer-App akzeptabel.
 # Region ist einheitlich auf `frankfurt` gesetzt (Zielnutzer: Deutschland).
 
 databases:
@@ -16,6 +28,7 @@ databases:
     user: resale_os
     region: frankfurt
     postgresMajorVersion: "16"
+    plan: free
     # ipAllowList bewusst weggelassen -> alle IPs erlaubt, Zugriff bleibt
     # trotzdem durch Credentials geschützt. Bei Bedarf hier einschränken.
 
@@ -70,6 +83,7 @@ services:
   - type: keyvalue
     name: resale-os-redis
     region: frankfurt
+    plan: free
     maxmemoryPolicy: noeviction
     ipAllowList: [] # nur intern über das private Netzwerk erreichbar
 
@@ -80,6 +94,7 @@ services:
     name: resale-os-backend
     runtime: node
     region: frankfurt
+    plan: free
     rootDir: backend
     buildCommand: npm ci && npm run build
     # Migrationen laufen explizit als eigener Deploy-Schritt (Doc 01 Strict
@@ -106,6 +121,7 @@ services:
     name: resale-os-worker
     runtime: node
     region: frankfurt
+    plan: free
     rootDir: backend
     buildCommand: npm ci && npm run build
     startCommand: npm run worker:prod
