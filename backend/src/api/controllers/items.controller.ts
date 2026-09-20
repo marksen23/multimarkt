@@ -6,6 +6,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -23,8 +24,13 @@ import {
 } from '../dto/items.dto';
 import { EvaluateDispositionDto } from '../dto/disposition.dto';
 import { ActorContext } from '../../domain/actor-context';
+import { ItemLifecycleState } from '../../domain/state-vocabulary';
 import { BundleAssignmentService } from '../../application/bundle/bundle-assignment.service';
 import { CanonicalListingService } from '../../application/listing/canonical-listing.service';
+import {
+  ListingSummary,
+  ListingSummaryService,
+} from '../../application/listing/listing-summary.service';
 import { ConflictResolutionService } from '../../application/conflict-resolution/conflict-resolution.service';
 import {
   DispositionEngineService,
@@ -55,6 +61,7 @@ export class ItemsController {
     private readonly bundleAssignment: BundleAssignmentService,
     private readonly conflictResolution: ConflictResolutionService,
     private readonly dispositionEngine: DispositionEngineService,
+    private readonly listingSummary: ListingSummaryService,
   ) {}
 
   @Post()
@@ -66,17 +73,40 @@ export class ItemsController {
     });
   }
 
+  /**
+   * NICHT Teil des ursprünglichen Doc 04 — bewusste, dokumentierte
+   * Erweiterung (siehe Abschlussbericht "Vertragslücken"), da das README
+   * ein "zentrales Dashboard: Status pro Listing pro Plattform" als
+   * MVP-Feature vorschreibt, das ohne einen Listen-Endpoint nicht baubar ist.
+   * Folgt denselben Konventionen wie der Rest von Doc 04 (Actor-Gate,
+   * Response-Envelope, Single-User-Scoping über `actor.userId`).
+   */
+  @Get()
+  async list(
+    @CurrentActor() actor: ActorContext,
+    @Query('status') status?: ItemLifecycleState,
+  ): Promise<{ item: ItemEntity; listings: ListingSummary[] }[]> {
+    const items = await this.dataSource.manager.find(ItemEntity, {
+      where: status ? { userId: actor.userId!, status } : { userId: actor.userId! },
+      order: { createdAt: 'DESC' },
+    });
+    const listingsByItem = await this.listingSummary.forItemIds(items.map((i) => i.id));
+    return items.map((item) => ({ item, listings: listingsByItem.get(item.id) ?? [] }));
+  }
+
   @Get(':id')
   async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<{
     item: ItemEntity;
     attributes: ItemAttributeEntity[];
+    listings: ListingSummary[];
   }> {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
     if (!item) throw new NotFoundException(`Item ${id} not found`);
     const attributes = await this.dataSource.manager.find(ItemAttributeEntity, {
       where: { itemId: id },
     });
-    return { item, attributes };
+    const listings = await this.listingSummary.forItem(id);
+    return { item, attributes, listings };
   }
 
   @Post(':id/analyze')

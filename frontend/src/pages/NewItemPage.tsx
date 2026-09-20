@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 
-export function HomePage() {
+export function NewItemPage() {
   const [title, setTitle] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,11 +23,12 @@ export function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-      <div className="max-w-sm w-full bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4">
-        <h1 className="text-xl font-bold text-gray-900">Personal Resale OS</h1>
+    <div className="max-w-sm mx-auto p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4">
+        <h1 className="text-xl font-bold text-gray-900">Neuer Artikel</h1>
         <p className="text-sm text-gray-500">
-          Fotografieren statt Formulare ausfüllen. Starte mit einem neuen Gegenstand.
+          Fotografieren statt Formulare ausfüllen. Titel ist optional — die KI-Analyse folgt im
+          nächsten Schritt.
         </p>
         <input
           type="text"
@@ -43,14 +44,16 @@ export function HomePage() {
           onClick={createItem}
           className="w-full p-3 rounded-lg font-bold bg-black text-white disabled:bg-gray-300"
         >
-          {creating ? 'Wird erstellt…' : 'Neuer Artikel'}
+          {creating ? 'Wird erstellt…' : 'Weiter'}
         </button>
-        <a
-          href="/demo/negotiation"
-          className="block text-center text-xs text-gray-400 hover:text-gray-600"
-        >
-          Chat-Assistent-Demo ansehen
-        </a>
+        <div className="flex justify-center gap-4">
+          <a href="/demo/confidence-center" className="text-xs text-gray-400 hover:text-gray-600">
+            Confidence-Center-Demo
+          </a>
+          <a href="/demo/negotiation" className="text-xs text-gray-400 hover:text-gray-600">
+            Chat-Assistent-Demo
+          </a>
+        </div>
       </div>
     </div>
   );

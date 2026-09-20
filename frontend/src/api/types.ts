@@ -15,6 +15,17 @@ export type ItemLifecycleState =
   | 'SALE_CONFLICT'
   | 'CANCELLED';
 
+export type BundleLifecycleState = 'NEW' | 'READY' | 'LISTED' | 'SOLD' | 'CANCELLED';
+
+export type ProjectionLifecycleState =
+  | 'DRAFT'
+  | 'READY'
+  | 'PUBLISHING'
+  | 'ONLINE'
+  | 'CANCEL_PENDING'
+  | 'CANCELLED'
+  | 'SOLD';
+
 export type TruthState = 'UNKNOWN' | 'INFERRED' | 'USER_CONFIRMED';
 
 export interface Item {
@@ -37,9 +48,49 @@ export interface ItemAttribute {
   createdAt: string;
 }
 
+export interface MarketplaceProjectionSummary {
+  id: string;
+  marketplaceId: string;
+  status: ProjectionLifecycleState;
+  externalPlatformId: string | null;
+}
+
+export interface ListingSummary {
+  id: string;
+  sellingPrice: number;
+  descriptionText: string;
+  projections: MarketplaceProjectionSummary[];
+}
+
 export interface ItemDetail {
   item: Item;
   attributes: ItemAttribute[];
+  listings: ListingSummary[];
+}
+
+export interface ItemListEntry {
+  item: Item;
+  listings: ListingSummary[];
+}
+
+export interface Bundle {
+  id: string;
+  userId: string;
+  title: string;
+  description: string | null;
+  status: BundleLifecycleState;
+  createdAt: string;
+}
+
+export interface BundleListEntry {
+  bundle: Bundle;
+  listings: ListingSummary[];
+}
+
+export interface BundleDetail {
+  bundle: Bundle;
+  items: Item[];
+  listings: ListingSummary[];
 }
 
 export interface CanonicalListing {
@@ -50,6 +101,25 @@ export interface CanonicalListing {
   sellingPrice: number;
   descriptionText: string;
   createdAt: string;
+}
+
+export interface SaleEvent {
+  id: string;
+  projectionId: string;
+  externalEventId: string;
+  reportedPrice: number;
+  isWinner: boolean | null;
+  cancellationConfirmed: boolean;
+  reportedAt: string;
+  createdAt: string;
+}
+
+export interface DeletionAuditLog {
+  id: string;
+  anonymizedUserHash: string;
+  mediaHardDeleted: boolean;
+  dbRecordsDeleted: boolean;
+  deletionCompletedAt: string;
 }
 
 export interface ApiError {
