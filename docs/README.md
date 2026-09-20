@@ -1236,6 +1236,92 @@ prüfen, nicht als MVP-Voraussetzung einplanen.
 
 ---
 
+### 9e. Erweiterte Preis-Triangulation & Nachfrage-Signale (Ergänzung, September 2026)
+
+Dieser Abschnitt konsolidiert zwei Dinge, die nachträglich aufgefallen
+sind: einen **Widerspruch zwischen bestehenden Doc-Entwürfen**, der beim
+ersten Einlesen nicht auffiel, und **drei neue Signal-Ideen** aus einer
+Folgediskussion (Ankaufportale, Suchinteresse, Angebot/Nachfrage). Im
+Gegensatz zur eBay/Etsy/Amazon-Recherche in §9d ist hier **nichts der
+neuen Punkte web-verifiziert** — das ist bewusst so gekennzeichnet und
+vor jeder Implementierung nachzuholen, nicht anzunehmen.
+
+**Aufgelöster Doc-Widerspruch — Gemini Web-Grounding:**
+`zusammenfassung_resale_agent_architektur.md` und die Pseudocode-Datei
+`backend_lifecycle_controller_nestjs_xstate.js` (`MarketAnalysisService`)
+benennen "Gemini + Google Search Grounding" als Weg zur Live-
+Preisrecherche — ohne die Risiken zu erwähnen, die weiter oben in §9d
+ausführlich hergeleitet wurden. Der wahrscheinlich eigentliche
+Vertragsstand, `personal_resale_assistant_v2_2_freeze_candidate.md`,
+committed sich bewusst **nicht** darauf und hält KI-Anbieter nur
+allgemein austauschbar. Auflösung: Grounding wird als **eine zusätzliche
+Quelle unter mehreren** behandelt, nicht als Ersatz der API-Quellen aus
+§9d — mit denselben Pflichten (Quellen-Kennzeichnung, Mindeststichprobe,
+nie automatische Preisübernahme). Es bleiben zwei ungelöste Probleme:
+Grounding liefert weiterhin nur Angebots-, keine Verkaufspreise (das
+Sold-Price-Problem wird verschoben, nicht gelöst), und ein LLM, das
+Suchtreffer zu einer Preisspanne verdichtet, ist strukturell anfällig
+für Scheingenauigkeit — genau das, was §9d ausschließen will. Zusätzlich
+ungeklärt: Kosten pro Grounding-Anfrage (kein kostenloses Kontingent wie
+bei den übrigen MVP-Quellen) und ob ein von Google zusammengefasster
+Lesezugriff auf ToS-restriktive Seiten (v. a. Kleinanzeigen) wirklich
+unkritisch ist — beides vor Produktivnahme zu prüfen.
+
+**Neue Quellen:**
+
+- **Ankaufportale** (z. B. momox, reBuy, Zoxs, Trade-In-Programme):
+  Ankaufspreise werden von diesen Plattformen aktiv veröffentlicht, um
+  Verkäufer zu gewinnen — eine Preisabfrage über das eigene Formular ist
+  bestimmungsgemäße Nutzung, kein Scraping fremder Angebote, und damit
+  rechtlich unkritischer als die in §9d ausgeschlossenen
+  Vergleichsportale. Liefert eine kaltstart-freie Preis-Untergrenze
+  (Ankaufspreis liegt typischerweise deutlich unter dem Privatverkaufs-
+  preis). Braucht einen kategoriespezifischen Umrechnungsfaktor
+  (Ankaufspreis → erwarteter Privatverkaufspreis), der zunächst nur grob
+  geschätzt und über die Lernschleife aus §10a nachjustiert wird, sobald
+  eigene Verkäufe vorliegen. Ob ein Portal eine echte API oder nur ein
+  Web-Formular hat, ist **pro Portal einzeln zu prüfen**, nicht
+  pauschal anzunehmen.
+- **Google Trends** (Suchinteresse über Zeit für Marke/Modell): kein
+  Preissignal, sondern ein Nachfrage-Modulator — beeinflusst die
+  Konfidenz der Preisspanne und ggf. den Zeitpunkt der Tier-Staffelung
+  aus §10a (bei hoher Nachfrage früher breiter ausrollen).
+- **Angebot (Supply)**: braucht keine neue Integration — die Anzahl
+  aktiver Vergleichsangebote fällt bereits als Nebenprodukt der
+  ohnehin in §9d vorgesehenen eBay-Browse-API-Abfrage an und sollte
+  als eigenes, kostenloses Signal mitgespeichert werden.
+
+**Bildauswahl & Beschreibungs-Performance — lösbar ohne fremde Inhalte
+zu scrapen:** Beide Fragen waren ursprünglich offen, weil ein
+naheliegender Ansatz (fremde Angebote/Fotos analysieren) am selben
+ToS-Verbot scheitert wie die Preisvergleichsportale. Stattdessen aus der
+**eigenen** Historie lernen, im selben Bandit-Modell aus §10a:
+- Bildqualität (Schärfe, Belichtung, Freistellung) ist bereits über die
+  in §9a-1 integrierte Vision API objektiv bewertbar — korreliert mit
+  Time-to-Sale ergibt das eine datenbasierte Titelbild-Empfehlung.
+- Beschreibungsmerkmale (Länge, Stichwortdichte, Vollständigkeit der
+  Angaben) aus den **eigenen** abgeschlossenen Listings, ebenfalls
+  gegen Time-to-Sale/erzielten Preis gelernt — keine Analyse fremder
+  Anzeigentexte nötig.
+
+**Disposition Engine — drei gleichzeitige Preisvorschläge
+(UX-Erweiterung, noch nicht spezifiziert):** `disposition_engine_decision_matrix.md`
+nimmt `userGoal` aktuell als **Eingabe** entgegen (Nutzer legt vorher
+fest, was er will) und berechnet dafür eine einzelne Empfehlung. Eine
+sinnvolle Erweiterung, sobald die Preisspanne aus obiger Triangulation
+mit Perzentilen vorliegt: alle drei Szenarien gleichzeitig berechnen und
+anzeigen, Auswahl danach statt davor —
+`⚡ Schnell (unteres Quartil)` / `⚖️ Ausgewogen (Median)` /
+`💎 Maximaler Erlös (oberes Quartil)`. Das ist eine Erweiterung des
+bestehenden Interface, kein Ersatz — `userGoal` als Vorab-Filter bleibt
+für Nutzer sinnvoll, die keine drei Optionen abwägen wollen.
+
+**Aktueller Bau-Status:** Nichts aus diesem Abschnitt ist implementiert.
+`DispositionEngineService` verarbeitet weiterhin ausschließlich einen
+manuell eingetippten `marketMedianPrice`.
+
+---
+
 ## 10. Marktplatz-Adapter-Architektur
 
 Jede Plattform bekommt ein eigenes **Adapter-Modul** mit einheitlichem
@@ -1472,6 +1558,13 @@ lernendes Priorisierungssystem** — bewusst so gebaut, weil mir die für
 eine exakte Berechnung nötigen Reichweiten-/Konversionszahlen der
 einzelnen Plattformen aktuell schlicht nicht vorliegen und ich sie nicht
 erfinden will.
+
+**Ergänzung (siehe §9e):** das Google-Trends-Nachfragesignal kann, sobald
+integriert, die Tier-Zeitpunkte `T1`/`T2` zusätzlich zur Lernschleife
+modulieren — bei hohem Suchinteresse früher breiter ausrollen, bei
+niedrigem länger auf Tier 0 warten. Das ersetzt die Lernschleife nicht,
+sondern gibt ihr im Kaltstart einen zweiten, sofort verfügbaren
+Anhaltspunkt neben der groben Kategorie-Heuristik.
 
 ---
 

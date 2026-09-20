@@ -43,6 +43,10 @@ import {
 } from '../../application/disposition/disposition-engine.service';
 import { ItemAttributeConfirmationService } from '../../application/product-analysis/item-attribute-confirmation.service';
 import { ProductAnalysisService } from '../../application/product-analysis/product-analysis.service';
+import {
+  PriceResearchResult,
+  PriceTriangulationService,
+} from '../../application/pricing/price-triangulation.service';
 import { StateGuardService } from '../../application/state-guard/state-guard.service';
 import { STORAGE_PROVIDER, StorageProvider } from '../../domain/storage/storage-provider.interface';
 import {
@@ -72,6 +76,7 @@ export class ItemsController {
     private readonly bundleAssignment: BundleAssignmentService,
     private readonly conflictResolution: ConflictResolutionService,
     private readonly dispositionEngine: DispositionEngineService,
+    private readonly priceTriangulation: PriceTriangulationService,
     private readonly listingSummary: ListingSummaryService,
     private readonly attributeConfirmation: ItemAttributeConfirmationService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
@@ -210,6 +215,15 @@ export class ItemsController {
       dto.descriptionText,
       actor,
     );
+  }
+
+  // Doc04-Erweiterung (docs/README.md §9e): rein lesend/berechnend, kein
+  // StateGuard-Transition — wie `disposition()` unten. Schreibt intern
+  // einen Beratungs-Cache (`item_price_research`), nie einen Preis in
+  // `canonical_listings`.
+  @Get(':id/price-research')
+  async researchPrice(@Param('id', ParseUUIDPipe) id: string): Promise<PriceResearchResult> {
+    return this.priceTriangulation.research(id);
   }
 
   @Post(':id/disposition')

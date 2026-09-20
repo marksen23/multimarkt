@@ -14,6 +14,7 @@ import { ConflictResolutionModule } from '../application/conflict-resolution/con
 import { AccountDeletionModule } from '../application/deletion/account-deletion.module';
 import { DispositionEngineModule } from '../application/disposition/disposition-engine.module';
 import { MarketplacePublishingModule } from '../application/listing/marketplace-publishing.module';
+import { PriceTriangulationModule } from '../application/pricing/price-triangulation.module';
 import { ProductAnalysisModule } from '../application/product-analysis/product-analysis.module';
 import { StorageModule } from '../infrastructure/storage/storage.module';
 import { SaleIngestionModule } from '../application/sale-conflict/sale-ingestion.module';
@@ -38,6 +39,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     ProductAnalysisModule,
     CapabilityCheckModule,
     DispositionEngineModule,
+    PriceTriangulationModule,
     BundleAssignmentModule,
     CanonicalListingModule,
     MarketplacePublishingModule,
