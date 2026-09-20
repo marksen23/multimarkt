@@ -7,6 +7,7 @@ import { ConfidenceCenter } from '../components/ConfidenceCenter';
 import { DispositionPanel } from '../components/DispositionPanel';
 import { ListingsManager } from '../components/ListingsManager';
 import { PhotoCapture } from '../components/PhotoCapture';
+import { PriceResearchPanel } from '../components/PriceResearchPanel';
 import { StatusBadge } from '../components/StatusBadge';
 
 export function ItemDetailPage() {
@@ -87,6 +88,7 @@ export function ItemDetailPage() {
             <DispositionPanel itemId={id} />
           </div>
           <PrepareListingStep
+            itemId={id}
             busy={busy}
             onPrepare={(price, description) =>
               run(() => itemsApi.prepareListing(id, price, description))
@@ -160,9 +162,11 @@ function AnalyzeStep({ busy, onAnalyze }: { busy: boolean; onAnalyze: (files: Fi
 }
 
 function PrepareListingStep({
+  itemId,
   busy,
   onPrepare,
 }: {
+  itemId: string;
   busy: boolean;
   onPrepare: (price: number, description?: string) => Promise<void>;
 }) {
@@ -171,6 +175,7 @@ function PrepareListingStep({
   return (
     <div className="p-4 space-y-4">
       <h1 className="text-lg font-bold text-gray-900">Verkaufspreis festlegen</h1>
+      <PriceResearchPanel itemId={itemId} onSuggestPrice={(p) => setPrice(String(p))} />
       <input
         type="number"
         min="0"

@@ -6,6 +6,7 @@ import type {
   ItemDetail,
   ItemListEntry,
   ItemLifecycleState,
+  PriceResearchResult,
   SaleEvent,
 } from './types';
 
@@ -19,6 +20,7 @@ export const itemsApi = {
     files.forEach((file) => form.append('files', file));
     return api.postForm<Item>(`/items/${id}/analyze`, form);
   },
+  priceResearch: (id: string) => api.get<PriceResearchResult>(`/items/${id}/price-research`),
   confirmTruth: (id: string, condition: string) =>
     api.post<Item>(`/items/${id}/confirm-truth`, { condition }),
   confirmAttribute: (id: string, key: string, value?: string) =>

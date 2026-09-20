@@ -122,6 +122,30 @@ export interface DeletionAuditLog {
   deletionCompletedAt: string;
 }
 
+export type PriceResearchSource = 'EBAY_ACTIVE_LISTINGS' | 'ANKAUF_PORTAL';
+
+export interface ComparableListing {
+  title: string;
+  price: number;
+}
+
+export interface PriceResearchSourceResult {
+  source: PriceResearchSource;
+  providerLabel: string;
+  median: number | null;
+  p25: number | null;
+  p75: number | null;
+  sampleSize: number;
+  currency: string;
+  detail?: { comparableListings?: ComparableListing[]; buybackPrice?: number; multiplier?: number };
+}
+
+export interface PriceResearchResult {
+  itemId: string;
+  sources: PriceResearchSourceResult[];
+  fetchedAt: string;
+}
+
 export interface ApiError {
   error_code: string;
   message: string;
