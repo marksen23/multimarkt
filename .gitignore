@@ -1,0 +1,16 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Node (safety net; backend/ and frontend/ each also have their own)
+node_modules/
+dist/
+coverage/
+*.log
+.env
+.env.local
