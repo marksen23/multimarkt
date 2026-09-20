@@ -20,6 +20,7 @@ import {
   CapabilityCheckResult,
   CapabilityCheckService,
 } from '../../application/capability-check/capability-check.service';
+import { MarketplacePublishingService } from '../../application/listing/marketplace-publishing.service';
 import { StateGuardService } from '../../application/state-guard/state-guard.service';
 import { MarketplaceProjectionEntity } from '../../infrastructure/database/entities';
 
@@ -32,6 +33,7 @@ export class ListingsController {
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly stateGuard: StateGuardService,
     private readonly capabilityCheck: CapabilityCheckService,
+    private readonly publishing: MarketplacePublishingService,
   ) {}
 
   @Post()
@@ -63,18 +65,21 @@ export class ListingsController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentActor() actor: ActorContext,
   ): Promise<MarketplaceProjectionEntity> {
-    const projection = await this.dataSource.manager.findOneByOrFail(MarketplaceProjectionEntity, {
-      id,
-    });
-    // Doc 03 §6: CapabilityCheck MUSS vor jedem PUBLISHING-Event laufen.
-    const { fallbackData } = await this.capabilityCheck.check(
-      projection.canonicalListingId,
-      projection.marketplaceId,
-    );
-    if (Object.keys(fallbackData).length > 0) {
-      await this.dataSource.manager.update(MarketplaceProjectionEntity, { id }, { fallbackData });
-    }
-    return this.stateGuard.transitionProjection(id, { type: 'PUBLISH', actor });
+    return this.publishing.publish(id, actor);
+  }
+
+  /**
+   * Doc 02 §5 "User Copy" — bewusste Doc-04-Erweiterung: nötig für
+   * Formatierungshilfe-Plattformen (Doc 01 §9, z.B. Kleinanzeigen), die
+   * `publish()` bewusst in PUBLISHING hält, bis der Nutzer bestätigt, dass
+   * er den vorbereiteten Text manuell eingestellt hat.
+   */
+  @Post(':id/confirm-published')
+  async confirmPublished(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<MarketplaceProjectionEntity> {
+    return this.publishing.confirmPublished(id, actor);
   }
 
   @Post(':id/cancel')
@@ -93,6 +98,6 @@ export class ListingsController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentActor() actor: ActorContext,
   ): Promise<MarketplaceProjectionEntity> {
-    return this.stateGuard.transitionProjection(id, { type: 'CONFIRM_CANCELLATION', actor });
+    return this.publishing.confirmCancellation(id, actor);
   }
 }

@@ -255,6 +255,13 @@ function ListingsPanel({
                       disabled={busy}
                     />
                   )}
+                  {p.status === 'PUBLISHING' && (
+                    <ActionButton
+                      label="Ich habe es eingestellt"
+                      onClick={() => run(() => listingsApi.confirmPublished(p.id))}
+                      disabled={busy}
+                    />
+                  )}
                   {p.status === 'ONLINE' && (
                     <ActionButton
                       label="Zurückziehen"

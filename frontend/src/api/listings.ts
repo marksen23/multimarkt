@@ -10,6 +10,8 @@ export const listingsApi = {
     ),
   publish: (projectionId: string) =>
     api.post<MarketplaceProjectionSummary>(`/listings/${projectionId}/publish`),
+  confirmPublished: (projectionId: string) =>
+    api.post<MarketplaceProjectionSummary>(`/listings/${projectionId}/confirm-published`),
   cancel: (projectionId: string) =>
     api.post<MarketplaceProjectionSummary>(`/listings/${projectionId}/cancel`),
   confirmCancellation: (projectionId: string) =>
