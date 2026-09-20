@@ -171,6 +171,79 @@ describe('T05 Concurrency & SALE_CONFLICT', () => {
     });
   });
 
+  async function setupListedBundleWithTwoProjections() {
+    const bundle = await dataSource.manager.save(BundleEntity, {
+      userId,
+      title: 'Bundle Konvolut',
+      status: 'LISTED',
+    });
+    const listing = await dataSource.manager.save(CanonicalListingEntity, {
+      userId,
+      bundleId: bundle.id,
+      sellingPrice: 30,
+      descriptionText: 'Cross-listed bundle',
+    });
+    const ebay = await dataSource.manager.save(MarketplaceProjectionEntity, {
+      canonicalListingId: listing.id,
+      marketplaceId: 'EBAY',
+      status: 'ONLINE',
+    });
+    const kleinanzeigen = await dataSource.manager.save(MarketplaceProjectionEntity, {
+      canonicalListingId: listing.id,
+      marketplaceId: 'KLEINANZEIGEN',
+      status: 'ONLINE',
+    });
+    return { bundle, listing, ebay, kleinanzeigen };
+  }
+
+  describe('Bundle Sale Evaluation (fixes a real bug: webhook reports for bundle listings were silently never evaluated)', () => {
+    it('resolves a solitary bundle sale report to SOLD', async () => {
+      const { bundle, ebay } = await setupListedBundleWithTwoProjections();
+
+      await saleIngestion.reportSale({
+        projectionId: ebay.id,
+        externalEventId: 'bundle-solo-evt',
+        reportedPrice: 28,
+      });
+      const outcome = await saleIngestion.evaluateBundleSaleOutcome(bundle.id);
+
+      expect(outcome).toBe('SOLD');
+      const reloaded = await dataSource.manager.findOneByOrFail(BundleEntity, { id: bundle.id });
+      expect(reloaded.status).toBe('SOLD');
+
+      const projection = await dataSource.manager.findOneByOrFail(MarketplaceProjectionEntity, {
+        id: ebay.id,
+      });
+      expect(projection.status).toBe('SOLD');
+    });
+
+    it('never invents a SALE_CONFLICT state for bundles (schema gap: bundle_lifecycle_state has no such value) — bundle stays LISTED, reports stay unresolved', async () => {
+      const { bundle, ebay, kleinanzeigen } = await setupListedBundleWithTwoProjections();
+
+      await saleIngestion.reportSale({
+        projectionId: ebay.id,
+        externalEventId: 'bundle-evt-1',
+        reportedPrice: 28,
+      });
+      await saleIngestion.reportSale({
+        projectionId: kleinanzeigen.id,
+        externalEventId: 'bundle-evt-2',
+        reportedPrice: 30,
+      });
+
+      const outcome = await saleIngestion.evaluateBundleSaleOutcome(bundle.id);
+      expect(outcome).toBe('CONFLICT_UNSUPPORTED_FOR_BUNDLE');
+
+      const reloaded = await dataSource.manager.findOneByOrFail(BundleEntity, { id: bundle.id });
+      expect(reloaded.status).toBe('LISTED');
+
+      const events = await dataSource.manager.find(SaleEventEntity, {
+        where: { projectionId: ebay.id },
+      });
+      expect(events[0].isWinner).toBeNull();
+    });
+  });
+
   describe('T05-2 (Idempotency / Replay Attack)', () => {
     it('ignores a webhook replayed three times and never triggers repeated business logic', async () => {
       const { item, ebay } = await setupListedItemWithTwoProjections();

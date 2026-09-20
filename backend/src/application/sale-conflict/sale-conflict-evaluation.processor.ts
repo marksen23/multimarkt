@@ -2,6 +2,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { SALE_CONFLICT_EVALUATION_QUEUE } from '../../infrastructure/queue/queue-names';
+import { SaleEvaluationJobData } from './sale-conflict-scheduler.service';
 import { SaleIngestionService } from './sale-ingestion.service';
 
 /** Läuft im Background-Worker-Prozess (Render "Worker" Service, siehe worker.ts). */
@@ -13,8 +14,12 @@ export class SaleConflictEvaluationProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<{ itemId: string }>): Promise<void> {
-    const outcome = await this.saleIngestion.evaluateItemSaleOutcome(job.data.itemId);
-    this.logger.log(`Evaluated sale outcome for item ${job.data.itemId}: ${outcome}`);
+  async process(job: Job<SaleEvaluationJobData>): Promise<void> {
+    const { ownerType, ownerId } = job.data;
+    const outcome =
+      ownerType === 'item'
+        ? await this.saleIngestion.evaluateItemSaleOutcome(ownerId)
+        : await this.saleIngestion.evaluateBundleSaleOutcome(ownerId);
+    this.logger.log(`Evaluated sale outcome for ${ownerType} ${ownerId}: ${outcome}`);
   }
 }

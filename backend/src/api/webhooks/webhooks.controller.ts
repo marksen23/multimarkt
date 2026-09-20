@@ -73,15 +73,17 @@ export class WebhooksController {
       const listing = await this.dataSource.manager.findOneByOrFail(CanonicalListingEntity, {
         id: projection.canonicalListingId,
       });
-      if (listing.itemId) {
-        // Debounce-Fenster (siehe SaleIngestionService-Doku) — Doc 03 §13:
-        // ein Replay (outcome === 'IGNORED_DUPLICATE') löst KEINE erneute
-        // Business-Logik aus, auch keinen erneuten Auswertungs-Job.
-        await this.scheduler.scheduleEvaluation(listing.itemId).catch(() => {
-          // Queue-Fehler dürfen die Webhook-Antwort nicht 500en lassen — die
-          // Evaluation kann durch einen künftigen Report/Retry nachgeholt werden.
-        });
-      }
+      // Bundle-XOR (Doc 01 §3): genau eines von beiden ist gesetzt.
+      // Debounce-Fenster (siehe SaleIngestionService-Doku) — Doc 03 §13:
+      // ein Replay (outcome === 'IGNORED_DUPLICATE') löst KEINE erneute
+      // Business-Logik aus, auch keinen erneuten Auswertungs-Job.
+      const scheduling = listing.itemId
+        ? this.scheduler.scheduleEvaluation('item', listing.itemId)
+        : this.scheduler.scheduleEvaluation('bundle', listing.bundleId!);
+      await scheduling.catch(() => {
+        // Queue-Fehler dürfen die Webhook-Antwort nicht 500en lassen — die
+        // Evaluation kann durch einen künftigen Report/Retry nachgeholt werden.
+      });
     }
 
     return { received: true };

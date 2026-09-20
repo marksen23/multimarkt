@@ -5,6 +5,7 @@ import { listingsApi } from '../api/listings';
 import { ApiRequestError } from '../api/client';
 import type { ItemDetail, SaleEvent } from '../api/types';
 import { ConfidenceCenter } from '../components/ConfidenceCenter';
+import { DispositionPanel } from '../components/DispositionPanel';
 import { StatusBadge } from '../components/StatusBadge';
 
 const MARKETPLACES = ['EBAY', 'KLEINANZEIGEN'];
@@ -78,10 +79,17 @@ export function ItemDetailPage() {
       )}
 
       {item.status === 'READY' && (
-        <PrepareListingStep
-          busy={busy}
-          onPrepare={(price, description) => run(() => itemsApi.prepareListing(id, price, description))}
-        />
+        <div className="space-y-4">
+          <div className="px-4 pt-4">
+            <DispositionPanel itemId={id} />
+          </div>
+          <PrepareListingStep
+            busy={busy}
+            onPrepare={(price, description) =>
+              run(() => itemsApi.prepareListing(id, price, description))
+            }
+          />
+        </div>
       )}
 
       {item.status === 'LISTED' && (
