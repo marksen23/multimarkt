@@ -15,9 +15,9 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  it('/ (GET)', () => {
+  it('/healthz (GET)', () => {
     return request(app.getHttpServer())
-      .get('/')
+      .get('/healthz')
       .expect(200)
       .expect('Personal Resale OS V2 — backend running.');
   });

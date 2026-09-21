@@ -1,7 +1,15 @@
 # Personal Resale OS V2 — Render Blueprint (Infrastructure as Code)
 #
 # Struktur: Monorepo mit separaten Ordnern `backend/` (NestJS) und `frontend/`
-# (Vite/React). Jeder Service referenziert seinen Ordner über `rootDir`.
+# (Vite/React) — aber NUR EIN Render-Service (`resale-os-backend`). Grund
+# (Single-Domain-Merge, September 2026): zwei getrennte Render-Services
+# hätten zwei getrennte `<name>.onrender.com`-Domains bedeutet — jeder
+# Service bekommt automatisch seine eigene. Der Backend-Prozess liefert das
+# gebaute Frontend jetzt selbst aus (`main.ts`: `useStaticAssets` +
+# SPA-Fallback auf index.html), `buildCommand` baut deshalb beide Ordner.
+# Nachteil ggü. einer echten Static Site: kein separates CDN fürs Frontend,
+# Frontend/Backend lassen sich nicht mehr unabhängig neu deployen — für
+# eine Einzelnutzer-App bewusst in Kauf genommen.
 #
 # Plan-/Kosten-Korrektur (September 2026): Frühere Fassung dieser Datei
 # setzte bewusst KEIN `plan:` — das war ein echter Fehler, kein neutraler
@@ -120,9 +128,15 @@ services:
     # "nest: not found" fehl (so beim ersten echten Deploy-Versuch
     # passiert). Zur Laufzeit stört das Mehr an installierten Paketen
     # nicht — `start:prod` führt nur die kompilierten dist/*.js aus.
-    buildCommand: npm ci --include=dev && npm run build && npm run migration:run
+    #
+    # Der Teil ab `&& cd ../frontend` baut zusätzlich das Frontend (siehe
+    # Single-Domain-Merge oben) — `rootDir: backend` heißt, `cwd` ist
+    # `backend/`, `../frontend` referenziert also den Sibling-Ordner im
+    # selben Checkout. Gleicher `--include=dev`-Grund wie beim Backend:
+    # vite/typescript sind auch dort devDependencies.
+    buildCommand: npm ci --include=dev && npm run build && npm run migration:run && cd ../frontend && npm ci --include=dev && npm run build
     startCommand: npm run start:prod
-    healthCheckPath: /
+    healthCheckPath: /healthz
     envVars:
       - fromGroup: resale-os-shared
       - key: DATABASE_URL
@@ -142,26 +156,10 @@ services:
   # (app.module.ts importiert SaleConflictWorkerModule direkt). `worker.ts`
   # bleibt im Repo für einen künftigen Wechsel auf einen bezahlten Plan mit
   # getrenntem Worker.
+  #
+  # KEINE separate Frontend Static Site mehr (siehe Single-Domain-Merge
+  # oben): der Backend-Service liefert `frontend/dist` jetzt selbst aus.
+  # `VITE_API_BASE_URL` entfällt ebenfalls — der Frontend-Client ruft ohne
+  # gesetzte Variable automatisch den relativen Pfad `/api` auf (siehe
+  # frontend/src/api/client.ts), was auf derselben Domain genau richtig ist.
   # ------------------------------------------------------------------------
-
-  # ------------------------------------------------------------------------
-  # Frontend Static Site (Vite/React PWA, Schritt 6).
-  # ------------------------------------------------------------------------
-  - type: web
-    name: resale-os-frontend
-    runtime: static
-    rootDir: frontend
-    buildCommand: npm ci && npm run build
-    staticPublishPath: dist
-    envVars:
-      # Onrender.com-Hostnamen sind deterministisch (<service-name>.onrender.com).
-      # Render unterstützt keine String-Interpolation in render.yaml, daher
-      # hier als fester Wert hinterlegt — muss bei Umbenennung von
-      # `resale-os-backend` mit angepasst werden.
-      - key: VITE_API_BASE_URL
-        value: https://resale-os-backend.onrender.com
-    routes:
-      # SPA-Fallback: alle Pfade auf index.html rewriten (Client-Side-Routing).
-      - type: rewrite
-        source: /*
-        destination: /index.html
