@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
+import { clearAccessToken } from './TokenGate';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', end: true },
@@ -30,6 +31,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {item.label}
               </NavLink>
             ))}
+            <button
+              type="button"
+              onClick={clearAccessToken}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:bg-gray-100"
+              title="Zugriffstoken entfernen"
+            >
+              Abmelden
+            </button>
           </nav>
         </div>
       </header>
