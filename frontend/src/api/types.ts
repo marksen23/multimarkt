@@ -122,7 +122,7 @@ export interface DeletionAuditLog {
   deletionCompletedAt: string;
 }
 
-export type PriceResearchSource = 'EBAY_ACTIVE_LISTINGS' | 'ANKAUF_PORTAL';
+export type PriceResearchSource = 'EBAY_ACTIVE_LISTINGS' | 'ANKAUF_PORTAL' | 'GEMINI_GROUNDING';
 
 export interface ComparableListing {
   title: string;

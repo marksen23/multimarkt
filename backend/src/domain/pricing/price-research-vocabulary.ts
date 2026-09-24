@@ -7,5 +7,5 @@
  * `entities: Object.values(entities)`) keine Nicht-Entity-Konstanten
  * mit einsammelt.
  */
-export const PRICE_RESEARCH_SOURCES = ['EBAY_ACTIVE_LISTINGS', 'ANKAUF_PORTAL'] as const;
+export const PRICE_RESEARCH_SOURCES = ['EBAY_ACTIVE_LISTINGS', 'ANKAUF_PORTAL', 'GEMINI_GROUNDING'] as const;
 export type PriceResearchSource = (typeof PRICE_RESEARCH_SOURCES)[number];

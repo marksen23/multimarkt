@@ -22,16 +22,21 @@ function attr(key: string, value: string | null): Partial<ItemAttributeEntity> {
 
 describe('PriceTriangulationService', () => {
   let marketProvider: jest.Mocked<MarketDistributionProvider>;
+  let groundingProvider: jest.Mocked<MarketDistributionProvider>;
   let buybackProvider: jest.Mocked<BuybackAnchorProvider>;
 
   beforeEach(() => {
     marketProvider = { search: jest.fn() };
+    groundingProvider = { search: jest.fn().mockResolvedValue(null) };
     buybackProvider = { quote: jest.fn() };
   });
 
+  const makeService = (dataSource: DataSource) =>
+    new PriceTriangulationService(dataSource, marketProvider, groundingProvider, buybackProvider);
+
   it('throws NotFoundException when the item does not exist', async () => {
     const { dataSource } = makeDataSource({ item: null, attributes: [] });
-    const service = new PriceTriangulationService(dataSource, marketProvider, buybackProvider);
+    const service = makeService(dataSource);
 
     await expect(service.research('missing-id')).rejects.toThrow(NotFoundException);
   });
@@ -56,7 +61,7 @@ describe('PriceTriangulationService', () => {
       portalName: 'momox (Mock)',
     });
 
-    const service = new PriceTriangulationService(dataSource, marketProvider, buybackProvider);
+    const service = makeService(dataSource);
     const result = await service.research('i1');
 
     expect(result.sources).toHaveLength(2);
@@ -69,6 +74,31 @@ describe('PriceTriangulationService', () => {
     expect(insert).toHaveBeenCalledTimes(1);
     const insertedRows = insert.mock.calls[0][1] as Array<{ source: string }>;
     expect(insertedRows).toHaveLength(2);
+  });
+
+  it('adds Gemini grounding as its own separately-labeled third source', async () => {
+    const { dataSource } = makeDataSource({
+      item: { id: 'i1', condition: 'good' },
+      attributes: [attr('brand', 'Nike'), attr('category', 'Sneaker')],
+    });
+    marketProvider.search.mockResolvedValue(null);
+    groundingProvider.search.mockResolvedValue({
+      median: 36,
+      p25: 30,
+      p75: 44,
+      sampleSize: 7,
+      currency: 'EUR',
+      providerLabel: 'Gemini + Google Search Grounding',
+      comparableListings: [],
+    });
+    buybackProvider.quote.mockResolvedValue(null);
+
+    const service = makeService(dataSource);
+    const result = await service.research('i1');
+
+    expect(result.sources.map((s) => s.source)).toEqual(['GEMINI_GROUNDING']);
+    expect(result.sources[0].median).toBe(36);
+    expect(groundingProvider.search).toHaveBeenCalledWith({ keywords: 'Nike Sneaker', condition: 'good' });
   });
 
   it('excludes the market source when the sample size is below the minimum', async () => {
@@ -87,7 +117,7 @@ describe('PriceTriangulationService', () => {
     });
     buybackProvider.quote.mockResolvedValue(null);
 
-    const service = new PriceTriangulationService(dataSource, marketProvider, buybackProvider);
+    const service = makeService(dataSource);
     const result = await service.research('i1');
 
     expect(result.sources).toHaveLength(0);
@@ -100,10 +130,11 @@ describe('PriceTriangulationService', () => {
     });
     buybackProvider.quote.mockResolvedValue(null);
 
-    const service = new PriceTriangulationService(dataSource, marketProvider, buybackProvider);
+    const service = makeService(dataSource);
     const result = await service.research('i1');
 
     expect(marketProvider.search).not.toHaveBeenCalled();
+    expect(groundingProvider.search).not.toHaveBeenCalled();
     expect(result.sources).toHaveLength(0);
   });
 
@@ -123,7 +154,7 @@ describe('PriceTriangulationService', () => {
     });
     buybackProvider.quote.mockResolvedValue(null);
 
-    const service = new PriceTriangulationService(dataSource, marketProvider, buybackProvider);
+    const service = makeService(dataSource);
     const result = await service.research('i1');
 
     expect(result.sources.map((s) => s.source)).toEqual(['EBAY_ACTIVE_LISTINGS']);
@@ -136,7 +167,7 @@ describe('PriceTriangulationService', () => {
     });
     buybackProvider.quote.mockResolvedValue(null);
 
-    const service = new PriceTriangulationService(dataSource, marketProvider, buybackProvider);
+    const service = makeService(dataSource);
     await service.research('i1');
 
     expect(insert).not.toHaveBeenCalled();

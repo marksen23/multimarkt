@@ -11,6 +11,7 @@ import type { PriceResearchResult, PriceResearchSourceResult } from '../api/type
 const SOURCE_LABELS: Record<string, string> = {
   EBAY_ACTIVE_LISTINGS: 'eBay – aktive Angebote',
   ANKAUF_PORTAL: 'Ankaufportal-Richtwert',
+  GEMINI_GROUNDING: 'Gemini – Websuche',
 };
 
 export function PriceResearchPanel({
@@ -87,10 +88,10 @@ function SourceCard({
       </div>
 
       <p className="text-[11px] text-gray-500">
-        {source.source === 'EBAY_ACTIVE_LISTINGS' && source.p25 !== null && source.p75 !== null
-          ? `${source.sampleSize} aktive Angebote (${source.providerLabel}), Spanne ${source.p25.toFixed(2)}–${source.p75.toFixed(2)} € (Angebotspreise, keine Verkaufsgarantie)`
-          : source.source === 'ANKAUF_PORTAL'
-            ? `${source.providerLabel}: Ankaufspreis ${Number(source.detail?.buybackPrice ?? 0).toFixed(2)} € → Richtwert (×${source.detail?.multiplier ?? '?'})`
+        {source.source === 'ANKAUF_PORTAL'
+          ? `${source.providerLabel}: Ankaufspreis ${Number(source.detail?.buybackPrice ?? 0).toFixed(2)} € → Richtwert (×${source.detail?.multiplier ?? '?'})`
+          : source.p25 !== null && source.p75 !== null
+            ? `${source.sampleSize} Angebote (${source.providerLabel}), Spanne ${source.p25.toFixed(2)}–${source.p75.toFixed(2)} € (Angebotspreise, keine Verkaufsgarantie)`
             : source.providerLabel}
       </p>
 

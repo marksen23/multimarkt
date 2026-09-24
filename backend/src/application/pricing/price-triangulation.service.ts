@@ -6,6 +6,7 @@ import {
   BuybackAnchorProvider,
 } from '../../domain/pricing/buyback-anchor-provider.interface';
 import {
+  GEMINI_GROUNDING_PROVIDER,
   MARKET_DISTRIBUTION_PROVIDER,
   MarketDistributionProvider,
   MIN_MARKET_SAMPLE_SIZE,
@@ -19,10 +20,11 @@ import {
 
 /**
  * Preis-Triangulation (docs/README.md §9e) — kombiniert eBay-Browse-
- * Verteilung und Ankaufportal-Anker zu MEHREREN, getrennt ausgewiesenen
- * Preissignalen. Vermischt Quellen bewusst NIE zu einer Blackbox-Zahl
- * (§9d Punkt 3) und schreibt nie automatisch in `canonical_listings` oder
- * `item_attributes` — reiner, jederzeit neu abrufbarer Beratungs-Cache.
+ * Verteilung, Gemini+Google-Search-Grounding und Ankaufportal-Anker zu
+ * MEHREREN, getrennt ausgewiesenen Preissignalen. Vermischt Quellen
+ * bewusst NIE zu einer Blackbox-Zahl (§9d Punkt 3) und schreibt nie
+ * automatisch in `canonical_listings` oder `item_attributes` — reiner,
+ * jederzeit neu abrufbarer Beratungs-Cache.
  */
 
 // §9e: grobe, noch ungelernte Anfangsschätzung. Soll über die
@@ -54,6 +56,8 @@ export class PriceTriangulationService {
     @InjectDataSource() private readonly dataSource: DataSource,
     @Inject(MARKET_DISTRIBUTION_PROVIDER)
     private readonly marketProvider: MarketDistributionProvider,
+    @Inject(GEMINI_GROUNDING_PROVIDER)
+    private readonly groundingProvider: MarketDistributionProvider,
     @Inject(BUYBACK_ANCHOR_PROVIDER)
     private readonly buybackProvider: BuybackAnchorProvider,
   ) {}
@@ -72,12 +76,25 @@ export class PriceTriangulationService {
     const category = attributeValue('category');
 
     const sources: PriceResearchSourceResult[] = [];
+    const keywords = [brand, category].filter((v): v is string => !!v).join(' ');
 
     const marketResult = await this.researchMarketDistribution(
-      [brand, category].filter((v): v is string => !!v).join(' '),
+      this.marketProvider,
+      'EBAY_ACTIVE_LISTINGS',
+      keywords,
       item.condition,
     );
     if (marketResult) sources.push(marketResult);
+
+    // §9e: zusätzliche, getrennt ausgewiesene Quelle — nie mit der
+    // eBay-Verteilung vermischt, dieselbe Mindest-Stichprobengröße gilt.
+    const groundingResult = await this.researchMarketDistribution(
+      this.groundingProvider,
+      'GEMINI_GROUNDING',
+      keywords,
+      item.condition,
+    );
+    if (groundingResult) sources.push(groundingResult);
 
     const buybackResult = await this.researchBuybackAnchor(brand, category);
     if (buybackResult) sources.push(buybackResult);
@@ -89,25 +106,27 @@ export class PriceTriangulationService {
   }
 
   private async researchMarketDistribution(
+    provider: MarketDistributionProvider,
+    source: PriceResearchSource,
     keywords: string,
     condition: string | null,
   ): Promise<PriceResearchSourceResult | null> {
     if (!keywords.trim()) return null;
 
-    const result = await this.marketProvider.search({ keywords, condition });
+    const result = await provider.search({ keywords, condition });
     // §9d Punkt 4: Mindest-Stichprobengröße wird hier, zentral, durchgesetzt —
-    // nicht vom Provider, damit die Regel für jede künftige Quelle gleich gilt.
+    // nicht vom Provider, damit die Regel für jede Quelle gleich gilt.
     if (!result || result.sampleSize < MIN_MARKET_SAMPLE_SIZE) return null;
 
     return {
-      source: 'EBAY_ACTIVE_LISTINGS',
+      source,
       providerLabel: result.providerLabel,
       median: result.median,
       p25: result.p25,
       p75: result.p75,
       sampleSize: result.sampleSize,
       currency: result.currency,
-      // §9e-Ergänzung (September 2026): eBay dient auch dem Titel-/
+      // §9e-Ergänzung (September 2026): dient auch dem Titel-/
       // Beschreibungsvergleich, nicht nur der Preisrecherche.
       detail: { comparableListings: result.comparableListings },
     };

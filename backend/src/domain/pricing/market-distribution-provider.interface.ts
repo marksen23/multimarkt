@@ -48,5 +48,15 @@ export interface MarketDistributionProvider {
 
 export const MARKET_DISTRIBUTION_PROVIDER = Symbol('MARKET_DISTRIBUTION_PROVIDER');
 
+/**
+ * Zweiter Verteilungs-Provider (§9e, September 2026): Gemini + Google
+ * Search Grounding — dieselbe Interface-Form wie MARKET_DISTRIBUTION_PROVIDER
+ * (eBay), aber eine EIGENE, zusätzliche Quelle, kein Ersatz (§9e:
+ * "Grounding wird als eine zusätzliche Quelle behandelt"). Eigener Token,
+ * weil PriceTriangulationService beide gleichzeitig, getrennt gelabelt
+ * abfragt.
+ */
+export const GEMINI_GROUNDING_PROVIDER = Symbol('GEMINI_GROUNDING_PROVIDER');
+
 /** §9d Punkt 4: unter dieser Stichprobengröße wird kein Vorschlag angezeigt. */
 export const MIN_MARKET_SAMPLE_SIZE = 5;
