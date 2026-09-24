@@ -13,6 +13,7 @@ import { CapabilityCheckModule } from '../application/capability-check/capabilit
 import { ConflictResolutionModule } from '../application/conflict-resolution/conflict-resolution.module';
 import { AccountDeletionModule } from '../application/deletion/account-deletion.module';
 import { DispositionEngineModule } from '../application/disposition/disposition-engine.module';
+import { ImageOptimizationModule } from '../application/image-optimization/image-optimization.module';
 import { MarketplacePublishingModule } from '../application/listing/marketplace-publishing.module';
 import { PriceTriangulationModule } from '../application/pricing/price-triangulation.module';
 import { ProductAnalysisModule } from '../application/product-analysis/product-analysis.module';
@@ -40,6 +41,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     CapabilityCheckModule,
     DispositionEngineModule,
     PriceTriangulationModule,
+    ImageOptimizationModule,
     BundleAssignmentModule,
     CanonicalListingModule,
     MarketplacePublishingModule,

@@ -68,6 +68,7 @@ export function ItemDetailPage() {
 
       {(item.status === 'NEW' || item.status === 'ANALYZING') && (
         <AnalyzeStep
+          itemId={id}
           busy={busy || item.status === 'ANALYZING'}
           onAnalyze={(files) => run(() => itemsApi.analyze(id, files))}
         />
@@ -143,12 +144,20 @@ function Centered({ title, message }: { title: string; message: string }) {
   );
 }
 
-function AnalyzeStep({ busy, onAnalyze }: { busy: boolean; onAnalyze: (files: File[]) => Promise<void> }) {
+function AnalyzeStep({
+  itemId,
+  busy,
+  onAnalyze,
+}: {
+  itemId: string;
+  busy: boolean;
+  onAnalyze: (files: File[]) => Promise<void>;
+}) {
   const [photos, setPhotos] = useState<File[]>([]);
   return (
     <div className="p-4 space-y-4">
       <h1 className="text-lg font-bold text-gray-900">Fotos hinzufügen</h1>
-      <PhotoCapture files={photos} onChange={setPhotos} />
+      <PhotoCapture files={photos} onChange={setPhotos} itemId={itemId} />
       <button
         type="button"
         disabled={busy || photos.length === 0}

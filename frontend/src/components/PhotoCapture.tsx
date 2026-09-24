@@ -1,19 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
+import { itemsApi } from '../api/items';
 
 /**
  * README §3 Schritt 1 "Foto-Erfassung": der gesamte Workflow beginnt mit
  * dem Foto, nicht mit einem Formular. `capture="environment"` öffnet auf
  * Mobilgeräten direkt die Rückkamera (PWA-Nutzung, Schritt 6).
+ *
+ * `itemId` ist optional: die "Optimieren"-Aktion (§9e-Ergänzung, Nano
+ * Banana) braucht ein bereits angelegtes Item (POST /items/:id/optimize-
+ * photo) — beim allerersten Foto-Auswahlschritt vor der Item-Erstellung
+ * (NewItemPage) gibt es das noch nicht, dort bleibt der Button einfach weg.
  */
 export function PhotoCapture({
   files,
   onChange,
+  itemId,
 }: {
   files: File[];
   onChange: (files: File[]) => void;
+  itemId?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [optimizingIndex, setOptimizingIndex] = useState<number | null>(null);
+  const [optimizeError, setOptimizeError] = useState<string | null>(null);
 
   useEffect(() => {
     const urls = files.map((f) => URL.createObjectURL(f));
@@ -28,6 +38,28 @@ export function PhotoCapture({
 
   const removeAt = (index: number) => {
     onChange(files.filter((_, i) => i !== index));
+  };
+
+  const optimize = async (index: number) => {
+    if (!itemId) return;
+    setOptimizingIndex(index);
+    setOptimizeError(null);
+    try {
+      const result = await itemsApi.optimizePhoto(itemId, files[index]);
+      if (result.url) {
+        // Bewusst kein automatischer Ersatz des Originals (§9d-Prinzip
+        // "keine Automatik ohne Bestätigung") — öffnet das optimierte
+        // Bild zum Vergleich, der Mensch entscheidet, ob er es
+        // stattdessen als eigenes Foto hochlädt.
+        window.open(result.url, '_blank');
+      } else {
+        setOptimizeError('Optimierung fehlgeschlagen — Originalfoto bleibt unverändert.');
+      }
+    } catch {
+      setOptimizeError('Optimierung fehlgeschlagen — Originalfoto bleibt unverändert.');
+    } finally {
+      setOptimizingIndex(null);
+    }
   };
 
   return (
@@ -45,10 +77,22 @@ export function PhotoCapture({
               >
                 ×
               </button>
+              {itemId && (
+                <button
+                  type="button"
+                  onClick={() => optimize(i)}
+                  disabled={optimizingIndex === i}
+                  className="absolute bottom-1 left-1 right-1 py-1 rounded-md bg-black/70 text-white text-[10px] font-semibold disabled:opacity-60"
+                >
+                  {optimizingIndex === i ? 'Optimiert…' : '✨ Optimieren'}
+                </button>
+              )}
             </div>
           ))}
         </div>
       )}
+
+      {optimizeError && <p className="text-xs text-red-600">{optimizeError}</p>}
 
       <button
         type="button"

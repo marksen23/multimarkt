@@ -9,11 +9,12 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  UploadedFile,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { memoryStorage } from 'multer';
@@ -43,6 +44,10 @@ import {
 } from '../../application/disposition/disposition-engine.service';
 import { ItemAttributeConfirmationService } from '../../application/product-analysis/item-attribute-confirmation.service';
 import { ProductAnalysisService } from '../../application/product-analysis/product-analysis.service';
+import {
+  ImageOptimizationService,
+  OptimizedPhoto,
+} from '../../application/image-optimization/image-optimization.service';
 import {
   PriceResearchResult,
   PriceTriangulationService,
@@ -77,6 +82,7 @@ export class ItemsController {
     private readonly conflictResolution: ConflictResolutionService,
     private readonly dispositionEngine: DispositionEngineService,
     private readonly priceTriangulation: PriceTriangulationService,
+    private readonly imageOptimization: ImageOptimizationService,
     private readonly listingSummary: ListingSummaryService,
     private readonly attributeConfirmation: ItemAttributeConfirmationService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
@@ -171,6 +177,33 @@ export class ItemsController {
       uploaded.map((f) => f.url),
       { type: 'SYSTEM' },
     );
+  }
+
+  /**
+   * §9e-Ergänzung (September 2026): Bildoptimierung ("Nano Banana") als
+   * eigenständige, opt-in Aktion — liefert ein ZUSÄTZLICHES Bild, ersetzt
+   * nie das Original. Kein StateGuard-Transition (verändert den
+   * Item-Lifecycle nicht), daher nur ein Existenz-Check.
+   */
+  @Post(':id/optimize-photo')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_PHOTO_SIZE_BYTES } }))
+  async optimizePhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<OptimizedPhoto | { url: null }> {
+    const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
+    if (!item) throw new NotFoundException(`Item ${id} not found`);
+    if (!file) throw new BadRequestException('A photo is required (field "file")');
+    if (!ALLOWED_PHOTO_MIME_TYPES.has(file.mimetype)) {
+      throw new BadRequestException(`Unsupported image type: ${file.mimetype}`);
+    }
+
+    const optimized = await this.imageOptimization.optimize({
+      buffer: file.buffer,
+      mimeType: file.mimetype,
+      originalName: file.originalname,
+    });
+    return optimized ?? { url: null };
   }
 
   @Post(':id/confirm-truth')

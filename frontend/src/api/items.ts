@@ -21,6 +21,11 @@ export const itemsApi = {
     return api.postForm<Item>(`/items/${id}/analyze`, form);
   },
   priceResearch: (id: string) => api.get<PriceResearchResult>(`/items/${id}/price-research`),
+  optimizePhoto: (id: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.postForm<{ url: string | null }>(`/items/${id}/optimize-photo`, form);
+  },
   confirmTruth: (id: string, condition: string) =>
     api.post<Item>(`/items/${id}/confirm-truth`, { condition }),
   confirmAttribute: (id: string, key: string, value?: string) =>
