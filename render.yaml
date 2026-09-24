@@ -59,14 +59,24 @@ envVarGroups:
       # JWT-Sessions (Actor-Context, Doc 03 §11) verwendet.
       - key: JWT_SECRET
         generateValue: true
-      # Platzhalter für die künftige echte Gemini-Anbindung (aktuell wird
-      # MockGeminiVisionProvider verwendet, dieser Wert wird von KEINEM
-      # Code gelesen). Bewusst ein fester Platzhalter statt `sync: false`,
-      # damit der erste Blueprint-Deploy nicht unnötig nach einem Wert
-      # fragt, den es noch gar nicht gibt — beim echten Gemini-Anschluss
-      # hier auf `sync: false` umstellen.
+      # September 2026: echte Gemini-Anbindung gebaut (RealGeminiVisionProvider).
+      # `sync: false` ist jetzt Pflicht, nicht mehr nur Komfort — ein fester
+      # `value:` hier würde bei jedem künftigen Blueprint-Sync den echten,
+      # manuell im Dashboard gesetzten Schlüssel wieder überschreiben.
+      # ProductAnalysisModule fällt automatisch auf den Mock zurück, wenn
+      # hier noch der alte Platzhalterwert `unused-mock-provider-active`
+      # steht (z.B. gleich nach dem ersten Blueprint-Deploy) — echten
+      # Schlüssel manuell im Dashboard eintragen, sobald vorhanden.
       - key: GEMINI_API_KEY
-        value: unused-mock-provider-active
+        sync: false
+      # Nötig für RealGeminiVisionProvider: hochgeladene Fotos haben nur
+      # relative URLs (/uploads/<key>, siehe LocalDiskStorageProvider) —
+      # Gemini braucht eine abrufbare absolute URL, um sie zu lesen. Fester
+      # Wert statt Interpolation, weil Render dafür keine Unterstützung
+      # bietet (muss bei Umbenennung von `resale-os-backend` mit angepasst
+      # werden).
+      - key: PUBLIC_BASE_URL
+        value: https://resale-os-backend.onrender.com
       # --- Actor Authority Model (Doc 03 §2/§4) — ohne diese Werte lehnt
       # ActorContextGuard jeden Request ab, die App wäre nach dem Deploy
       # komplett unbenutzbar. APP_USER_ID ist bewusst FEST (nicht
