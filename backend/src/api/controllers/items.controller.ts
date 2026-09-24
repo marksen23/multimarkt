@@ -59,6 +59,7 @@ import {
   CanonicalListingEntity,
   ItemAttributeEntity,
   ItemEntity,
+  ItemPhotoEntity,
   MarketplaceProjectionEntity,
   SaleEventEntity,
 } from '../../infrastructure/database/entities';
@@ -109,13 +110,30 @@ export class ItemsController {
   async list(
     @CurrentActor() actor: ActorContext,
     @Query('status') status?: ItemLifecycleState,
-  ): Promise<{ item: ItemEntity; listings: ListingSummary[] }[]> {
+  ): Promise<{ item: ItemEntity; listings: ListingSummary[]; thumbnailUrl: string | null }[]> {
     const items = await this.dataSource.manager.find(ItemEntity, {
       where: status ? { userId: actor.userId!, status } : { userId: actor.userId! },
       order: { createdAt: 'DESC' },
     });
     const listingsByItem = await this.listingSummary.forItemIds(items.map((i) => i.id));
-    return items.map((item) => ({ item, listings: listingsByItem.get(item.id) ?? [] }));
+    // Fotogalerie (September 2026): nur das jeweils erste Foto je Item für
+    // die Dashboard-Kachel — die volle Galerie liefert erst GET /items/:id.
+    const photos = items.length
+      ? await this.dataSource.manager
+          .createQueryBuilder(ItemPhotoEntity, 'p')
+          .where('p.item_id IN (:...ids)', { ids: items.map((i) => i.id) })
+          .orderBy('p.created_at', 'ASC')
+          .getMany()
+      : [];
+    const thumbnailByItem = new Map<string, string>();
+    for (const photo of photos) {
+      if (!thumbnailByItem.has(photo.itemId)) thumbnailByItem.set(photo.itemId, photo.url);
+    }
+    return items.map((item) => ({
+      item,
+      listings: listingsByItem.get(item.id) ?? [],
+      thumbnailUrl: thumbnailByItem.get(item.id) ?? null,
+    }));
   }
 
   @Get(':id')
@@ -123,6 +141,7 @@ export class ItemsController {
     item: ItemEntity;
     attributes: ItemAttributeEntity[];
     listings: ListingSummary[];
+    photos: ItemPhotoEntity[];
   }> {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
     if (!item) throw new NotFoundException(`Item ${id} not found`);
@@ -130,7 +149,11 @@ export class ItemsController {
       where: { itemId: id },
     });
     const listings = await this.listingSummary.forItem(id);
-    return { item, attributes, listings };
+    const photos = await this.dataSource.manager.find(ItemPhotoEntity, {
+      where: { itemId: id },
+      order: { createdAt: 'ASC' },
+    });
+    return { item, attributes, listings, photos };
   }
 
   /**
@@ -170,6 +193,14 @@ export class ItemsController {
           originalName: file.originalname,
         }),
       ),
+    );
+
+    // Fotogalerie (September 2026): dauerhaft mit dem Item verknüpfen,
+    // unabhängig vom Ausgang der KI-Analyse unten — die Fotos wurden
+    // real hochgeladen, das bleibt so, auch wenn die Analyse scheitert.
+    await this.dataSource.manager.insert(
+      ItemPhotoEntity,
+      uploaded.map((f) => ({ itemId: id, url: f.url, storageKey: f.key })),
     );
 
     return this.productAnalysis.analyze(

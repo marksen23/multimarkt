@@ -13,6 +13,7 @@ const initialDetail: ItemDetail = {
     updatedAt: new Date().toISOString(),
   },
   listings: [],
+  photos: [],
   attributes: [
     {
       id: 'a1',

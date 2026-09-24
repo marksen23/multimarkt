@@ -52,20 +52,29 @@ export function DashboardPage() {
       )}
 
       <div className="space-y-2">
-        {entries?.map(({ item, listings }) => (
+        {entries?.map(({ item, listings, thumbnailUrl }) => (
           <Link
             key={item.id}
             to={`/items/${item.id}`}
             className="block bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-400 transition"
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-bold text-gray-900 text-sm">
-                  {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
-                </p>
-                <p className="text-xs text-gray-400">
-                  {item.condition ?? 'Zustand noch nicht bestätigt'}
-                </p>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                {thumbnailUrl && (
+                  <img
+                    src={thumbnailUrl}
+                    alt=""
+                    className="w-12 h-12 rounded-lg object-cover border border-gray-100 shrink-0"
+                  />
+                )}
+                <div className="min-w-0">
+                  <p className="font-bold text-gray-900 text-sm truncate">
+                    {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {item.condition ?? 'Zustand noch nicht bestätigt'}
+                  </p>
+                </div>
               </div>
               <StatusBadge status={item.status} />
             </div>

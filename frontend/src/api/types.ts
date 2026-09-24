@@ -62,15 +62,24 @@ export interface ListingSummary {
   projections: MarketplaceProjectionSummary[];
 }
 
+export interface ItemPhoto {
+  id: string;
+  itemId: string;
+  url: string;
+  createdAt: string;
+}
+
 export interface ItemDetail {
   item: Item;
   attributes: ItemAttribute[];
   listings: ListingSummary[];
+  photos: ItemPhoto[];
 }
 
 export interface ItemListEntry {
   item: Item;
   listings: ListingSummary[];
+  thumbnailUrl: string | null;
 }
 
 export interface Bundle {

@@ -7,6 +7,7 @@ import { ConfidenceCenter } from '../components/ConfidenceCenter';
 import { DispositionPanel } from '../components/DispositionPanel';
 import { ListingsManager } from '../components/ListingsManager';
 import { PhotoCapture } from '../components/PhotoCapture';
+import { PhotoGallery } from '../components/PhotoGallery';
 import { PriceResearchPanel } from '../components/PriceResearchPanel';
 import { StatusBadge } from '../components/StatusBadge';
 
@@ -63,6 +64,12 @@ export function ItemDetailPage() {
       {error && (
         <div className="mx-4 mb-3 bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-700">
           {error}
+        </div>
+      )}
+
+      {detail.photos.length > 0 && (
+        <div className="px-4 mb-4">
+          <PhotoGallery photos={detail.photos} />
         </div>
       )}
 

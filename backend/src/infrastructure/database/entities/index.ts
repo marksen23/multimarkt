@@ -8,3 +8,4 @@ export * from './marketplace-projection.entity';
 export * from './sale-event.entity';
 export * from './deletion-audit-log.entity';
 export * from './item-price-research.entity';
+export * from './item-photo.entity';
