@@ -94,14 +94,34 @@ envVarGroups:
         generateValue: true
       - key: SALE_CONFLICT_DEBOUNCE_MS
         value: "15000"
-      # ACHTUNG (siehe LocalDiskStorageProvider-Doku): Render-Webservices
-      # haben ein FLÜCHTIGES Dateisystem — hochgeladene Fotos unter
-      # UPLOAD_DIR gehen bei jedem Redeploy/Neustart verloren. Für einen
-      # echten Go-Live muss das durch einen S3-artigen StorageProvider
-      # ersetzt werden (siehe Abschlussbericht) — für den ersten Web-Test
-      # bewusst unverändert gelassen.
+      # UPLOAD_DIR bleibt als Fallback-Pfad für LocalDiskStorageProvider
+      # bestehen, greift aber nur noch, wenn S3_BUCKET unten NICHT gesetzt
+      # ist (siehe storage.module.ts) — genau das flüchtige Verhalten, vor
+      # dem hier lange gewarnt wurde.
       - key: UPLOAD_DIR
         value: uploads
+      # --- Persistenter Fotospeicher (September 2026) ---
+      # Ohne S3_BUCKET bleibt es beim flüchtigen LocalDiskStorageProvider
+      # (Fotos gehen bei jedem Redeploy/Neustart verloren — betrifft jetzt
+      # auch die item_photos-Zeilen, die dann auf tote Links zeigen). Mit
+      # S3_BUCKET gesetzt schaltet storage.module.ts automatisch auf
+      # S3StorageProvider um — funktioniert mit jedem S3-kompatiblen
+      # Anbieter, nicht nur AWS (z.B. Cloudflare R2, kostenloses
+      # Kontingent: 10 GB/Monat Speicher, keine Egress-Kosten). Alle vier
+      # Werte `sync: false`, weil hier ein echtes Zugangsgeheimnis steht —
+      # manuell im Dashboard eintragen, sobald ein Bucket existiert.
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_PUBLIC_URL_BASE
+        sync: false
 
 services:
   # ------------------------------------------------------------------------
