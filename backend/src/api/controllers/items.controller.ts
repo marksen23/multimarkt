@@ -248,6 +248,21 @@ export class ItemsController {
     return optimized ?? { url: null };
   }
 
+  // Usability-Lücke (September 2026): bislang gab es keinen Weg, ein
+  // versehentlich angelegtes/dupliziertes Item wieder loszuwerden — nur der
+  // komplette Account-Reset in AccountController half. Neue DISCARD-
+  // Transition (Doc 02 §4-Erweiterung) erlaubt das Verwerfen VOR dem
+  // Listing-Start (NEW/ANALYZING/REVIEW_REQUIRED/READY -> CANCELLED);
+  // sobald gelistet, bleibt Sale-Conflict/-Confirmation der einzige Weg
+  // nach CANCELLED (Doc 02 Invariante I2, Human-Gate).
+  @Post(':id/discard')
+  async discard(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<ItemEntity> {
+    return this.stateGuard.transitionItem(id, { type: 'DISCARD', actor });
+  }
+
   @Post(':id/confirm-truth')
   async confirmTruth(
     @Param('id', ParseUUIDPipe) id: string,

@@ -48,6 +48,7 @@ function ListingCard({
   // für den einzigen aktiven Verkaufskanal der einzige Weg überhaupt.
   const [reportingSoldFor, setReportingSoldFor] = useState<string | null>(null);
   const [soldPrice, setSoldPrice] = useState('');
+  const [confirmingCancelFor, setConfirmingCancelFor] = useState<string | null>(null);
 
   const startReportingSold = (projectionId: string) => {
     setReportingSoldFor(projectionId);
@@ -90,7 +91,7 @@ function ListingCard({
                     disabled={busy}
                   />
                 )}
-                {p.status === 'ONLINE' && reportingSoldFor !== p.id && (
+                {p.status === 'ONLINE' && reportingSoldFor !== p.id && confirmingCancelFor !== p.id && (
                   <>
                     <ActionButton
                       label="Als verkauft markieren"
@@ -99,8 +100,27 @@ function ListingCard({
                     />
                     <ActionButton
                       label="Zurückziehen"
-                      onClick={() => run(() => listingsApi.cancel(p.id))}
+                      onClick={() => setConfirmingCancelFor(p.id)}
                       disabled={busy}
+                      variant="secondary"
+                    />
+                  </>
+                )}
+                {confirmingCancelFor === p.id && (
+                  <>
+                    <ActionButton
+                      label="Wirklich zurückziehen?"
+                      onClick={() => {
+                        setConfirmingCancelFor(null);
+                        run(() => listingsApi.cancel(p.id));
+                      }}
+                      disabled={busy}
+                    />
+                    <ActionButton
+                      label="Abbrechen"
+                      onClick={() => setConfirmingCancelFor(null)}
+                      disabled={busy}
+                      variant="secondary"
                     />
                   </>
                 )}
@@ -117,6 +137,7 @@ function ListingCard({
               <div className="flex gap-2 items-center">
                 <input
                   type="number"
+                  inputMode="decimal"
                   min="0"
                   step="0.01"
                   value={soldPrice}

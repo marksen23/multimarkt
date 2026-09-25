@@ -27,7 +27,8 @@ export type ItemMachineEvent =
   | { type: 'SALE_CONFLICT_DETECTED'; actor: ActorContext }
   | { type: 'RESOLVE_CONFLICT_SOLD'; actor: ActorContext }
   | { type: 'RESOLVE_CONFLICT_CANCEL'; actor: ActorContext }
-  | { type: 'ARCHIVE'; actor: ActorContext };
+  | { type: 'ARCHIVE'; actor: ActorContext }
+  | { type: 'DISCARD'; actor: ActorContext };
 
 export const itemMachine = createMachine({
   id: 'item',
@@ -35,10 +36,16 @@ export const itemMachine = createMachine({
   types: {} as { events: ItemMachineEvent },
   states: {
     NEW: {
-      on: { UPLOAD_PHOTO: { target: 'ANALYZING' } },
+      on: {
+        UPLOAD_PHOTO: { target: 'ANALYZING' },
+        DISCARD: { target: 'CANCELLED', guard: ({ event }) => isUser(event.actor) },
+      },
     },
     ANALYZING: {
-      on: { AI_ANALYSIS_COMPLETE: { target: 'REVIEW_REQUIRED' } },
+      on: {
+        AI_ANALYSIS_COMPLETE: { target: 'REVIEW_REQUIRED' },
+        DISCARD: { target: 'CANCELLED', guard: ({ event }) => isUser(event.actor) },
+      },
     },
     REVIEW_REQUIRED: {
       // Human-Gate: ProductTruth-Bestätigung (Doc 02 §10)
@@ -47,6 +54,7 @@ export const itemMachine = createMachine({
           target: 'READY',
           guard: ({ event }) => isUser(event.actor),
         },
+        DISCARD: { target: 'CANCELLED', guard: ({ event }) => isUser(event.actor) },
       },
     },
     READY: {
@@ -60,6 +68,7 @@ export const itemMachine = createMachine({
           target: 'LISTED',
           guard: ({ event }) => isUser(event.actor),
         },
+        DISCARD: { target: 'CANCELLED', guard: ({ event }) => isUser(event.actor) },
       },
     },
     BUNDLED: {

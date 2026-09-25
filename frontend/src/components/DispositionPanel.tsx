@@ -110,6 +110,7 @@ export function DispositionPanel({ itemId }: { itemId: string }) {
       </div>
       <input
         type="number"
+        inputMode="decimal"
         min="0"
         step="0.01"
         placeholder="Geschätzter Marktpreis (€)"

@@ -99,11 +99,13 @@ export function BundleDetailPage() {
           <p className="text-xs font-bold text-ink-muted uppercase">Listing anlegen</p>
           <input
             type="number"
+            inputMode="decimal"
             min="0"
             step="0.01"
             placeholder="Preis in €"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
+            autoFocus
             className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
           />
           <textarea

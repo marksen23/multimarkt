@@ -59,7 +59,18 @@ export function ItemDetailPage() {
         <Link to="/" className="text-xs text-ink-faint hover:text-ink-muted">
           ← Dashboard
         </Link>
-        <StatusBadge status={item.status} />
+        <div className="flex items-center gap-3">
+          {(item.status === 'NEW' ||
+            item.status === 'ANALYZING' ||
+            item.status === 'REVIEW_REQUIRED' ||
+            item.status === 'READY') && (
+            <DiscardItemAction
+              busy={busy}
+              onDiscard={() => run(() => itemsApi.discard(id))}
+            />
+          )}
+          <StatusBadge status={item.status} />
+        </div>
       </div>
 
       {error && (
@@ -129,6 +140,7 @@ export function ItemDetailPage() {
         <Centered
           title="Teil eines Bundles"
           message="Dieser Artikel ist einem Bundle zugeordnet und gesperrt, solange das Bundle besteht."
+          showDashboardLink
         />
       )}
 
@@ -137,6 +149,7 @@ export function ItemDetailPage() {
           <Centered
             title={item.title ?? 'Artikel'}
             message={`Status: ${item.status}. Für diesen Zustand sind in der aktuellen Frontend-Version keine weiteren Aktionen vorgesehen.`}
+            showDashboardLink
           />
         </div>
       )}
@@ -144,12 +157,72 @@ export function ItemDetailPage() {
   );
 }
 
-function Centered({ title, message }: { title: string; message: string }) {
+function DiscardItemAction({
+  busy,
+  onDiscard,
+}: {
+  busy: boolean;
+  onDiscard: () => Promise<void>;
+}) {
+  const [confirming, setConfirming] = useState(false);
+
+  if (confirming) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-bold text-danger">Wirklich verwerfen?</span>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onDiscard()}
+          className="text-xs font-bold text-danger underline"
+        >
+          Ja
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => setConfirming(false)}
+          className="text-xs font-bold text-ink-muted underline"
+        >
+          Abbrechen
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setConfirming(true)}
+      className="text-xs text-ink-faint hover:text-danger transition-colors"
+    >
+      Artikel verwerfen
+    </button>
+  );
+}
+
+function Centered({
+  title,
+  message,
+  showDashboardLink,
+}: {
+  title: string;
+  message: string;
+  showDashboardLink?: boolean;
+}) {
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-6">
-      <div className="max-w-sm text-center space-y-2">
+      <div className="max-w-sm text-center space-y-3">
         <h1 className="text-lg font-bold text-ink">{title}</h1>
         <p className="text-sm text-ink-muted">{message}</p>
+        {showDashboardLink && (
+          <Link
+            to="/"
+            className="inline-block text-sm font-bold text-accent hover:text-accent-hover"
+          >
+            ← Zurück zum Dashboard
+          </Link>
+        )}
       </div>
     </div>
   );
@@ -220,6 +293,7 @@ function PrepareListingStep({
       <PriceResearchPanel itemId={itemId} onSuggestPrice={(p) => setPrice(String(p))} />
       <input
         type="number"
+        inputMode="decimal"
         min="0"
         step="0.01"
         placeholder="Preis in €"
@@ -288,6 +362,13 @@ function TitleEditor({
   const [missingTokens, setMissingTokens] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  const saveTitle = async () => {
+    await onUpdateTitle(title);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
 
   const generateTitle = async () => {
     setGenerating(true);
@@ -338,10 +419,10 @@ function TitleEditor({
         <button
           type="button"
           disabled={busy || !title || title === currentTitle}
-          onClick={() => onUpdateTitle(title)}
+          onClick={saveTitle}
           className="px-3 rounded-xl text-xs font-bold bg-surface border border-line text-ink-muted hover:text-accent disabled:opacity-50 transition-colors"
         >
-          Speichern
+          {saved ? '✓ Gespeichert' : 'Speichern'}
         </button>
       </div>
       {generateError && <p className="text-xs text-danger">{generateError}</p>}
@@ -405,6 +486,13 @@ function ConflictResolutionPanel({
           </button>
         </div>
       ))}
+
+      {events && openEvents.length === 0 && (
+        <p className="text-sm text-ink-faint">
+          Keine offenen Verkaufsmeldungen (mehr) — dieser Status müsste sich in Kürze automatisch
+          auflösen. Falls nicht, lade die Seite neu.
+        </p>
+      )}
     </div>
   );
 }

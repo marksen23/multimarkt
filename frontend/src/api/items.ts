@@ -39,6 +39,7 @@ export const itemsApi = {
   },
   confirmTruth: (id: string, condition: string) =>
     api.post<Item>(`/items/${id}/confirm-truth`, { condition }),
+  discard: (id: string) => api.post<Item>(`/items/${id}/discard`),
   confirmAttribute: (id: string, key: string, value?: string) =>
     api.post<ItemAttribute>(`/items/${id}/attributes/${key}/confirm`, { value }),
   prepareListing: (id: string, sellingPrice: number, descriptionText?: string) =>

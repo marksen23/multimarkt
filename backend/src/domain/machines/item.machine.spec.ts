@@ -68,4 +68,19 @@ describe('itemMachine', () => {
   it('locks BUNDLED as terminal within the item machine (no outgoing events)', () => {
     expect(transition('BUNDLED', { type: 'START_LISTING', actor: user })).toBe('BUNDLED');
   });
+
+  it('allows discarding a mistaken/duplicate item before it is listed', () => {
+    expect(transition('NEW', { type: 'DISCARD', actor: user })).toBe('CANCELLED');
+    expect(transition('ANALYZING', { type: 'DISCARD', actor: user })).toBe('CANCELLED');
+    expect(transition('REVIEW_REQUIRED', { type: 'DISCARD', actor: user })).toBe('CANCELLED');
+    expect(transition('READY', { type: 'DISCARD', actor: user })).toBe('CANCELLED');
+  });
+
+  it('blocks DISCARD for a non-USER actor (human-gate guard)', () => {
+    expect(transition('READY', { type: 'DISCARD', actor: system })).toBe('READY');
+  });
+
+  it('does not allow DISCARD once an item is LISTED (must go through conflict/sale resolution instead)', () => {
+    expect(transition('LISTED', { type: 'DISCARD', actor: user })).toBe('LISTED');
+  });
 });
