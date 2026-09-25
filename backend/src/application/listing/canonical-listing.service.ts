@@ -3,8 +3,10 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { ActorContext } from '../../domain/actor-context';
 import {
+  ComparableListingRef,
   DESCRIPTION_GENERATION_PROVIDER,
   DescriptionGenerationProvider,
+  SalesGoal,
 } from '../../domain/ai/description-generation-provider.interface';
 import { InvalidStateTransitionException } from '../../domain/errors/state-transition.errors';
 import {
@@ -13,6 +15,7 @@ import {
   ItemAttributeEntity,
   ItemEntity,
 } from '../../infrastructure/database/entities';
+import { PriceTriangulationService } from '../pricing/price-triangulation.service';
 import { StateGuardService } from '../state-guard/state-guard.service';
 
 /**
@@ -30,6 +33,7 @@ export class CanonicalListingService {
     private readonly stateGuard: StateGuardService,
     @Inject(DESCRIPTION_GENERATION_PROVIDER)
     private readonly descriptionProvider: DescriptionGenerationProvider,
+    private readonly priceTriangulation: PriceTriangulationService,
   ) {}
 
   /**
@@ -38,16 +42,22 @@ export class CanonicalListingService {
    * `prepareForItem`, damit der Nutzer den Text sehen/ändern kann, bevor er
    * sich verbindlich zum Verkauf entscheidet (dieselbe START_LISTING-
    * Transition unten).
+   *
+   * `salesGoal` steuert nur den TON (siehe RealGeminiDescriptionProvider),
+   * nie die Fakten. Vergleichsangebote kommen aus derselben
+   * Gemini-Grounding-Preisrecherche, die für die Preisvorschläge ohnehin
+   * schon läuft (§9e) — keine zusätzliche Recherche nötig.
    */
-  async generateDescription(itemId: string): Promise<string> {
+  async generateDescription(itemId: string, salesGoal: SalesGoal | null = null): Promise<string> {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id: itemId });
     if (!item) throw new NotFoundException(`Item ${itemId} not found`);
 
     const attributes = await this.dataSource.manager.find(ItemAttributeEntity, {
       where: { itemId },
     });
+    const comparableListings = await this.fetchComparableListings(itemId);
 
-    return this.suggestDescription(item.title, item.condition, attributes);
+    return this.suggestDescription(item.title, item.condition, attributes, comparableListings, salesGoal);
   }
 
   async prepareForItem(
@@ -74,6 +84,8 @@ export class CanonicalListingService {
           item.title,
           item.condition,
           await manager.find(ItemAttributeEntity, { where: { itemId } }),
+          await this.fetchComparableListings(itemId),
+          null,
         ));
 
       const listing = await manager.save(CanonicalListingEntity, {
@@ -132,14 +144,36 @@ export class CanonicalListingService {
     title: string | null,
     condition: string | null,
     attributes: ItemAttributeEntity[],
+    comparableListings: ComparableListingRef[],
+    salesGoal: SalesGoal | null,
   ): Promise<string> {
     const suggestion = await this.descriptionProvider.generate({
       title,
       condition,
       attributes: attributes.map((a) => ({ key: a.attributeKey, value: a.attributeValue })),
+      comparableListings,
+      salesGoal,
     });
     // Provider liefert `null`, wenn keine Generierung möglich war (z.B.
     // Gemini-Antwort leer) — nie einen kaputten/leeren Text durchreichen.
     return suggestion ?? `${title ?? 'Artikel'} — Zustand: ${condition ?? 'unbekannt'}`;
+  }
+
+  /**
+   * Reine Bequemlichkeit, kein Pflichtdatensatz: schlägt fehl (fehlende
+   * Attribute, Preisrecherche-Fehler) niemals hart — die Beschreibung
+   * bleibt auch ohne Vergleichsangebote nutzbar, nur ohne den
+   * Formulierungs-Kontext aus §9e.
+   */
+  private async fetchComparableListings(itemId: string): Promise<ComparableListingRef[]> {
+    try {
+      const research = await this.priceTriangulation.research(itemId);
+      return research.sources.flatMap((source) => {
+        const listings = source.detail?.comparableListings;
+        return Array.isArray(listings) ? (listings as ComparableListingRef[]) : [];
+      });
+    } catch {
+      return [];
+    }
   }
 }

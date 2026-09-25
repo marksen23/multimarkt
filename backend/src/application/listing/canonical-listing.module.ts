@@ -14,6 +14,7 @@ import {
   ItemEntity,
   MarketplaceProjectionEntity,
 } from '../../infrastructure/database/entities';
+import { PriceTriangulationModule } from '../pricing/price-triangulation.module';
 import { StateGuardModule } from '../state-guard/state-guard.module';
 import { CanonicalListingService } from './canonical-listing.service';
 import { ListingSummaryService } from './listing-summary.service';
@@ -33,6 +34,7 @@ const GEMINI_PLACEHOLDER_KEY = 'unused-mock-provider-active';
     ]),
     StateGuardModule,
     ConfigModule,
+    PriceTriangulationModule,
   ],
   providers: [
     CanonicalListingService,

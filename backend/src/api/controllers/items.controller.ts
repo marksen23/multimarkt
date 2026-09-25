@@ -30,6 +30,7 @@ import {
 } from '../dto/items.dto';
 import { EvaluateDispositionDto } from '../dto/disposition.dto';
 import { ActorContext } from '../../domain/actor-context';
+import { SalesGoal } from '../../domain/ai/description-generation-provider.interface';
 import { ItemLifecycleState } from '../../domain/state-vocabulary';
 import { BundleAssignmentService } from '../../application/bundle/bundle-assignment.service';
 import { CanonicalListingService } from '../../application/listing/canonical-listing.service';
@@ -68,6 +69,7 @@ import { ResolveConflictDto } from '../dto/sale-events.dto';
 const MAX_PHOTOS_PER_UPLOAD = 10;
 const MAX_PHOTO_SIZE_BYTES = 15 * 1024 * 1024;
 const ALLOWED_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic']);
+const SALES_GOALS: SalesGoal[] = ['MAX_PROFIT', 'BALANCED', 'FAST_SALE', 'MINIMAL_EFFORT'];
 
 /** Doc 04 §7/§8/§12 — Item-Aggregat. */
 @Controller('items')
@@ -269,10 +271,16 @@ export class ItemsController {
   // §9b/§9e-Ergänzung: reine Vorschau, kein Speichern — das Frontend füllt
   // damit nur das editierbare Beschreibungsfeld vor, wie beim Preis-
   // Vorschlag (siehe PriceResearchPanel-Prinzip "keine Automatik ohne
-  // Bestätigung").
+  // Bestätigung"). `salesGoal` steuert nur den Ton (RealGeminiDescriptionProvider),
+  // eine unbekannte/fehlende Query landet bewusst bei `null` (= BALANCED),
+  // statt einen Fehler zu werfen — das ist reine Formulierungshilfe.
   @Get(':id/generate-description')
-  async generateDescription(@Param('id', ParseUUIDPipe) id: string): Promise<{ descriptionText: string }> {
-    return { descriptionText: await this.canonicalListing.generateDescription(id) };
+  async generateDescription(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('salesGoal') salesGoal?: string,
+  ): Promise<{ descriptionText: string }> {
+    const goal = SALES_GOALS.includes(salesGoal as SalesGoal) ? (salesGoal as SalesGoal) : null;
+    return { descriptionText: await this.canonicalListing.generateDescription(id, goal) };
   }
 
   @Post(':id/prepare-listing')

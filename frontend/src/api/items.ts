@@ -21,8 +21,10 @@ export const itemsApi = {
     return api.postForm<Item>(`/items/${id}/analyze`, form);
   },
   priceResearch: (id: string) => api.get<PriceResearchResult>(`/items/${id}/price-research`),
-  generateDescription: (id: string) =>
-    api.get<{ descriptionText: string }>(`/items/${id}/generate-description`),
+  generateDescription: (id: string, salesGoal?: string) =>
+    api.get<{ descriptionText: string }>(
+      `/items/${id}/generate-description${salesGoal ? `?salesGoal=${salesGoal}` : ''}`,
+    ),
   optimizePhoto: (id: string, file: File) => {
     const form = new FormData();
     form.append('file', file);

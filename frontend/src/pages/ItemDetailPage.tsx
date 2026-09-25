@@ -188,6 +188,7 @@ function PrepareListingStep({
 }) {
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
+  const [salesGoal, setSalesGoal] = useState('BALANCED');
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
 
@@ -195,7 +196,7 @@ function PrepareListingStep({
     setGenerating(true);
     setGenerateError(null);
     try {
-      const result = await itemsApi.generateDescription(itemId);
+      const result = await itemsApi.generateDescription(itemId, salesGoal);
       setDescription(result.descriptionText);
     } catch {
       setGenerateError('Vorschlag konnte nicht erzeugt werden.');
@@ -218,16 +219,28 @@ function PrepareListingStep({
         className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
       />
       <div className="space-y-1">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-ink-muted uppercase tracking-wide">Beschreibung</span>
-          <button
-            type="button"
-            onClick={generateDescription}
-            disabled={generating}
-            className="text-[11px] font-bold text-ink-muted hover:text-accent disabled:opacity-60 transition-colors"
-          >
-            {generating ? 'Generiert…' : '✨ Vorschlag generieren'}
-          </button>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-bold text-ink-muted uppercase tracking-wide shrink-0">Beschreibung</span>
+          <div className="flex items-center gap-2">
+            <select
+              value={salesGoal}
+              onChange={(e) => setSalesGoal(e.target.value)}
+              className="text-[11px] border border-line rounded-lg px-1.5 py-1 bg-surface text-ink-muted outline-none focus:border-accent"
+            >
+              <option value="BALANCED">Ausgewogen</option>
+              <option value="FAST_SALE">Schnell verkaufen</option>
+              <option value="MAX_PROFIT">Maximaler Erlös</option>
+              <option value="MINIMAL_EFFORT">Minimaler Aufwand</option>
+            </select>
+            <button
+              type="button"
+              onClick={generateDescription}
+              disabled={generating}
+              className="text-[11px] font-bold text-ink-muted hover:text-accent disabled:opacity-60 transition-colors shrink-0"
+            >
+              {generating ? 'Generiert…' : '✨ Vorschlag generieren'}
+            </button>
+          </div>
         </div>
         <textarea
           rows={3}
