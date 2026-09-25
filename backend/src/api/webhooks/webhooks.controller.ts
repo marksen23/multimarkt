@@ -4,6 +4,7 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
+  Logger,
   NotFoundException,
   Param,
   Post,
@@ -29,6 +30,8 @@ import { WebhookSignatureService } from './webhook-signature.service';
  */
 @Controller('webhooks')
 export class WebhooksController {
+  private readonly logger = new Logger(WebhooksController.name);
+
   constructor(
     @InjectRepository(MarketplaceProjectionEntity)
     private readonly projectionRepo: Repository<MarketplaceProjectionEntity>,
@@ -46,6 +49,20 @@ export class WebhooksController {
     @Headers('x-webhook-signature') signature: string | undefined,
     @Req() request: Request & { rawBody?: Buffer },
   ): Promise<{ received: true }> {
+    if (!request.rawBody) {
+      // Bug-Fix (September 2026): main.ts aktiviert `rawBody: true` global,
+      // request.rawBody sollte hier also immer gesetzt sein. Der bisherige
+      // stille Fallback auf `JSON.stringify(body)` re-serialisiert das
+      // bereits geparste/validierte Objekt — dessen Byte-Repräsentation
+      // (Schlüsselreihenfolge, Whitespace, Zahlenformatierung) stimmt nicht
+      // zwangsläufig mit den Original-Bytes überein, gegen die der
+      // Marktplatz seine Signatur berechnet hat. Ein sonst gültiger,
+      // korrekt signierter Webhook würde dann fälschlich als "ungültige
+      // Signatur" abgelehnt, ohne dass das irgendwo sichtbar wäre.
+      this.logger.error(
+        `request.rawBody missing for webhook ${marketplace} — falling back to re-serialized body, signature verification may incorrectly fail`,
+      );
+    }
     const rawBody = request.rawBody ?? Buffer.from(JSON.stringify(body));
     if (!this.signatureService.verify(marketplace, rawBody, signature)) {
       throw new UnauthorizedException('Invalid webhook signature');
