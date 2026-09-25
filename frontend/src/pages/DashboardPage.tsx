@@ -25,27 +25,27 @@ export function DashboardPage() {
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-gray-900">Dashboard</h1>
+        <h1 className="text-xl font-extrabold text-ink tracking-tight">Dashboard</h1>
         <Link
           to="/new"
-          className="px-4 py-2 rounded-lg bg-black text-white text-sm font-bold hover:bg-gray-800"
+          className="px-4 py-2 rounded-full bg-accent text-accent-ink text-sm font-bold hover:bg-accent-hover transition-colors shadow-sm"
         >
           + Neuer Artikel
         </Link>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-red-700">
+        <div className="bg-danger-soft border border-danger/20 rounded-xl p-4 text-sm text-danger">
           {error}
         </div>
       )}
 
-      {!entries && !error && <p className="text-sm text-gray-400">Lädt…</p>}
+      {!entries && !error && <p className="text-sm text-ink-faint">Lädt…</p>}
 
       {entries && entries.length === 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl p-8 text-center space-y-2">
-          <p className="text-sm text-gray-500">Noch keine Artikel erfasst.</p>
-          <Link to="/new" className="text-sm font-bold text-black underline">
+        <div className="bg-surface border border-line rounded-2xl p-8 text-center space-y-2">
+          <p className="text-sm text-ink-muted">Noch keine Artikel erfasst.</p>
+          <Link to="/new" className="text-sm font-bold text-accent hover:text-accent-hover">
             Ersten Artikel anlegen
           </Link>
         </div>
@@ -56,7 +56,7 @@ export function DashboardPage() {
           <Link
             key={item.id}
             to={`/items/${item.id}`}
-            className="block bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-400 transition"
+            className="block bg-surface border border-line rounded-2xl p-4 hover:border-accent/40 hover:shadow-md transition"
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
@@ -64,14 +64,14 @@ export function DashboardPage() {
                   <img
                     src={thumbnailUrl}
                     alt=""
-                    className="w-12 h-12 rounded-lg object-cover border border-gray-100 shrink-0"
+                    className="w-12 h-12 rounded-xl object-cover border border-line shrink-0"
                   />
                 )}
                 <div className="min-w-0">
-                  <p className="font-bold text-gray-900 text-sm truncate">
+                  <p className="font-bold text-ink text-sm truncate">
                     {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
                   </p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-ink-faint">
                     {item.condition ?? 'Zustand noch nicht bestätigt'}
                   </p>
                 </div>
@@ -84,7 +84,7 @@ export function DashboardPage() {
                   listing.projections.map((p) => (
                     <span
                       key={p.id}
-                      className="text-[11px] px-2 py-1 rounded-lg bg-gray-50 border border-gray-100 text-gray-600 flex items-center gap-1"
+                      className="text-[11px] px-2 py-1 rounded-lg bg-surface-hover border border-line text-ink-muted flex items-center gap-1"
                     >
                       {p.marketplaceId}
                       <StatusBadge status={p.status} />

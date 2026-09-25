@@ -26,7 +26,7 @@ export function ListingsManager({
 }) {
   return (
     <div className="space-y-3">
-      {listings.length === 0 && <p className="text-sm text-gray-500">{emptyLabel}</p>}
+      {listings.length === 0 && <p className="text-sm text-ink-muted">{emptyLabel}</p>}
       {listings.map((listing) => (
         <ListingCard key={listing.id} listing={listing} busy={busy} run={run} />
       ))}
@@ -62,17 +62,17 @@ function ListingCard({
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+    <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
       <div>
-        <p className="font-bold text-gray-900">{listing.sellingPrice.toFixed(2)} €</p>
-        <p className="text-xs text-gray-500">{listing.descriptionText}</p>
+        <p className="font-bold text-ink">{listing.sellingPrice.toFixed(2)} €</p>
+        <p className="text-xs text-ink-muted">{listing.descriptionText}</p>
       </div>
       <div className="space-y-2">
         {listing.projections.map((p) => (
-          <div key={p.id} className="bg-gray-50 rounded-lg p-2 border border-gray-100 space-y-2">
+          <div key={p.id} className="bg-surface-hover rounded-xl p-2 border border-line space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-700">{p.marketplaceId}</span>
+                <span className="text-xs font-bold text-ink-muted">{p.marketplaceId}</span>
                 <StatusBadge status={p.status} />
               </div>
               <div className="flex gap-1">
@@ -121,7 +121,7 @@ function ListingCard({
                   step="0.01"
                   value={soldPrice}
                   onChange={(e) => setSoldPrice(e.target.value)}
-                  className="flex-1 p-2 border border-gray-200 rounded-lg text-xs outline-none focus:border-black"
+                  className="flex-1 p-2 border border-line rounded-lg text-xs outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
                   placeholder="Tatsächlicher Verkaufspreis in €"
                   autoFocus
                 />
@@ -172,8 +172,8 @@ function ActionButton({
       onClick={onClick}
       className={
         variant === 'primary'
-          ? 'text-[11px] font-bold px-2 py-1 rounded-lg bg-black text-white disabled:bg-gray-300 shrink-0'
-          : 'text-[11px] font-bold px-2 py-1 rounded-lg bg-gray-200 text-gray-700 disabled:opacity-60 shrink-0'
+          ? 'text-[11px] font-bold px-2 py-1 rounded-lg bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors shrink-0'
+          : 'text-[11px] font-bold px-2 py-1 rounded-lg bg-surface-hover text-ink-muted hover:bg-line disabled:opacity-60 transition-colors shrink-0'
       }
     >
       {label}

@@ -68,11 +68,14 @@ export function TokenGate({ children }: { children: ReactNode }) {
   if (token) return <>{children}</>;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4">
-        <div>
-          <h1 className="text-lg font-bold text-gray-900">Zugriffstoken</h1>
-          <p className="text-sm text-gray-500 mt-1">
+    <div className="min-h-screen bg-bg flex items-center justify-center p-6">
+      <div className="w-full max-w-sm bg-surface rounded-2xl shadow-sm border border-line p-6 space-y-4">
+        <div className="space-y-1">
+          <div className="w-9 h-9 rounded-xl bg-accent-soft flex items-center justify-center text-accent text-lg mb-1">
+            🔒
+          </div>
+          <h1 className="text-lg font-bold text-ink">Zugriffstoken</h1>
+          <p className="text-sm text-ink-muted">
             Einzelnutzer-App ohne Login — trage den Wert von <code>APP_ACCESS_TOKEN</code> ein
             (Render-Dashboard → resale-os-backend → Environment).
           </p>
@@ -83,15 +86,15 @@ export function TokenGate({ children }: { children: ReactNode }) {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && submit()}
           placeholder="Access Token"
-          className="w-full p-3 border border-gray-200 rounded-lg text-sm outline-none focus:border-black"
+          className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
           autoFocus
         />
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {error && <p className="text-xs text-danger">{error}</p>}
         <button
           type="button"
           disabled={checking || !input.trim()}
           onClick={submit}
-          className="w-full p-3 rounded-lg font-bold bg-black text-white disabled:bg-gray-300"
+          className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
         >
           {checking ? 'Prüft…' : 'Bestätigen'}
         </button>

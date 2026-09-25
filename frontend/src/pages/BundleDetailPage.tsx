@@ -42,7 +42,7 @@ export function BundleDetailPage() {
 
   if (!detail || !id) {
     return (
-      <div className="p-6 text-center text-sm text-gray-400">{error ?? 'Lädt…'}</div>
+      <div className="p-6 text-center text-sm text-ink-faint">{error ?? 'Lädt…'}</div>
     );
   }
 
@@ -53,20 +53,20 @@ export function BundleDetailPage() {
 
   return (
     <div className="max-w-md mx-auto p-4 space-y-4">
-      <Link to="/bundles" className="text-xs text-gray-400 hover:text-gray-600">
+      <Link to="/bundles" className="text-xs text-ink-faint hover:text-ink-muted">
         ← Bundles
       </Link>
 
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-gray-900">{bundle.title}</h1>
+        <h1 className="text-lg font-bold text-ink">{bundle.title}</h1>
         <StatusBadge status={bundle.status} />
       </div>
-      {bundle.description && <p className="text-sm text-gray-500">{bundle.description}</p>}
+      {bundle.description && <p className="text-sm text-ink-muted">{bundle.description}</p>}
 
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
 
       <div>
-        <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+        <p className="text-xs font-bold text-ink-muted uppercase mb-2">
           Enthaltene Artikel ({items.length})
         </p>
         <div className="space-y-1">
@@ -74,7 +74,7 @@ export function BundleDetailPage() {
             <Link
               key={item.id}
               to={`/items/${item.id}`}
-              className="block bg-white border border-gray-200 rounded-lg p-2 text-sm hover:border-gray-400"
+              className="block bg-surface border border-line rounded-xl p-2 text-sm text-ink hover:border-accent/40 transition"
             >
               {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
             </Link>
@@ -84,7 +84,7 @@ export function BundleDetailPage() {
 
       {listings.length > 0 && (
         <div>
-          <p className="text-xs font-bold text-gray-500 uppercase mb-2">Listings</p>
+          <p className="text-xs font-bold text-ink-muted uppercase mb-2">Listings</p>
           <ListingsManager
             listings={listings}
             busy={busy}
@@ -95,8 +95,8 @@ export function BundleDetailPage() {
       )}
 
       {bundle.status === 'READY' && listings.length === 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-          <p className="text-xs font-bold text-gray-500 uppercase">Listing anlegen</p>
+        <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
+          <p className="text-xs font-bold text-ink-muted uppercase">Listing anlegen</p>
           <input
             type="number"
             min="0"
@@ -104,20 +104,20 @@ export function BundleDetailPage() {
             placeholder="Preis in €"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
-            className="w-full p-3 border border-gray-200 rounded-lg text-sm outline-none focus:border-black"
+            className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
           />
           <textarea
             rows={3}
             placeholder="Beschreibung"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full p-3 border border-gray-200 rounded-lg text-sm outline-none focus:border-black"
+            className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
           />
           <button
             type="button"
             disabled={busy || !price || !description}
             onClick={prepareListing}
-            className="w-full p-3 rounded-lg font-bold bg-black text-white disabled:bg-gray-300"
+            className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
           >
             {busy ? 'Wird angelegt…' : 'Listing anlegen'}
           </button>

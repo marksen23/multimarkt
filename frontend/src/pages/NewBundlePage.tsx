@@ -48,21 +48,21 @@ export function NewBundlePage() {
 
   return (
     <div className="max-w-md mx-auto p-6 space-y-4">
-      <h1 className="text-lg font-bold text-gray-900">Neues Bundle</h1>
+      <h1 className="text-xl font-extrabold text-ink tracking-tight">Neues Bundle</h1>
       <input
         type="text"
         placeholder="Titel, z.B. „Kinderkleidung Gr. 98“"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        className="w-full p-3 border border-gray-200 rounded-lg text-sm outline-none focus:border-black"
+        className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
       />
 
       <div>
-        <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+        <p className="text-xs font-bold text-ink-muted uppercase mb-2">
           Bereite Artikel auswählen (optional)
         </p>
         {readyItems?.length === 0 && (
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-ink-faint">
             Keine Artikel im Status READY — Bundle kann trotzdem leer angelegt werden.
           </p>
         )}
@@ -70,7 +70,7 @@ export function NewBundlePage() {
           {readyItems?.map(({ item }) => (
             <label
               key={item.id}
-              className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-2 text-sm cursor-pointer"
+              className="flex items-center gap-2 bg-surface border border-line rounded-xl p-2 text-sm text-ink cursor-pointer hover:border-accent/40 transition"
             >
               <input
                 type="checkbox"
@@ -83,13 +83,13 @@ export function NewBundlePage() {
         </div>
       </div>
 
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
 
       <button
         type="button"
         disabled={creating || !title}
         onClick={create}
-        className="w-full p-3 rounded-lg font-bold bg-black text-white disabled:bg-gray-300"
+        className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
       >
         {creating ? 'Wird erstellt…' : 'Bundle anlegen'}
       </button>

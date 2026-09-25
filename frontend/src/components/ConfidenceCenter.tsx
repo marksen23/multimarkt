@@ -61,31 +61,31 @@ export function ConfidenceCenter({
   };
 
   return (
-    <div className="max-w-md mx-auto bg-gray-50 min-h-screen pb-24">
-      <header className="bg-white p-4 border-b sticky top-0 z-10 flex justify-between items-center shadow-sm">
-        <h1 className="font-bold text-gray-800 text-lg">Entwurf prüfen</h1>
-        <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-semibold uppercase tracking-wide">
+    <div className="max-w-md mx-auto bg-bg min-h-screen pb-24">
+      <header className="bg-surface/90 backdrop-blur p-4 border-b border-line sticky top-0 z-10 flex justify-between items-center">
+        <h1 className="font-bold text-ink text-lg">Entwurf prüfen</h1>
+        <span className="bg-accent-soft text-accent text-xs px-2 py-1 rounded-full font-semibold uppercase tracking-wide">
           Confidence Center
         </span>
       </header>
 
       <div className="p-4 space-y-6">
-        <p className="text-sm text-gray-600">
-          Die KI hat das Foto analysiert. <strong>Keine Information geht ohne deine Bestätigung online.</strong>
+        <p className="text-sm text-ink-muted">
+          Die KI hat das Foto analysiert. <strong className="text-ink">Keine Information geht ohne deine Bestätigung online.</strong>
         </p>
 
         <section className="space-y-3">
-          <h2 className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+          <h2 className="text-xs font-bold text-ink-muted uppercase flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-red-500" />
             Zwingend erforderlich
           </h2>
 
           <div
-            className={`p-4 rounded-xl border-2 transition-all ${
-              isConditionConfirmed ? 'bg-white border-green-200' : 'bg-red-50 border-red-200'
+            className={`p-4 rounded-2xl border-2 transition-all ${
+              isConditionConfirmed ? 'bg-surface border-accent/30' : 'bg-red-500/5 border-red-500/30'
             }`}
           >
-            <label className="block text-sm font-bold text-gray-800 mb-2">Wie ist der Zustand?</label>
+            <label className="block text-sm font-bold text-ink mb-2">Wie ist der Zustand?</label>
             <div className="grid grid-cols-3 gap-2">
               {CONDITION_OPTIONS.map((cond) => (
                 <button
@@ -95,7 +95,7 @@ export function ConfidenceCenter({
                   className={`py-2 px-1 text-xs rounded-lg border font-bold transition ${
                     selectedCondition === cond
                       ? 'bg-red-600 border-red-600 text-white shadow-md'
-                      : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-100'
+                      : 'bg-surface border-line text-ink-muted hover:bg-surface-hover'
                   }`}
                 >
                   {cond}
@@ -105,8 +105,8 @@ export function ConfidenceCenter({
           </div>
 
           {missing.map((a) => (
-            <div key={a.id} className="bg-red-50 p-4 rounded-xl border border-red-100 space-y-2">
-              <label className="block text-sm font-bold text-gray-800 capitalize">
+            <div key={a.id} className="bg-red-500/5 p-4 rounded-2xl border border-red-500/20 space-y-2">
+              <label className="block text-sm font-bold text-ink capitalize">
                 Welche(s) {a.attributeKey} hat der Artikel?
               </label>
               <div className="flex gap-2">
@@ -117,13 +117,13 @@ export function ConfidenceCenter({
                   onChange={(e) =>
                     setMissingDrafts((prev) => ({ ...prev, [a.attributeKey]: e.target.value }))
                   }
-                  className="flex-1 p-2 border border-red-200 rounded-lg text-sm outline-none focus:border-red-500"
+                  className="flex-1 p-2 border border-red-500/30 rounded-lg text-sm outline-none focus:border-red-500"
                 />
                 <button
                   type="button"
                   disabled={savingKey === a.attributeKey || !missingDrafts[a.attributeKey]}
                   onClick={() => confirmAttr(a.attributeKey, missingDrafts[a.attributeKey])}
-                  className="px-3 py-2 bg-red-600 text-white rounded-lg font-bold text-xs disabled:bg-gray-300"
+                  className="px-3 py-2 bg-red-600 text-white rounded-lg font-bold text-xs disabled:bg-line disabled:text-ink-faint"
                 >
                   {savingKey === a.attributeKey ? '…' : 'Sichern'}
                 </button>
@@ -134,19 +134,19 @@ export function ConfidenceCenter({
 
         {inferred.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+            <h2 className="text-xs font-bold text-ink-muted uppercase flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-yellow-400" />
               KI-Vermutungen (Bitte prüfen)
             </h2>
-            <div className="bg-yellow-50 rounded-xl border border-yellow-200 divide-y divide-yellow-100 overflow-hidden">
+            <div className="bg-yellow-500/5 rounded-2xl border border-yellow-500/25 divide-y divide-yellow-500/15 overflow-hidden">
               {inferred.map((a) => (
                 <div key={a.id} className="p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-xs text-yellow-800 capitalize font-medium block">
+                      <span className="text-xs text-yellow-700 dark:text-yellow-500 capitalize font-medium block">
                         {a.attributeKey}
                       </span>
-                      <span className="font-bold text-gray-800">{a.attributeValue}</span>
+                      <span className="font-bold text-ink">{a.attributeValue}</span>
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -155,7 +155,7 @@ export function ConfidenceCenter({
                           setEditingKey(editingKey === a.attributeKey ? null : a.attributeKey);
                           setEditValue(a.attributeValue ?? '');
                         }}
-                        className="p-2 bg-white rounded-lg border border-yellow-200 text-gray-500 hover:bg-gray-100 text-xs font-bold"
+                        className="p-2 bg-surface rounded-lg border border-yellow-500/25 text-ink-muted hover:bg-surface-hover text-xs font-bold"
                       >
                         Ändern
                       </button>
@@ -175,7 +175,7 @@ export function ConfidenceCenter({
                         type="text"
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
-                        className="flex-1 p-2 border border-yellow-200 rounded-lg text-sm outline-none focus:border-yellow-500"
+                        className="flex-1 p-2 border border-yellow-500/25 rounded-lg text-sm outline-none focus:border-yellow-500"
                       />
                       <button
                         type="button"
@@ -195,17 +195,17 @@ export function ConfidenceCenter({
 
         {confirmed.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-500" />
+            <h2 className="text-xs font-bold text-ink-muted uppercase flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-accent" />
               Sichere Daten
             </h2>
-            <div className="bg-white rounded-xl border border-gray-200 p-4 grid grid-cols-2 gap-4">
+            <div className="bg-surface rounded-2xl border border-line p-4 grid grid-cols-2 gap-4">
               {confirmed.map((a) => (
                 <div key={a.id}>
-                  <span className="text-[10px] text-gray-400 uppercase font-bold capitalize">
+                  <span className="text-[10px] text-ink-faint uppercase font-bold capitalize">
                     {a.attributeKey}
                   </span>
-                  <span className="font-semibold text-gray-800 block text-sm truncate">
+                  <span className="font-semibold text-ink block text-sm truncate">
                     {a.attributeValue}
                   </span>
                 </div>
@@ -215,15 +215,15 @@ export function ConfidenceCenter({
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white to-transparent">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-bg via-bg to-transparent">
         <button
           type="button"
           disabled={!canSave || saving}
           onClick={() => selectedCondition && onConfirmCondition(selectedCondition)}
           className={`w-full p-4 rounded-xl font-bold flex items-center justify-center transition-all ${
             canSave && !saving
-              ? 'bg-black text-white shadow-xl hover:bg-gray-800'
-              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              ? 'bg-accent text-accent-ink shadow-xl hover:bg-accent-hover'
+              : 'bg-line text-ink-faint cursor-not-allowed'
           }`}
         >
           {saving ? 'Speichert…' : isConditionConfirmed ? 'Zustand aktualisieren' : 'Zustand bestätigen'}

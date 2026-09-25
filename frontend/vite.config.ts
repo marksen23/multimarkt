@@ -15,8 +15,8 @@ export default defineConfig({
         name: 'Personal Resale OS',
         short_name: 'Resale OS',
         description: 'Fotografieren statt Formulare ausfüllen.',
-        theme_color: '#000000',
-        background_color: '#f9fafb',
+        theme_color: '#059669',
+        background_color: '#f7f7f5',
         display: 'standalone',
         start_url: '/',
         // HINWEIS: nur ein SVG-Icon vorhanden. Für vollständige "Add to

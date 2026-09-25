@@ -33,10 +33,10 @@ export function NewItemPage() {
 
   return (
     <div className="max-w-sm mx-auto p-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4">
+      <div className="bg-surface rounded-2xl shadow-sm border border-line p-6 space-y-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Neuer Artikel</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-xl font-extrabold text-ink tracking-tight">Neuer Artikel</h1>
+          <p className="text-sm text-ink-muted mt-1">
             Fotografiere den Gegenstand, ein Etikett oder Typenschild. Die KI schlägt danach
             Kategorie, Marke und weitere Angaben vor — du bestätigst.
           </p>
@@ -45,7 +45,7 @@ export function NewItemPage() {
         <PhotoCapture files={photos} onChange={setPhotos} />
 
         <details className="text-sm">
-          <summary className="cursor-pointer text-gray-500 font-medium">
+          <summary className="cursor-pointer text-ink-muted font-medium">
             Titel schon jetzt vergeben (optional)
           </summary>
           <input
@@ -53,26 +53,26 @@ export function NewItemPage() {
             placeholder="z.B. Herrenjacke schwarz"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="mt-2 w-full p-3 border border-gray-200 rounded-lg text-sm outline-none focus:border-black"
+            className="mt-2 w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
           />
         </details>
 
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {error && <p className="text-xs text-danger">{error}</p>}
 
         <button
           type="button"
           disabled={creating || photos.length === 0}
           onClick={start}
-          className="w-full p-3 rounded-lg font-bold bg-black text-white disabled:bg-gray-300"
+          className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
         >
           {creating ? 'Analysiert…' : 'Weiter'}
         </button>
 
         <div className="flex justify-center gap-4">
-          <a href="/demo/confidence-center" className="text-xs text-gray-400 hover:text-gray-600">
+          <a href="/demo/confidence-center" className="text-xs text-ink-faint hover:text-ink-muted">
             Confidence-Center-Demo
           </a>
-          <a href="/demo/negotiation" className="text-xs text-gray-400 hover:text-gray-600">
+          <a href="/demo/negotiation" className="text-xs text-ink-faint hover:text-ink-muted">
             Chat-Assistent-Demo
           </a>
         </div>

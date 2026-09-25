@@ -10,21 +10,22 @@ const NAV_ITEMS = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b sticky top-0 z-20">
+    <div className="min-h-screen bg-bg">
+      <header className="bg-surface/90 backdrop-blur border-b border-line sticky top-0 z-20">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <NavLink to="/" className="font-bold text-gray-900 text-sm">
+          <NavLink to="/" className="flex items-center gap-2 font-bold text-ink text-sm">
+            <span className="w-2 h-2 rounded-full bg-accent" />
             Personal Resale OS
           </NavLink>
-          <nav className="flex gap-1">
+          <nav className="flex items-center gap-1">
             {NAV_ITEMS.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                    isActive ? 'bg-black text-white' : 'text-gray-500 hover:bg-gray-100'
+                  `px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                    isActive ? 'bg-accent text-accent-ink' : 'text-ink-muted hover:bg-surface-hover'
                   }`
                 }
               >
@@ -34,7 +35,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button
               type="button"
               onClick={clearAccessToken}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:bg-gray-100"
+              className="px-3 py-1.5 rounded-full text-xs font-semibold text-ink-faint hover:bg-surface-hover hover:text-ink-muted transition-colors"
               title="Zugriffstoken entfernen"
             >
               Abmelden

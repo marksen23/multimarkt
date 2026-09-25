@@ -67,12 +67,12 @@ export function PhotoCapture({
       {previews.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
           {previews.map((src, i) => (
-            <div key={src} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200">
+            <div key={src} className="relative aspect-square rounded-xl overflow-hidden border border-line">
               <img src={src} alt="" className="w-full h-full object-cover" />
               <button
                 type="button"
                 onClick={() => removeAt(i)}
-                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white text-xs flex items-center justify-center"
+                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-ink/70 text-white text-xs flex items-center justify-center backdrop-blur"
                 aria-label="Foto entfernen"
               >
                 ×
@@ -82,7 +82,7 @@ export function PhotoCapture({
                   type="button"
                   onClick={() => optimize(i)}
                   disabled={optimizingIndex === i}
-                  className="absolute bottom-1 left-1 right-1 py-1 rounded-md bg-black/70 text-white text-[10px] font-semibold disabled:opacity-60"
+                  className="absolute bottom-1 left-1 right-1 py-1 rounded-lg bg-ink/70 text-white text-[10px] font-semibold disabled:opacity-60 backdrop-blur"
                 >
                   {optimizingIndex === i ? 'Optimiert…' : '✨ Optimieren'}
                 </button>
@@ -92,12 +92,12 @@ export function PhotoCapture({
         </div>
       )}
 
-      {optimizeError && <p className="text-xs text-red-600">{optimizeError}</p>}
+      {optimizeError && <p className="text-xs text-danger">{optimizeError}</p>}
 
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="w-full p-6 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 text-sm font-semibold hover:border-gray-400 hover:bg-gray-50 flex flex-col items-center gap-1"
+        className="w-full p-6 rounded-2xl border-2 border-dashed border-line text-ink-muted text-sm font-semibold hover:border-accent hover:bg-accent-soft/40 hover:text-accent transition-colors flex flex-col items-center gap-1"
       >
         <span className="text-2xl">📷</span>
         {files.length === 0 ? 'Foto aufnehmen / auswählen' : 'Weiteres Foto hinzufügen'}

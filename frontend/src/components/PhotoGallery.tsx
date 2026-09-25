@@ -17,7 +17,7 @@ export function PhotoGallery({ photos }: { photos: ItemPhoto[] }) {
           href={photo.url}
           target="_blank"
           rel="noreferrer"
-          className="aspect-square rounded-lg overflow-hidden border border-gray-200 block"
+          className="aspect-square rounded-xl overflow-hidden border border-line block hover:opacity-90 transition"
         >
           <img src={photo.url} alt="" className="w-full h-full object-cover" />
         </a>

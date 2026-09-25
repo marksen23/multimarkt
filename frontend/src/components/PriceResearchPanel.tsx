@@ -45,13 +45,13 @@ export function PriceResearchPanel({
     };
   }, [itemId]);
 
-  if (loading) return <p className="text-xs text-gray-400">Preisrecherche lädt…</p>;
+  if (loading) return <p className="text-xs text-ink-faint">Preisrecherche lädt…</p>;
   // Rein beratend — ein Fehlschlag blockiert nie die manuelle Preiseingabe.
   if (failed || !result || result.sources.length === 0) return null;
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+      <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">
         Preisvorschläge (unverbindlich)
       </p>
       {result.sources.map((source) => (
@@ -71,23 +71,23 @@ function SourceCard({
   const listings = source.detail?.comparableListings ?? [];
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-1">
+    <div className="bg-surface-hover border border-line rounded-xl p-3 space-y-1">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-bold text-gray-700">
+        <span className="text-xs font-bold text-ink-muted">
           {SOURCE_LABELS[source.source] ?? source.source}
         </span>
         {source.median !== null && (
           <button
             type="button"
             onClick={() => onSuggestPrice(source.median as number)}
-            className="text-[11px] font-bold px-2 py-1 rounded-lg bg-black text-white shrink-0"
+            className="text-[11px] font-bold px-2 py-1 rounded-lg bg-accent text-accent-ink hover:bg-accent-hover transition-colors shrink-0"
           >
             {source.median.toFixed(2)} € übernehmen
           </button>
         )}
       </div>
 
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-ink-faint">
         {source.source === 'ANKAUF_PORTAL'
           ? `${source.providerLabel}: Ankaufspreis ${Number(source.detail?.buybackPrice ?? 0).toFixed(2)} € → Richtwert (×${source.detail?.multiplier ?? '?'})`
           : source.p25 !== null && source.p75 !== null
@@ -96,7 +96,7 @@ function SourceCard({
       </p>
 
       {listings.length > 0 && (
-        <details className="text-[11px] text-gray-400">
+        <details className="text-[11px] text-ink-faint">
           <summary className="cursor-pointer">Vergleichstitel ({listings.length})</summary>
           <ul className="mt-1 space-y-0.5">
             {listings.map((listing, i) => (

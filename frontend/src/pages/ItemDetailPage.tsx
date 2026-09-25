@@ -55,14 +55,14 @@ export function ItemDetailPage() {
   return (
     <div className="max-w-md mx-auto">
       <div className="p-4 flex items-center justify-between">
-        <Link to="/" className="text-xs text-gray-400 hover:text-gray-600">
+        <Link to="/" className="text-xs text-ink-faint hover:text-ink-muted">
           ← Dashboard
         </Link>
         <StatusBadge status={item.status} />
       </div>
 
       {error && (
-        <div className="mx-4 mb-3 bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-700">
+        <div className="mx-4 mb-3 bg-danger-soft border border-danger/20 rounded-xl p-3 text-xs text-danger">
           {error}
         </div>
       )}
@@ -107,7 +107,7 @@ export function ItemDetailPage() {
 
       {item.status === 'LISTED' && (
         <div className="p-4 space-y-4">
-          <h1 className="text-lg font-bold text-gray-900">Listings</h1>
+          <h1 className="text-lg font-bold text-ink">Listings</h1>
           <ListingsManager
             listings={detail.listings}
             busy={busy}
@@ -144,8 +144,8 @@ function Centered({ title, message }: { title: string; message: string }) {
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-6">
       <div className="max-w-sm text-center space-y-2">
-        <h1 className="text-lg font-bold text-gray-900">{title}</h1>
-        <p className="text-sm text-gray-500">{message}</p>
+        <h1 className="text-lg font-bold text-ink">{title}</h1>
+        <p className="text-sm text-ink-muted">{message}</p>
       </div>
     </div>
   );
@@ -163,13 +163,13 @@ function AnalyzeStep({
   const [photos, setPhotos] = useState<File[]>([]);
   return (
     <div className="p-4 space-y-4">
-      <h1 className="text-lg font-bold text-gray-900">Fotos hinzufügen</h1>
+      <h1 className="text-lg font-bold text-ink">Fotos hinzufügen</h1>
       <PhotoCapture files={photos} onChange={setPhotos} itemId={itemId} />
       <button
         type="button"
         disabled={busy || photos.length === 0}
         onClick={() => onAnalyze(photos)}
-        className="w-full p-3 rounded-lg font-bold bg-black text-white disabled:bg-gray-300"
+        className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
       >
         {busy ? 'Analysiert…' : 'Analysieren'}
       </button>
@@ -206,7 +206,7 @@ function PrepareListingStep({
 
   return (
     <div className="p-4 space-y-4">
-      <h1 className="text-lg font-bold text-gray-900">Verkaufspreis festlegen</h1>
+      <h1 className="text-lg font-bold text-ink">Verkaufspreis festlegen</h1>
       <PriceResearchPanel itemId={itemId} onSuggestPrice={(p) => setPrice(String(p))} />
       <input
         type="number"
@@ -215,16 +215,16 @@ function PrepareListingStep({
         placeholder="Preis in €"
         value={price}
         onChange={(e) => setPrice(e.target.value)}
-        className="w-full p-3 border border-gray-200 rounded-lg text-sm outline-none focus:border-black"
+        className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
       />
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Beschreibung</span>
+          <span className="text-xs font-bold text-ink-muted uppercase tracking-wide">Beschreibung</span>
           <button
             type="button"
             onClick={generateDescription}
             disabled={generating}
-            className="text-[11px] font-bold text-gray-500 hover:text-black disabled:opacity-60"
+            className="text-[11px] font-bold text-ink-muted hover:text-accent disabled:opacity-60 transition-colors"
           >
             {generating ? 'Generiert…' : '✨ Vorschlag generieren'}
           </button>
@@ -234,15 +234,15 @@ function PrepareListingStep({
           placeholder="Beschreibung (optional — leer lassen für eine einfache Standardvorlage)"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="w-full p-3 border border-gray-200 rounded-lg text-sm outline-none focus:border-black"
+          className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
         />
-        {generateError && <p className="text-xs text-red-600">{generateError}</p>}
+        {generateError && <p className="text-xs text-danger">{generateError}</p>}
       </div>
       <button
         type="button"
         disabled={busy || !price}
         onClick={() => onPrepare(Number(price), description || undefined)}
-        className="w-full p-3 rounded-lg font-bold bg-black text-white disabled:bg-gray-300"
+        className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
       >
         {busy ? 'Wird angelegt…' : 'Listing anlegen'}
       </button>
@@ -269,24 +269,24 @@ function ConflictResolutionPanel({
 
   return (
     <div className="p-4 space-y-4">
-      <div className="bg-red-50 border border-red-100 rounded-xl p-4">
-        <h1 className="text-lg font-bold text-red-800">Verkaufskonflikt</h1>
-        <p className="text-xs text-red-700 mt-1">
+      <div className="bg-danger-soft border border-danger/20 rounded-xl p-4">
+        <h1 className="text-lg font-bold text-danger">Verkaufskonflikt</h1>
+        <p className="text-xs text-danger/90 mt-1">
           Mehrere Plattformen melden einen Verkauf. Wähle den tatsächlichen Verkauf — alle anderen
           Listings werden storniert.
         </p>
       </div>
 
-      {!events && <p className="text-sm text-gray-400">Lädt…</p>}
+      {!events && <p className="text-sm text-ink-faint">Lädt…</p>}
 
       {openEvents.map((event) => (
         <div
           key={event.id}
-          className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between"
+          className="bg-surface border border-line rounded-xl p-4 flex items-center justify-between"
         >
           <div>
-            <p className="font-bold text-gray-900">{event.reportedPrice.toFixed(2)} €</p>
-            <p className="text-xs text-gray-400">
+            <p className="font-bold text-ink">{event.reportedPrice.toFixed(2)} €</p>
+            <p className="text-xs text-ink-faint">
               Event {event.externalEventId} ·{' '}
               {new Date(event.reportedAt).toLocaleString('de-DE')}
             </p>
@@ -295,7 +295,7 @@ function ConflictResolutionPanel({
             type="button"
             disabled={busy}
             onClick={() => run(() => itemsApi.resolveConflict(itemId, event.id))}
-            className="text-xs font-bold px-3 py-2 rounded-lg bg-black text-white disabled:bg-gray-300"
+            className="text-xs font-bold px-3 py-2 rounded-lg bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
           >
             Als Sieger wählen
           </button>
