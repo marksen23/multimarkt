@@ -155,6 +155,19 @@ export interface PriceResearchResult {
   fetchedAt: string;
 }
 
+export type PhotoQualityIssueType = 'BLURRY' | 'TOO_DARK' | 'TOO_BRIGHT' | 'LOW_RESOLUTION' | 'DUPLICATE';
+
+export interface PhotoQualityIssue {
+  photoIndex: number;
+  type: PhotoQualityIssueType;
+  message: string;
+}
+
+export interface PhotoQualityReport {
+  photoCount: number;
+  issues: PhotoQualityIssue[];
+}
+
 export interface ApiError {
   error_code: string;
   message: string;

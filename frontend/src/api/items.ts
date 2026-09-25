@@ -6,6 +6,7 @@ import type {
   ItemDetail,
   ItemListEntry,
   ItemLifecycleState,
+  PhotoQualityReport,
   PriceResearchResult,
   SaleEvent,
 } from './types';
@@ -21,6 +22,7 @@ export const itemsApi = {
     return api.postForm<Item>(`/items/${id}/analyze`, form);
   },
   priceResearch: (id: string) => api.get<PriceResearchResult>(`/items/${id}/price-research`),
+  photoQuality: (id: string) => api.get<PhotoQualityReport>(`/items/${id}/photo-quality`),
   generateDescription: (id: string, salesGoal?: string) =>
     api.get<{ descriptionText: string }>(
       `/items/${id}/generate-description${salesGoal ? `?salesGoal=${salesGoal}` : ''}`,

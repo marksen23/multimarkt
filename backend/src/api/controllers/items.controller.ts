@@ -53,6 +53,8 @@ import {
   PriceResearchResult,
   PriceTriangulationService,
 } from '../../application/pricing/price-triangulation.service';
+import { PhotoQualityService } from '../../application/photo-quality/photo-quality.service';
+import { PhotoQualityReport } from '../../domain/photo-quality/photo-quality.types';
 import { StateGuardService } from '../../application/state-guard/state-guard.service';
 import { STORAGE_PROVIDER, StorageProvider } from '../../domain/storage/storage-provider.interface';
 import {
@@ -86,6 +88,7 @@ export class ItemsController {
     private readonly dispositionEngine: DispositionEngineService,
     private readonly priceTriangulation: PriceTriangulationService,
     private readonly imageOptimization: ImageOptimizationService,
+    private readonly photoQuality: PhotoQualityService,
     private readonly listingSummary: ListingSummaryService,
     private readonly attributeConfirmation: ItemAttributeConfirmationService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
@@ -281,6 +284,20 @@ export class ItemsController {
   ): Promise<{ descriptionText: string }> {
     const goal = SALES_GOALS.includes(salesGoal as SalesGoal) ? (salesGoal as SalesGoal) : null;
     return { descriptionText: await this.canonicalListing.generateDescription(id, goal) };
+  }
+
+  // Rein technischer Hinweis (Schärfe/Belichtung/Auflösung/Duplikate) über
+  // die eigenen hochgeladenen Fotos — keine KI, keine Konkurrenzdaten,
+  // blockiert nie das Anlegen des Listings (siehe docs zur Methodik-Anfrage
+  // September 2026: Konkurrenz-Bildscoring ist mangels Datenzugriff bewusst
+  // NICHT gebaut).
+  @Get(':id/photo-quality')
+  async photoQualityReport(@Param('id', ParseUUIDPipe) id: string): Promise<PhotoQualityReport> {
+    const photos = await this.dataSource.manager.find(ItemPhotoEntity, {
+      where: { itemId: id },
+      order: { createdAt: 'ASC' },
+    });
+    return this.photoQuality.analyzeUrls(photos.map((p) => p.url));
   }
 
   @Post(':id/prepare-listing')

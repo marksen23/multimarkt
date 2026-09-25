@@ -8,6 +8,7 @@ import { DispositionPanel } from '../components/DispositionPanel';
 import { ListingsManager } from '../components/ListingsManager';
 import { PhotoCapture } from '../components/PhotoCapture';
 import { PhotoGallery } from '../components/PhotoGallery';
+import { PhotoQualityPanel } from '../components/PhotoQualityPanel';
 import { PriceResearchPanel } from '../components/PriceResearchPanel';
 import { StatusBadge } from '../components/StatusBadge';
 
@@ -68,8 +69,9 @@ export function ItemDetailPage() {
       )}
 
       {detail.photos.length > 0 && (
-        <div className="px-4 mb-4">
+        <div className="px-4 mb-4 space-y-3">
           <PhotoGallery photos={detail.photos} />
+          <PhotoQualityPanel itemId={id} photoCount={detail.photos.length} />
         </div>
       )}
 
