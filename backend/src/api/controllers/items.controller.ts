@@ -7,6 +7,7 @@ import {
   NotFoundException,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UploadedFile,
@@ -27,6 +28,7 @@ import {
   ConfirmTruthDto,
   CreateItemDto,
   PrepareListingDto,
+  UpdateTitleDto,
 } from '../dto/items.dto';
 import { EvaluateDispositionDto } from '../dto/disposition.dto';
 import { ActorContext } from '../../domain/actor-context';
@@ -55,6 +57,8 @@ import {
 } from '../../application/pricing/price-triangulation.service';
 import { PhotoQualityService } from '../../application/photo-quality/photo-quality.service';
 import { PhotoQualityReport } from '../../domain/photo-quality/photo-quality.types';
+import { TitleGenerationService, TitleSuggestion } from '../../application/title-generation/title-generation.service';
+import { ListingChannel } from '../../domain/ai/title-generation-provider.interface';
 import { StateGuardService } from '../../application/state-guard/state-guard.service';
 import { STORAGE_PROVIDER, StorageProvider } from '../../domain/storage/storage-provider.interface';
 import {
@@ -72,6 +76,7 @@ const MAX_PHOTOS_PER_UPLOAD = 10;
 const MAX_PHOTO_SIZE_BYTES = 15 * 1024 * 1024;
 const ALLOWED_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic']);
 const SALES_GOALS: SalesGoal[] = ['MAX_PROFIT', 'BALANCED', 'FAST_SALE', 'MINIMAL_EFFORT'];
+const LISTING_CHANNELS: ListingChannel[] = ['KLEINANZEIGEN', 'EBAY', 'VINTED'];
 
 /** Doc 04 §7/§8/§12 — Item-Aggregat. */
 @Controller('items')
@@ -89,6 +94,7 @@ export class ItemsController {
     private readonly priceTriangulation: PriceTriangulationService,
     private readonly imageOptimization: ImageOptimizationService,
     private readonly photoQuality: PhotoQualityService,
+    private readonly titleGeneration: TitleGenerationService,
     private readonly listingSummary: ListingSummaryService,
     private readonly attributeConfirmation: ItemAttributeConfirmationService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
@@ -298,6 +304,36 @@ export class ItemsController {
       order: { createdAt: 'ASC' },
     });
     return this.photoQuality.analyzeUrls(photos.map((p) => p.url));
+  }
+
+  // §9e-Ergänzung (September 2026): reine Vorschau wie bei generate-description
+  // — inkl. deterministischer Titel-Lückenanalyse (echte Vergleichstitel aus
+  // der Preisrecherche, keine KI, keine Erfindung). Eine unbekannte/fehlende
+  // Channel-Query fällt auf KLEINANZEIGEN zurück.
+  @Get(':id/generate-title')
+  async generateTitle(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('channel') channel?: string,
+  ): Promise<TitleSuggestion> {
+    const resolvedChannel = LISTING_CHANNELS.includes(channel as ListingChannel)
+      ? (channel as ListingChannel)
+      : 'KLEINANZEIGEN';
+    return this.titleGeneration.generateTitle(id, resolvedChannel);
+  }
+
+  // Bislang gab es keinen Weg, den bei der Item-Anlage gesetzten Titel
+  // nachträglich zu ändern — ohne diesen Endpunkt wäre der Titel-Vorschlag
+  // oben unbenutzbar. Keine State-Machine-Transition nötig: `title` ist kein
+  // Status-Feld (siehe StateGuardService-Zuständigkeit nur für `status`).
+  @Patch(':id/title')
+  async updateTitle(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateTitleDto,
+  ): Promise<ItemEntity> {
+    const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
+    if (!item) throw new NotFoundException(`Item ${id} not found`);
+    await this.dataSource.manager.update(ItemEntity, { id }, { title: dto.title });
+    return { ...item, title: dto.title };
   }
 
   @Post(':id/prepare-listing')

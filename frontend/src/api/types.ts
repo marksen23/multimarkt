@@ -155,6 +155,18 @@ export interface PriceResearchResult {
   fetchedAt: string;
 }
 
+export type ListingChannel = 'KLEINANZEIGEN' | 'EBAY' | 'VINTED';
+
+export interface TitleGapAnalysis {
+  ownTokens: string[];
+  missingTokens: string[];
+}
+
+export interface TitleSuggestion {
+  title: string;
+  gapAnalysis: TitleGapAnalysis;
+}
+
 export type PhotoQualityIssueType = 'BLURRY' | 'TOO_DARK' | 'TOO_BRIGHT' | 'LOW_RESOLUTION' | 'DUPLICATE';
 
 export interface PhotoQualityIssue {

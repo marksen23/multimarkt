@@ -35,6 +35,12 @@ export class ConfirmAttributeDto {
   value?: string;
 }
 
+export class UpdateTitleDto {
+  @IsString()
+  @MinLength(1)
+  title: string;
+}
+
 export class BundleItemsDto {
   @IsString()
   @MinLength(1)

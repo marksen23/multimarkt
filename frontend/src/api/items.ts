@@ -6,9 +6,11 @@ import type {
   ItemDetail,
   ItemListEntry,
   ItemLifecycleState,
+  ListingChannel,
   PhotoQualityReport,
   PriceResearchResult,
   SaleEvent,
+  TitleSuggestion,
 } from './types';
 
 export const itemsApi = {
@@ -23,6 +25,9 @@ export const itemsApi = {
   },
   priceResearch: (id: string) => api.get<PriceResearchResult>(`/items/${id}/price-research`),
   photoQuality: (id: string) => api.get<PhotoQualityReport>(`/items/${id}/photo-quality`),
+  generateTitle: (id: string, channel: ListingChannel) =>
+    api.get<TitleSuggestion>(`/items/${id}/generate-title?channel=${channel}`),
+  updateTitle: (id: string, title: string) => api.patch<Item>(`/items/${id}/title`, { title }),
   generateDescription: (id: string, salesGoal?: string) =>
     api.get<{ descriptionText: string }>(
       `/items/${id}/generate-description${salesGoal ? `?salesGoal=${salesGoal}` : ''}`,

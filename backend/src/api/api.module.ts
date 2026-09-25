@@ -18,6 +18,7 @@ import { MarketplacePublishingModule } from '../application/listing/marketplace-
 import { PhotoQualityModule } from '../application/photo-quality/photo-quality.module';
 import { PriceTriangulationModule } from '../application/pricing/price-triangulation.module';
 import { ProductAnalysisModule } from '../application/product-analysis/product-analysis.module';
+import { TitleGenerationModule } from '../application/title-generation/title-generation.module';
 import { StorageModule } from '../infrastructure/storage/storage.module';
 import { SaleIngestionModule } from '../application/sale-conflict/sale-ingestion.module';
 import { StateGuardModule } from '../application/state-guard/state-guard.module';
@@ -44,6 +45,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     PriceTriangulationModule,
     ImageOptimizationModule,
     PhotoQualityModule,
+    TitleGenerationModule,
     BundleAssignmentModule,
     CanonicalListingModule,
     MarketplacePublishingModule,
