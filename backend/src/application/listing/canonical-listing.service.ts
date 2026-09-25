@@ -1,11 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { ActorContext } from '../../domain/actor-context';
+import {
+  DESCRIPTION_GENERATION_PROVIDER,
+  DescriptionGenerationProvider,
+} from '../../domain/ai/description-generation-provider.interface';
 import { InvalidStateTransitionException } from '../../domain/errors/state-transition.errors';
 import {
   BundleEntity,
   CanonicalListingEntity,
+  ItemAttributeEntity,
   ItemEntity,
 } from '../../infrastructure/database/entities';
 import { StateGuardService } from '../state-guard/state-guard.service';
@@ -23,7 +28,27 @@ export class CanonicalListingService {
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly stateGuard: StateGuardService,
+    @Inject(DESCRIPTION_GENERATION_PROVIDER)
+    private readonly descriptionProvider: DescriptionGenerationProvider,
   ) {}
+
+  /**
+   * §9b/§9e: Vorschau-Vorschlag, den das Frontend VOR dem Speichern in ein
+   * editierbares Feld füllt — kein automatischer Save. Getrennt von
+   * `prepareForItem`, damit der Nutzer den Text sehen/ändern kann, bevor er
+   * sich verbindlich zum Verkauf entscheidet (dieselbe START_LISTING-
+   * Transition unten).
+   */
+  async generateDescription(itemId: string): Promise<string> {
+    const item = await this.dataSource.manager.findOneBy(ItemEntity, { id: itemId });
+    if (!item) throw new NotFoundException(`Item ${itemId} not found`);
+
+    const attributes = await this.dataSource.manager.find(ItemAttributeEntity, {
+      where: { itemId },
+    });
+
+    return this.suggestDescription(item.title, item.condition, attributes);
+  }
 
   async prepareForItem(
     userId: string,
@@ -43,12 +68,20 @@ export class CanonicalListingService {
         );
       }
 
+      const finalDescription =
+        descriptionText ??
+        (await this.suggestDescription(
+          item.title,
+          item.condition,
+          await manager.find(ItemAttributeEntity, { where: { itemId } }),
+        ));
+
       const listing = await manager.save(CanonicalListingEntity, {
         userId,
         itemId,
         bundleId: null,
         sellingPrice,
-        descriptionText: descriptionText ?? this.defaultDescription(item.title, item.condition),
+        descriptionText: finalDescription,
       });
 
       await this.stateGuard.transitionItemWithManager(manager, itemId, {
@@ -95,7 +128,18 @@ export class CanonicalListingService {
     });
   }
 
-  private defaultDescription(title: string | null, condition: string | null): string {
-    return `${title ?? 'Artikel'} — Zustand: ${condition ?? 'unbekannt'}`;
+  private async suggestDescription(
+    title: string | null,
+    condition: string | null,
+    attributes: ItemAttributeEntity[],
+  ): Promise<string> {
+    const suggestion = await this.descriptionProvider.generate({
+      title,
+      condition,
+      attributes: attributes.map((a) => ({ key: a.attributeKey, value: a.attributeValue })),
+    });
+    // Provider liefert `null`, wenn keine Generierung möglich war (z.B.
+    // Gemini-Antwort leer) — nie einen kaputten/leeren Text durchreichen.
+    return suggestion ?? `${title ?? 'Artikel'} — Zustand: ${condition ?? 'unbekannt'}`;
   }
 }

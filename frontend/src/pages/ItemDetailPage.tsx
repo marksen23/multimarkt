@@ -188,6 +188,22 @@ function PrepareListingStep({
 }) {
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
+  const generateDescription = async () => {
+    setGenerating(true);
+    setGenerateError(null);
+    try {
+      const result = await itemsApi.generateDescription(itemId);
+      setDescription(result.descriptionText);
+    } catch {
+      setGenerateError('Vorschlag konnte nicht erzeugt werden.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <div className="p-4 space-y-4">
       <h1 className="text-lg font-bold text-gray-900">Verkaufspreis festlegen</h1>
@@ -201,13 +217,27 @@ function PrepareListingStep({
         onChange={(e) => setPrice(e.target.value)}
         className="w-full p-3 border border-gray-200 rounded-lg text-sm outline-none focus:border-black"
       />
-      <textarea
-        rows={3}
-        placeholder="Beschreibung (optional — sonst automatisch generiert)"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        className="w-full p-3 border border-gray-200 rounded-lg text-sm outline-none focus:border-black"
-      />
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Beschreibung</span>
+          <button
+            type="button"
+            onClick={generateDescription}
+            disabled={generating}
+            className="text-[11px] font-bold text-gray-500 hover:text-black disabled:opacity-60"
+          >
+            {generating ? 'Generiert…' : '✨ Vorschlag generieren'}
+          </button>
+        </div>
+        <textarea
+          rows={3}
+          placeholder="Beschreibung (optional — leer lassen für eine einfache Standardvorlage)"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full p-3 border border-gray-200 rounded-lg text-sm outline-none focus:border-black"
+        />
+        {generateError && <p className="text-xs text-red-600">{generateError}</p>}
+      </div>
       <button
         type="button"
         disabled={busy || !price}

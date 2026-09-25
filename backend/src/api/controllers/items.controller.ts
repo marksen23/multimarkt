@@ -266,6 +266,15 @@ export class ItemsController {
     return this.attributeConfirmation.confirm(id, key, dto.value, actor);
   }
 
+  // §9b/§9e-Ergänzung: reine Vorschau, kein Speichern — das Frontend füllt
+  // damit nur das editierbare Beschreibungsfeld vor, wie beim Preis-
+  // Vorschlag (siehe PriceResearchPanel-Prinzip "keine Automatik ohne
+  // Bestätigung").
+  @Get(':id/generate-description')
+  async generateDescription(@Param('id', ParseUUIDPipe) id: string): Promise<{ descriptionText: string }> {
+    return { descriptionText: await this.canonicalListing.generateDescription(id) };
+  }
+
   @Post(':id/prepare-listing')
   async prepareListing(
     @Param('id', ParseUUIDPipe) id: string,
