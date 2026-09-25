@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { SALE_CONFLICT_EVALUATION_QUEUE } from '../../infrastructure/queue/queue-names';
@@ -11,6 +11,10 @@ export interface SaleEvaluationJobData {
   ownerId: string;
 }
 
+/** Job-Name für den periodischen Selbstheilungs-Sweep (siehe SaleConflictSweepService). */
+export const SALE_CONFLICT_SWEEP_JOB_NAME = 'sweep';
+const SALE_CONFLICT_SWEEP_SCHEDULER_ID = 'sale-conflict-sweep-recurring';
+
 /**
  * Plant die verzögerte Auswertung eines Items/Bundles nach einem
  * eingehenden Sale-Report (siehe SaleIngestionService-Doku für die
@@ -20,11 +24,36 @@ export interface SaleEvaluationJobData {
  * mehrere Läufe feuern.
  */
 @Injectable()
-export class SaleConflictSchedulerService {
+export class SaleConflictSchedulerService implements OnModuleInit {
+  private readonly logger = new Logger(SaleConflictSchedulerService.name);
+
   constructor(
     @InjectQueue(SALE_CONFLICT_EVALUATION_QUEUE) private readonly queue: Queue,
     private readonly config: ConfigService,
   ) {}
+
+  /**
+   * Registriert den Selbstheilungs-Sweep als BullMQ-"Job Scheduler"
+   * (`upsertJobScheduler` — idempotent, ein erneuter Aufruf bei jedem
+   * Prozess-Neustart aktualisiert nur denselben Eintrag statt zu
+   * duplizieren). Läuft im selben Prozess wie der Web-Service (siehe
+   * render.yaml-Kommentar zu SaleConflictWorkerModule).
+   */
+  async onModuleInit(): Promise<void> {
+    const everyMs = this.config.get<number>('SALE_CONFLICT_SWEEP_INTERVAL_MS', 5 * 60 * 1000);
+    try {
+      await this.queue.upsertJobScheduler(
+        SALE_CONFLICT_SWEEP_SCHEDULER_ID,
+        { every: everyMs },
+        { name: SALE_CONFLICT_SWEEP_JOB_NAME, data: {} },
+      );
+    } catch (error) {
+      // Darf den Prozessstart nie verhindern — der Sweep ist ein
+      // Zusatz-Sicherheitsnetz, kein Pflichtpfad (Doc-03-Prinzip: der
+      // Kern-Ingestion-Pfad bleibt unabhängig von Redis-Verfügbarkeit).
+      this.logger.error(`Could not register sale-conflict sweep scheduler: ${(error as Error).message}`);
+    }
+  }
 
   async scheduleEvaluation(ownerType: SaleEvaluationOwnerType, ownerId: string): Promise<void> {
     const delay = this.config.get<number>('SALE_CONFLICT_DEBOUNCE_MS', 15_000);

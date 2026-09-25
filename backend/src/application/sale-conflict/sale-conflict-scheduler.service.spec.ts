@@ -52,4 +52,26 @@ describe('SaleConflictSchedulerService', () => {
     expect(remove).not.toHaveBeenCalled();
     expect(add).toHaveBeenCalled();
   });
+
+  it('registers the recurring sweep job scheduler on module init', async () => {
+    const upsertJobScheduler = jest.fn().mockResolvedValue(undefined);
+    const queue = { upsertJobScheduler } as unknown as Queue;
+    const service = new SaleConflictSchedulerService(queue, makeConfig());
+
+    await service.onModuleInit();
+
+    expect(upsertJobScheduler).toHaveBeenCalledWith(
+      'sale-conflict-sweep-recurring',
+      { every: 5 * 60 * 1000 },
+      { name: 'sweep', data: {} },
+    );
+  });
+
+  it('does not let a failed sweep-scheduler registration crash process startup', async () => {
+    const upsertJobScheduler = jest.fn().mockRejectedValue(new Error('redis unavailable'));
+    const queue = { upsertJobScheduler } as unknown as Queue;
+    const service = new SaleConflictSchedulerService(queue, makeConfig());
+
+    await expect(service.onModuleInit()).resolves.toBeUndefined();
+  });
 });
