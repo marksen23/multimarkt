@@ -8,6 +8,31 @@ import { HumanGateBypassException } from '../../src/domain/errors/state-transiti
 import { MockEbayAdapter } from '../../src/marketplaces/ebay/mock-ebay.adapter';
 import { FormattingHelperAdapter } from '../../src/marketplaces/kleinanzeigen/formatting-helper.adapter';
 import {
+  MarketplaceAdapter,
+  MarketplacePublishInput,
+  MarketplacePublishResult,
+} from '../../src/domain/marketplace/marketplace-adapter.interface';
+
+/** Testdouble, das den Adapter-Call n-mal fehlschlagen lässt, bevor er erfolgreich ist. */
+class FlakyAdapter implements MarketplaceAdapter {
+  private remainingFailures: number;
+
+  constructor(failures: number) {
+    this.remainingFailures = failures;
+  }
+
+  async publish(input: MarketplacePublishInput): Promise<MarketplacePublishResult> {
+    void input;
+    if (this.remainingFailures > 0) {
+      this.remainingFailures -= 1;
+      throw new Error('simulated network failure');
+    }
+    return { externalPlatformId: 'flaky-mock-1', requiresManualConfirmation: false };
+  }
+
+  async delist(): Promise<void> {}
+}
+import {
   BundleEntity,
   CanonicalListingEntity,
   ItemAttributeEntity,
@@ -182,6 +207,40 @@ describe('T07 Marketplace Publishing', () => {
       id: projection.id,
     });
     expect(reloaded.status).toBe('DRAFT');
+  });
+
+  it('reverts PUBLISHING -> READY (not a stuck dead-end) when the adapter call itself throws, and allows a retry', async () => {
+    const { listing } = await setupPublishableItem();
+    const projection = await dataSource.manager.save(MarketplaceProjectionEntity, {
+      canonicalListingId: listing.id,
+      marketplaceId: 'EBAY',
+      status: 'DRAFT',
+    });
+
+    const flakyAdapters: MarketplaceAdapterRegistry = new Map([
+      ...adapters,
+      ['EBAY', new FlakyAdapter(1)],
+    ]);
+    const flakyPublishing = new MarketplacePublishingService(
+      dataSource,
+      stateGuard,
+      capabilityCheck,
+      flakyAdapters,
+    );
+
+    await expect(flakyPublishing.publish(projection.id, { type: 'USER' })).rejects.toThrow(
+      'simulated network failure',
+    );
+
+    const afterFailure = await dataSource.manager.findOneByOrFail(MarketplaceProjectionEntity, {
+      id: projection.id,
+    });
+    expect(afterFailure.status).toBe('READY');
+
+    // Zweiter Versuch: derselbe FlakyAdapter hat jetzt keine Fehler mehr übrig.
+    const afterRetry = await flakyPublishing.publish(projection.id, { type: 'USER' });
+    expect(afterRetry.status).toBe('ONLINE');
+    expect(afterRetry.externalPlatformId).toBe('flaky-mock-1');
   });
 
   it('confirmCancellation calls the adapter and completes for a Live-API listing', async () => {

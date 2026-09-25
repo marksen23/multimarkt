@@ -1,10 +1,11 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { ActorContext } from '../../domain/actor-context';
 import {
   MARKETPLACE_ADAPTERS,
   MarketplaceAdapterRegistry,
+  MarketplacePublishResult,
 } from '../../domain/marketplace/marketplace-adapter.interface';
 import { CanonicalListingEntity, MarketplaceProjectionEntity } from '../../infrastructure/database/entities';
 import { CapabilityCheckService } from '../capability-check/capability-check.service';
@@ -23,6 +24,8 @@ import { StateGuardService } from '../state-guard/state-guard.service';
  */
 @Injectable()
 export class MarketplacePublishingService {
+  private readonly logger = new Logger(MarketplacePublishingService.name);
+
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly stateGuard: StateGuardService,
@@ -70,15 +73,34 @@ export class MarketplacePublishingService {
       );
     }
 
-    const result = await adapter.publish({
-      canonicalListingId: listing.id,
-      marketplaceId: publishing.marketplaceId,
-      sellingPrice: listing.sellingPrice,
-      descriptionText: listing.descriptionText,
-      // fallbackData ist JSONB (Record<string, unknown>), enthält aber laut
-      // CapabilityCheckService (Quelle dieser Werte) ausschließlich Strings.
-      fallbackData: publishing.fallbackData as Record<string, string>,
-    });
+    let result: MarketplacePublishResult;
+    try {
+      result = await adapter.publish({
+        canonicalListingId: listing.id,
+        marketplaceId: publishing.marketplaceId,
+        sellingPrice: listing.sellingPrice,
+        descriptionText: listing.descriptionText,
+        // fallbackData ist JSONB (Record<string, unknown>), enthält aber laut
+        // CapabilityCheckService (Quelle dieser Werte) ausschließlich Strings.
+        fallbackData: publishing.fallbackData as Record<string, string>,
+      });
+    } catch (error) {
+      // Bug-Fix (September 2026): ohne diese Kompensation blieb die
+      // Projection für immer in PUBLISHING hängen (siehe listing.machine.ts
+      // PUBLISH_FAILED-Kommentar) — ein Netzwerk-/Auth-/5xx-Fehler beim
+      // Adapter-Call durfte den bereits committeten PUBLISH-Übergang nicht
+      // unkompensiert stehen lassen. Zurück nach READY, damit ein erneuter
+      // `publish()`-Aufruf strukturell wieder möglich ist, dann den
+      // ursprünglichen Fehler weiterreichen statt ihn zu verschlucken.
+      this.logger.warn(
+        `Adapter publish failed for projection ${projectionId} — reverting PUBLISHING -> READY: ${(error as Error).message}`,
+      );
+      await this.stateGuard.transitionProjection(projectionId, {
+        type: 'PUBLISH_FAILED',
+        actor: { type: 'SYSTEM' },
+      });
+      throw error;
+    }
 
     if (result.externalPlatformId) {
       await this.dataSource.manager.update(

@@ -19,6 +19,7 @@ export type ListingMachineEvent =
   | { type: 'MARK_READY'; actor: ActorContext }
   | { type: 'PUBLISH'; actor: ActorContext }
   | { type: 'PUBLISH_SUCCESS'; actor: ActorContext }
+  | { type: 'PUBLISH_FAILED'; actor: ActorContext }
   | { type: 'SOLD_HERE'; actor: ActorContext }
   | { type: 'CANCEL_PENDING_TRIGGERED'; actor: ActorContext }
   | { type: 'CONFIRM_CANCELLATION'; actor: ActorContext };
@@ -51,6 +52,16 @@ export const listingMachine = createMachine({
           target: 'ONLINE',
           guard: ({ event }) => isUserOrSystem(event.actor),
         },
+        // Bug-Fix (September 2026): ohne diesen Rückweg blieb eine
+        // Projection für immer in PUBLISHING hängen, sobald der eigentliche
+        // Adapter-Call (Netzwerk, Auth, 5xx) fehlschlug — MARKETPLACE_
+        // PUBLISHING_SERVICE.publish() sendet PUBLISH bereits VOR dem
+        // Adapter-Call. Kein Human-Gate: reine Kompensation eines bereits
+        // gescheiterten, vom Menschen ausgelösten Versuchs, kein neuer
+        // Zustandsübergang, der schützenswert wäre. Zurück nach READY, nicht
+        // DRAFT — die CapabilityCheck-Daten bleiben gültig, nur der
+        // eigentliche Publish-Versuch ist erneut nötig.
+        PUBLISH_FAILED: { target: 'READY' },
       },
     },
     ONLINE: {
