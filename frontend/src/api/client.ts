@@ -21,8 +21,26 @@ function authHeader(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+// `fetch()` selbst wirft (statt eine Response zurückzugeben), wenn gar keine
+// Verbindung zustande kam (offline, DNS-Fehler, Server down) — ohne diesen
+// Wrapper landete das als "Unbekannter Fehler" überall im UI, obwohl es sich
+// klar von einem 4xx/5xx unterscheiden lässt. Einmal hier abgefangen, zeigen
+// alle bestehenden `e instanceof ApiRequestError ? e.body.message : …`-Stellen
+// automatisch eine sinnvolle Meldung statt des generischen Fallbacks.
+async function safeFetch(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new ApiRequestError(0, {
+      error_code: 'ERR_NETWORK',
+      message: 'Keine Verbindung zum Server — prüfe deine Internetverbindung und versuche es erneut.',
+      details: {},
+    });
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const response = await safeFetch(`${BASE_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -44,7 +62,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 async function requestForm<T>(path: string, formData: FormData): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const response = await safeFetch(`${BASE_URL}${path}`, {
     method: 'POST',
     // Kein 'Content-Type' setzen — der Browser generiert die korrekte
     // multipart/form-data-Boundary automatisch (Doc 04 §7 "Foto-Erfassung").

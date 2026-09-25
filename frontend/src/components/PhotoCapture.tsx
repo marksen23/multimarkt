@@ -24,6 +24,7 @@ export function PhotoCapture({
   const [previews, setPreviews] = useState<string[]>([]);
   const [optimizingIndex, setOptimizingIndex] = useState<number | null>(null);
   const [optimizeError, setOptimizeError] = useState<string | null>(null);
+  const [confirmRemoveIndex, setConfirmRemoveIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const urls = files.map((f) => URL.createObjectURL(f));
@@ -38,6 +39,19 @@ export function PhotoCapture({
 
   const removeAt = (index: number) => {
     onChange(files.filter((_, i) => i !== index));
+    setConfirmRemoveIndex(null);
+  };
+
+  // Kleine Thumbnails im 3er-Grid sind leicht aus Versehen zu treffen —
+  // erster Tap fragt nach, statt das Foto sofort ohne Rückfrage zu
+  // entfernen (Foto ist danach nicht mehr wiederherstellbar).
+  const requestRemove = (index: number) => {
+    if (confirmRemoveIndex === index) {
+      removeAt(index);
+    } else {
+      setConfirmRemoveIndex(index);
+      setTimeout(() => setConfirmRemoveIndex((current) => (current === index ? null : current)), 2500);
+    }
   };
 
   const optimize = async (index: number) => {
@@ -71,11 +85,15 @@ export function PhotoCapture({
               <img src={src} alt="" className="w-full h-full object-cover" />
               <button
                 type="button"
-                onClick={() => removeAt(i)}
-                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-ink/70 text-white text-xs flex items-center justify-center backdrop-blur"
-                aria-label="Foto entfernen"
+                onClick={() => requestRemove(i)}
+                className={
+                  confirmRemoveIndex === i
+                    ? 'absolute top-1 right-1 h-6 px-2 rounded-full bg-danger text-white text-[10px] font-bold flex items-center justify-center backdrop-blur'
+                    : 'absolute top-1 right-1 w-7 h-7 rounded-full bg-ink/70 text-white text-base flex items-center justify-center backdrop-blur'
+                }
+                aria-label={confirmRemoveIndex === i ? 'Wirklich entfernen?' : 'Foto entfernen'}
               >
-                ×
+                {confirmRemoveIndex === i ? 'Entfernen?' : '×'}
               </button>
               {itemId && (
                 <button

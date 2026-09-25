@@ -54,6 +54,7 @@ export function NewBundlePage() {
         placeholder="Titel, z.B. „Kinderkleidung Gr. 98“"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
+        autoFocus
         className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
       />
 

@@ -13,21 +13,35 @@ import { PhotoCapture } from '../components/PhotoCapture';
 export function NewItemPage() {
   const [photos, setPhotos] = useState<File[]>([]);
   const [title, setTitle] = useState('');
-  const [creating, setCreating] = useState(false);
+  const [stage, setStage] = useState<'idle' | 'creating' | 'uploading'>('idle');
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const creating = stage !== 'idle';
 
   const start = async () => {
-    setCreating(true);
     setError(null);
+    let createdItemId: string | null = null;
     try {
+      setStage('creating');
       const item = await itemsApi.create(title || undefined);
+      createdItemId = item.id;
+      setStage('uploading');
       await itemsApi.analyze(item.id, photos);
       navigate(`/items/${item.id}`);
     } catch (e) {
+      if (createdItemId) {
+        // Item + Fotos sind serverseitig bereits angelegt (Foto-Persistenz
+        // läuft unabhängig vom Analyse-Ausgang, siehe items.controller.ts)
+        // — nicht verwaist mit nur einer Fehlermeldung zurücklassen, sondern
+        // zur Artikelseite weiterleiten, wo die Analyse erneut angestoßen
+        // werden kann, statt bei einem erneuten Versuch hier ein Duplikat
+        // samt Doppel-Upload zu erzeugen.
+        navigate(`/items/${createdItemId}`);
+        return;
+      }
       setError(e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler');
     } finally {
-      setCreating(false);
+      setStage('idle');
     }
   };
 
@@ -65,7 +79,9 @@ export function NewItemPage() {
           onClick={start}
           className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
         >
-          {creating ? 'Analysiert…' : 'Weiter'}
+          {stage === 'creating' && 'Artikel wird angelegt…'}
+          {stage === 'uploading' && 'Fotos werden hochgeladen & analysiert…'}
+          {stage === 'idle' && 'Weiter'}
         </button>
 
         <div className="flex justify-center gap-4">
