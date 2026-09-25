@@ -48,6 +48,13 @@ export function ConfidenceCenter({
 
   const isConditionConfirmed = detail.item.condition !== null;
   const canSave = selectedCondition !== null && selectedCondition !== detail.item.condition;
+  // Verhindert, dass während eines laufenden Speicherns (lokal `savingKey`
+  // ODER die seitenweite `saving`-Reload-Phase aus ItemDetailPage.run())
+  // eine zweite, konkurrierende Mutation gestartet wird — ohne diese Sperre
+  // konnte ein Doppelklick über verschiedene Attribute hinweg `savingKey`
+  // überschreiben und den Spinner/Disabled-Zustand des ersten Requests
+  // verlieren, obwohl der noch lief.
+  const anyActionInProgress = saving || savingKey !== null;
 
   const confirmAttr = async (key: string, value?: string) => {
     setSavingKey(key);
@@ -121,7 +128,11 @@ export function ConfidenceCenter({
                 />
                 <button
                   type="button"
-                  disabled={savingKey === a.attributeKey || !missingDrafts[a.attributeKey]}
+                  disabled={
+                    (anyActionInProgress && savingKey !== a.attributeKey) ||
+                    savingKey === a.attributeKey ||
+                    !missingDrafts[a.attributeKey]
+                  }
                   onClick={() => confirmAttr(a.attributeKey, missingDrafts[a.attributeKey])}
                   className="px-3 py-2 bg-red-600 text-white rounded-lg font-bold text-xs disabled:bg-line disabled:text-ink-faint"
                 >
@@ -151,17 +162,18 @@ export function ConfidenceCenter({
                     <div className="flex gap-2">
                       <button
                         type="button"
+                        disabled={anyActionInProgress}
                         onClick={() => {
                           setEditingKey(editingKey === a.attributeKey ? null : a.attributeKey);
                           setEditValue(a.attributeValue ?? '');
                         }}
-                        className="p-2 bg-surface rounded-lg border border-yellow-500/25 text-ink-muted hover:bg-surface-hover text-xs font-bold"
+                        className="p-2 bg-surface rounded-lg border border-yellow-500/25 text-ink-muted hover:bg-surface-hover text-xs font-bold disabled:opacity-50"
                       >
                         Ändern
                       </button>
                       <button
                         type="button"
-                        disabled={savingKey === a.attributeKey}
+                        disabled={(anyActionInProgress && savingKey !== a.attributeKey) || savingKey === a.attributeKey}
                         onClick={() => confirmAttr(a.attributeKey)}
                         className="px-3 py-2 bg-yellow-400 text-yellow-900 rounded-lg font-bold text-sm shadow-sm hover:bg-yellow-500 disabled:opacity-50"
                       >
@@ -179,7 +191,11 @@ export function ConfidenceCenter({
                       />
                       <button
                         type="button"
-                        disabled={!editValue || savingKey === a.attributeKey}
+                        disabled={
+                          !editValue ||
+                          (anyActionInProgress && savingKey !== a.attributeKey) ||
+                          savingKey === a.attributeKey
+                        }
                         onClick={() => confirmAttr(a.attributeKey, editValue)}
                         className="px-3 py-2 bg-yellow-500 text-white rounded-lg font-bold text-xs disabled:opacity-50"
                       >
@@ -218,10 +234,10 @@ export function ConfidenceCenter({
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-bg via-bg to-transparent">
         <button
           type="button"
-          disabled={!canSave || saving}
+          disabled={!canSave || anyActionInProgress}
           onClick={() => selectedCondition && onConfirmCondition(selectedCondition)}
           className={`w-full p-4 rounded-xl font-bold flex items-center justify-center transition-all ${
-            canSave && !saving
+            canSave && !anyActionInProgress
               ? 'bg-accent text-accent-ink shadow-xl hover:bg-accent-hover'
               : 'bg-line text-ink-faint cursor-not-allowed'
           }`}

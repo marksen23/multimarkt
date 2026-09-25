@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { bundlesApi } from '../api/bundles';
 import { ApiRequestError } from '../api/client';
 import type { BundleListEntry } from '../api/types';
+import { ListSkeleton } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
 
 export function BundlesPage() {
@@ -33,6 +34,8 @@ export function BundlesPage() {
           {error}
         </div>
       )}
+
+      {!entries && !error && <ListSkeleton />}
 
       {entries && entries.length === 0 && (
         <div className="bg-surface border border-line rounded-2xl p-8 text-center space-y-2">

@@ -63,8 +63,15 @@ export function NegotiationAssistant({
   };
 
   const copyToClipboard = async () => {
-    await navigator.clipboard.writeText(reply);
-    window.alert(`Antwort kopiert! Füge sie bei ${platform} ein.`);
+    try {
+      await navigator.clipboard.writeText(reply);
+      window.alert(`Antwort kopiert! Füge sie bei ${platform} ein.`);
+    } catch {
+      // Clipboard-API kann aus vielen Gründen scheitern (fehlende
+      // Berechtigung, kein sicherer Kontext, iframe-Policy) — ohne diesen
+      // Fallback wäre der einzige Button der Seite lautlos wirkungslos.
+      window.alert('Kopieren nicht möglich — markiere den Text oben und kopiere ihn manuell.');
+    }
   };
 
   return (

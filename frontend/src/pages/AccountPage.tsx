@@ -80,8 +80,9 @@ export function AccountPage() {
               </button>
               <button
                 type="button"
+                disabled={busy}
                 onClick={() => setConfirming(false)}
-                className="flex-1 p-2 rounded-xl border border-line text-sm font-bold text-ink-muted hover:bg-surface-hover transition-colors"
+                className="flex-1 p-2 rounded-xl border border-line text-sm font-bold text-ink-muted hover:bg-surface-hover disabled:opacity-50 transition-colors"
               >
                 Abbrechen
               </button>
