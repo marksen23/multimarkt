@@ -23,6 +23,7 @@ export function PriceResearchPanel({
 }) {
   const [result, setResult] = useState<PriceResearchResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -45,14 +46,37 @@ export function PriceResearchPanel({
     };
   }, [itemId]);
 
+  const refresh = () => {
+    setRefreshing(true);
+    setFailed(false);
+    itemsApi
+      .priceResearch(itemId, true)
+      .then(setResult)
+      .catch(() => setFailed(true))
+      .finally(() => setRefreshing(false));
+  };
+
   if (loading) return <p className="text-xs text-ink-faint">Preisrecherche lädt…</p>;
   // Rein beratend — ein Fehlschlag blockiert nie die manuelle Preiseingabe.
   if (failed || !result || result.sources.length === 0) return null;
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">
-        Preisvorschläge (unverbindlich)
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">
+          Preisvorschläge (unverbindlich)
+        </p>
+        <button
+          type="button"
+          onClick={refresh}
+          disabled={refreshing}
+          className="text-[11px] font-bold text-ink-faint hover:text-accent disabled:opacity-60 transition-colors shrink-0"
+        >
+          {refreshing ? 'Aktualisiert…' : '↻ Neu abrufen'}
+        </button>
+      </div>
+      <p className="text-[11px] text-ink-faint">
+        Stand: {new Date(result.fetchedAt).toLocaleString('de-DE')}
       </p>
       {result.sources.map((source) => (
         <SourceCard key={source.source} source={source} onSuggestPrice={onSuggestPrice} />

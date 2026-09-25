@@ -2,16 +2,31 @@ import { NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { MarketDistributionProvider } from '../../domain/pricing/market-distribution-provider.interface';
 import { BuybackAnchorProvider } from '../../domain/pricing/buyback-anchor-provider.interface';
-import { ItemAttributeEntity, ItemEntity } from '../../infrastructure/database/entities';
-import { BUYBACK_TO_RESALE_MULTIPLIER, PriceTriangulationService } from './price-triangulation.service';
+import {
+  ItemAttributeEntity,
+  ItemEntity,
+  ItemPriceResearchEntity,
+} from '../../infrastructure/database/entities';
+import {
+  BUYBACK_TO_RESALE_MULTIPLIER,
+  PriceTriangulationService,
+} from './price-triangulation.service';
 
 function makeDataSource(opts: {
   item: Partial<ItemEntity> | null;
   attributes: Partial<ItemAttributeEntity>[];
+  cachedRows?: Partial<ItemPriceResearchEntity>[];
 }) {
   const insert = jest.fn().mockResolvedValue(undefined);
   const findOneBy = jest.fn().mockResolvedValue(opts.item);
-  const find = jest.fn().mockResolvedValue(opts.attributes);
+  // Disambiguiert nach Entity, weil readFreshCache() (ItemPriceResearchEntity)
+  // UND die Attribut-Auflösung (ItemAttributeEntity) beide `manager.find`
+  // nutzen — ein einzelner geteilter Mock-Rückgabewert würde eines der
+  // beiden Ergebnisse fälschlich für das andere halten.
+  const find = jest.fn().mockImplementation((entity: unknown) => {
+    if (entity === ItemPriceResearchEntity) return Promise.resolve(opts.cachedRows ?? []);
+    return Promise.resolve(opts.attributes);
+  });
   const dataSource = { manager: { findOneBy, find, insert } } as unknown as DataSource;
   return { dataSource, insert, findOneBy, find };
 }
@@ -158,6 +173,111 @@ describe('PriceTriangulationService', () => {
     const result = await service.research('i1');
 
     expect(result.sources.map((s) => s.source)).toEqual(['EBAY_ACTIVE_LISTINGS']);
+  });
+
+  it('returns a fresh cached batch instead of calling the providers again (bug fix: was never read back)', async () => {
+    const fetchedAt = new Date(Date.now() - 60 * 1000); // 1 Minute alt
+    const { dataSource } = makeDataSource({
+      item: { id: 'i1', condition: 'good' },
+      attributes: [attr('brand', 'Nike'), attr('category', 'Sneaker')],
+      cachedRows: [
+        {
+          source: 'EBAY_ACTIVE_LISTINGS',
+          providerLabel: 'eBay Browse API (Mock)',
+          median: 34,
+          p25: 28,
+          p75: 41,
+          sampleSize: 12,
+          currency: 'EUR',
+          rawResponse: null,
+          fetchedAt,
+        },
+      ],
+    });
+
+    const service = makeService(dataSource);
+    const result = await service.research('i1');
+
+    expect(result.sources).toHaveLength(1);
+    expect(result.sources[0].median).toBe(34);
+    expect(result.fetchedAt).toBe(fetchedAt);
+    expect(marketProvider.search).not.toHaveBeenCalled();
+    expect(groundingProvider.search).not.toHaveBeenCalled();
+    expect(buybackProvider.quote).not.toHaveBeenCalled();
+  });
+
+  it('ignores a stale cached batch older than the TTL and researches live instead', async () => {
+    const staleFetchedAt = new Date(Date.now() - 7 * 60 * 60 * 1000); // 7h alt (TTL: 6h)
+    const { dataSource } = makeDataSource({
+      item: { id: 'i1', condition: 'good' },
+      attributes: [attr('brand', 'Nike'), attr('category', 'Sneaker')],
+      cachedRows: [
+        {
+          source: 'EBAY_ACTIVE_LISTINGS',
+          providerLabel: 'eBay Browse API (Mock)',
+          median: 34,
+          p25: 28,
+          p75: 41,
+          sampleSize: 12,
+          currency: 'EUR',
+          rawResponse: null,
+          fetchedAt: staleFetchedAt,
+        },
+      ],
+    });
+    marketProvider.search.mockResolvedValue({
+      median: 40,
+      p25: 35,
+      p75: 45,
+      sampleSize: 8,
+      currency: 'EUR',
+      providerLabel: 'eBay Browse API (Mock)',
+      comparableListings: [],
+    });
+    buybackProvider.quote.mockResolvedValue(null);
+
+    const service = makeService(dataSource);
+    const result = await service.research('i1');
+
+    expect(marketProvider.search).toHaveBeenCalled();
+    expect(result.sources[0].median).toBe(40);
+  });
+
+  it('bypasses a fresh cache when forceRefresh is set', async () => {
+    const fetchedAt = new Date(Date.now() - 60 * 1000);
+    const { dataSource } = makeDataSource({
+      item: { id: 'i1', condition: 'good' },
+      attributes: [attr('brand', 'Nike'), attr('category', 'Sneaker')],
+      cachedRows: [
+        {
+          source: 'EBAY_ACTIVE_LISTINGS',
+          providerLabel: 'eBay Browse API (Mock)',
+          median: 34,
+          p25: 28,
+          p75: 41,
+          sampleSize: 12,
+          currency: 'EUR',
+          rawResponse: null,
+          fetchedAt,
+        },
+      ],
+    });
+    marketProvider.search.mockResolvedValue({
+      median: 40,
+      p25: 35,
+      p75: 45,
+      sampleSize: 8,
+      currency: 'EUR',
+      providerLabel: 'eBay Browse API (Mock)',
+      comparableListings: [],
+    });
+    buybackProvider.quote.mockResolvedValue(null);
+
+    const service = makeService(dataSource);
+    const result = await service.research('i1', { forceRefresh: true });
+
+    expect(marketProvider.search).toHaveBeenCalled();
+    expect(result.sources[0].median).toBe(40);
   });
 
   it('never persists rows when no source produced a result', async () => {

@@ -23,7 +23,10 @@ export const itemsApi = {
     files.forEach((file) => form.append('files', file));
     return api.postForm<Item>(`/items/${id}/analyze`, form, onProgress);
   },
-  priceResearch: (id: string) => api.get<PriceResearchResult>(`/items/${id}/price-research`),
+  priceResearch: (id: string, forceRefresh?: boolean) =>
+    api.get<PriceResearchResult>(
+      `/items/${id}/price-research${forceRefresh ? '?forceRefresh=true' : ''}`,
+    ),
   photoQuality: (id: string) => api.get<PhotoQualityReport>(`/items/${id}/photo-quality`),
   generateTitle: (id: string, channel: ListingChannel) =>
     api.get<TitleSuggestion>(`/items/${id}/generate-title?channel=${channel}`),

@@ -23,8 +23,10 @@ import {
  * Verteilung, Gemini+Google-Search-Grounding und Ankaufportal-Anker zu
  * MEHREREN, getrennt ausgewiesenen Preissignalen. Vermischt Quellen
  * bewusst NIE zu einer Blackbox-Zahl (§9d Punkt 3) und schreibt nie
- * automatisch in `canonical_listings` oder `item_attributes` — reiner,
- * jederzeit neu abrufbarer Beratungs-Cache.
+ * automatisch in `canonical_listings` oder `item_attributes` — reiner
+ * Beratungs-Cache. Innerhalb von `PRICE_RESEARCH_CACHE_TTL_MS` liest
+ * `research()` die zuletzt gespeicherte Recherche zurück, statt Provider
+ * (teils kostenpflichtig) erneut abzufragen — siehe `readFreshCache()`.
  */
 
 // §9e: grobe, noch ungelernte Anfangsschätzung. Soll über die
@@ -32,6 +34,14 @@ import {
 // Verkaufsdaten pro Kategorie vorliegen — hier bewusst als benannte
 // Konstante, nicht versteckt in einer Formel.
 export const BUYBACK_TO_RESALE_MULTIPLIER = 3.0;
+
+// Bug-Fix (September 2026): `item_price_research` wurde bislang bei JEDEM
+// Aufruf neu beschrieben, aber nie zurückgelesen — jeder Seitenaufruf löste
+// erneute, teils kostenpflichtige API-Calls (eBay, Gemini-Grounding) aus,
+// obwohl sich Marktpreise nicht sekündlich ändern. Innerhalb dieses Fensters
+// wird die zuletzt gespeicherte Recherche wiederverwendet, außer der
+// Aufrufer verlangt explizit `forceRefresh`.
+export const PRICE_RESEARCH_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
 
 export interface PriceResearchSourceResult {
   source: PriceResearchSource;
@@ -62,9 +72,14 @@ export class PriceTriangulationService {
     private readonly buybackProvider: BuybackAnchorProvider,
   ) {}
 
-  async research(itemId: string): Promise<PriceResearchResult> {
+  async research(itemId: string, options: { forceRefresh?: boolean } = {}): Promise<PriceResearchResult> {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id: itemId });
     if (!item) throw new NotFoundException(`Item ${itemId} not found`);
+
+    if (!options.forceRefresh) {
+      const cached = await this.readFreshCache(itemId);
+      if (cached) return cached;
+    }
 
     const attributes = await this.dataSource.manager.find(ItemAttributeEntity, {
       where: { itemId },
@@ -150,6 +165,42 @@ export class PriceTriangulationService {
       sampleSize: 1,
       currency: quote.currency,
       detail: { buybackPrice: quote.buybackPrice, multiplier: BUYBACK_TO_RESALE_MULTIPLIER },
+    };
+  }
+
+  /**
+   * Liest die zuletzt gespeicherte Recherche zurück, wenn sie innerhalb von
+   * `PRICE_RESEARCH_CACHE_TTL_MS` liegt — `persist()` schreibt alle Quellen
+   * EINES `research()`-Aufrufs mit demselben `fetchedAt`-Wert, das dient
+   * hier als Batch-Schlüssel, um genau diesen einen Aufruf wieder
+   * zusammenzusetzen (nicht einzelne Quellen aus verschiedenen, älteren
+   * Batches vermischen).
+   */
+  private async readFreshCache(itemId: string): Promise<PriceResearchResult | null> {
+    const rows = await this.dataSource.manager.find(ItemPriceResearchEntity, {
+      where: { itemId },
+      order: { fetchedAt: 'DESC' },
+    });
+    if (rows.length === 0) return null;
+
+    const newest = rows[0].fetchedAt;
+    if (Date.now() - newest.getTime() > PRICE_RESEARCH_CACHE_TTL_MS) return null;
+
+    const latestBatch = rows.filter((r) => r.fetchedAt.getTime() === newest.getTime());
+
+    return {
+      itemId,
+      fetchedAt: newest,
+      sources: latestBatch.map((r) => ({
+        source: r.source,
+        providerLabel: r.providerLabel,
+        median: r.median,
+        p25: r.p25,
+        p75: r.p75,
+        sampleSize: r.sampleSize,
+        currency: r.currency,
+        detail: r.rawResponse ?? undefined,
+      })),
     };
   }
 

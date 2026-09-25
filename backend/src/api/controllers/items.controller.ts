@@ -371,8 +371,11 @@ export class ItemsController {
   // einen Beratungs-Cache (`item_price_research`), nie einen Preis in
   // `canonical_listings`.
   @Get(':id/price-research')
-  async researchPrice(@Param('id', ParseUUIDPipe) id: string): Promise<PriceResearchResult> {
-    return this.priceTriangulation.research(id);
+  async researchPrice(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('forceRefresh') forceRefresh?: string,
+  ): Promise<PriceResearchResult> {
+    return this.priceTriangulation.research(id, { forceRefresh: forceRefresh === 'true' });
   }
 
   @Post(':id/disposition')
