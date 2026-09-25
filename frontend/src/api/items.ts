@@ -18,10 +18,10 @@ export const itemsApi = {
     api.get<ItemListEntry[]>(status ? `/items?status=${status}` : '/items'),
   create: (title?: string) => api.post<Item>('/items', { title }),
   get: (id: string) => api.get<ItemDetail>(`/items/${id}`),
-  analyze: (id: string, files: File[]) => {
+  analyze: (id: string, files: File[], onProgress?: (fraction: number) => void) => {
     const form = new FormData();
     files.forEach((file) => form.append('files', file));
-    return api.postForm<Item>(`/items/${id}/analyze`, form);
+    return api.postForm<Item>(`/items/${id}/analyze`, form, onProgress);
   },
   priceResearch: (id: string) => api.get<PriceResearchResult>(`/items/${id}/price-research`),
   photoQuality: (id: string) => api.get<PhotoQualityReport>(`/items/${id}/photo-quality`),

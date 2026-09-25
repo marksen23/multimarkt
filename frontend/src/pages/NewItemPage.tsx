@@ -13,20 +13,28 @@ import { PhotoCapture } from '../components/PhotoCapture';
 export function NewItemPage() {
   const [photos, setPhotos] = useState<File[]>([]);
   const [title, setTitle] = useState('');
-  const [stage, setStage] = useState<'idle' | 'creating' | 'uploading'>('idle');
+  const [stage, setStage] = useState<'idle' | 'creating' | 'uploading' | 'analyzing'>('idle');
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const creating = stage !== 'idle';
 
   const start = async () => {
     setError(null);
+    setUploadProgress(0);
     let createdItemId: string | null = null;
     try {
       setStage('creating');
       const item = await itemsApi.create(title || undefined);
       createdItemId = item.id;
       setStage('uploading');
-      await itemsApi.analyze(item.id, photos);
+      await itemsApi.analyze(item.id, photos, (fraction) => {
+        setUploadProgress(fraction);
+        // Ab hier ist der Upload selbst fertig, der Server braucht noch Zeit
+        // für die KI-Analyse (dafür gibt es keinen Fortschritt zu melden) —
+        // sonst bliebe die Anzeige bei "100%" stehen und wirkt wie hängend.
+        if (fraction >= 0.999) setStage('analyzing');
+      });
       navigate(`/items/${item.id}`);
     } catch (e) {
       if (createdItemId) {
@@ -73,6 +81,15 @@ export function NewItemPage() {
 
         {error && <p className="text-xs text-danger">{error}</p>}
 
+        {stage === 'uploading' && (
+          <div className="w-full h-1.5 rounded-full bg-line overflow-hidden">
+            <div
+              className="h-full bg-accent transition-all duration-150"
+              style={{ width: `${Math.round(uploadProgress * 100)}%` }}
+            />
+          </div>
+        )}
+
         <button
           type="button"
           disabled={creating || photos.length === 0}
@@ -80,7 +97,8 @@ export function NewItemPage() {
           className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
         >
           {stage === 'creating' && 'Artikel wird angelegt…'}
-          {stage === 'uploading' && 'Fotos werden hochgeladen & analysiert…'}
+          {stage === 'uploading' && `Fotos werden hochgeladen… ${Math.round(uploadProgress * 100)}%`}
+          {stage === 'analyzing' && 'KI analysiert die Fotos…'}
           {stage === 'idle' && 'Weiter'}
         </button>
 

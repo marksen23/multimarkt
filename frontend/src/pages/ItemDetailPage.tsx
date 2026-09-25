@@ -10,6 +10,7 @@ import { PhotoCapture } from '../components/PhotoCapture';
 import { PhotoGallery } from '../components/PhotoGallery';
 import { PhotoQualityPanel } from '../components/PhotoQualityPanel';
 import { PriceResearchPanel } from '../components/PriceResearchPanel';
+import { DetailPageSkeleton } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
 
 export function ItemDetailPage() {
@@ -48,7 +49,7 @@ export function ItemDetailPage() {
     return <Centered title="Fehler" message={error} />;
   }
   if (!detail || !id) {
-    return <Centered title="Lädt…" message="Artikel wird geladen." />;
+    return <DetailPageSkeleton />;
   }
 
   const { item } = detail;
@@ -90,7 +91,7 @@ export function ItemDetailPage() {
         <AnalyzeStep
           itemId={id}
           busy={busy || item.status === 'ANALYZING'}
-          onAnalyze={(files) => run(() => itemsApi.analyze(id, files))}
+          onAnalyze={(files, onProgress) => run(() => itemsApi.analyze(id, files, onProgress))}
         />
       )}
 
@@ -235,20 +236,43 @@ function AnalyzeStep({
 }: {
   itemId: string;
   busy: boolean;
-  onAnalyze: (files: File[]) => Promise<void>;
+  onAnalyze: (files: File[], onProgress?: (fraction: number) => void) => Promise<void>;
 }) {
   const [photos, setPhotos] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [analyzing, setAnalyzing] = useState(false);
+
+  const start = async () => {
+    setUploadProgress(0);
+    setAnalyzing(false);
+    await onAnalyze(photos, (fraction) => {
+      setUploadProgress(fraction);
+      if (fraction >= 0.999) setAnalyzing(true);
+    });
+  };
+
   return (
     <div className="p-4 space-y-4">
       <h1 className="text-lg font-bold text-ink">Fotos hinzufügen</h1>
       <PhotoCapture files={photos} onChange={setPhotos} itemId={itemId} />
+      {busy && uploadProgress > 0 && !analyzing && (
+        <div className="w-full h-1.5 rounded-full bg-line overflow-hidden">
+          <div
+            className="h-full bg-accent transition-all duration-150"
+            style={{ width: `${Math.round(uploadProgress * 100)}%` }}
+          />
+        </div>
+      )}
       <button
         type="button"
         disabled={busy || photos.length === 0}
-        onClick={() => onAnalyze(photos)}
+        onClick={start}
         className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
       >
-        {busy ? 'Analysiert…' : 'Analysieren'}
+        {!busy && 'Analysieren'}
+        {busy && analyzing && 'KI analysiert die Fotos…'}
+        {busy && !analyzing && uploadProgress > 0 && `Fotos werden hochgeladen… ${Math.round(uploadProgress * 100)}%`}
+        {busy && !analyzing && uploadProgress === 0 && 'Analysiert…'}
       </button>
     </div>
   );

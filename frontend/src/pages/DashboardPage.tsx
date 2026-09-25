@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import type { ItemListEntry } from '../api/types';
+import { ListSkeleton } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
 
 /**
@@ -40,7 +41,7 @@ export function DashboardPage() {
         </div>
       )}
 
-      {!entries && !error && <p className="text-sm text-ink-faint">Lädt…</p>}
+      {!entries && !error && <ListSkeleton />}
 
       {entries && entries.length === 0 && (
         <div className="bg-surface border border-line rounded-2xl p-8 text-center space-y-2">

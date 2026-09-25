@@ -4,6 +4,7 @@ import { bundlesApi } from '../api/bundles';
 import { ApiRequestError } from '../api/client';
 import type { BundleDetail } from '../api/types';
 import { ListingsManager } from '../components/ListingsManager';
+import { DetailPageSkeleton } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
 
 export function BundleDetailPage() {
@@ -41,9 +42,10 @@ export function BundleDetailPage() {
   };
 
   if (!detail || !id) {
-    return (
-      <div className="p-6 text-center text-sm text-ink-faint">{error ?? 'Lädt…'}</div>
-    );
+    if (error) {
+      return <div className="p-6 text-center text-sm text-danger">{error}</div>;
+    }
+    return <DetailPageSkeleton />;
   }
 
   const { bundle, items, listings } = detail;
