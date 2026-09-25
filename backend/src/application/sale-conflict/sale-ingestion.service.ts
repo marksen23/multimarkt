@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager } from 'typeorm';
@@ -89,6 +90,38 @@ export class SaleIngestionService {
       .execute();
 
     return insertResult.identifiers.length === 0 ? 'IGNORED_DUPLICATE' : 'RECORDED';
+  }
+
+  /**
+   * §4d/§4e-Gap (September 2026, gefunden beim Nachdenken über den
+   * Kleinanzeigen-Verkaufsloop): Kleinanzeigen hat keine API und kann
+   * deshalb NIE einen Webhook schicken (siehe WebhooksController) — ohne
+   * diesen Weg gab es für den einzigen aktiven Verkaufskanal keine
+   * Möglichkeit, einen Verkauf überhaupt ins System zu bekommen. Anders
+   * als der Webhook-Pfad wertet dieser SOFORT aus (kein Debounce nötig —
+   * eine bewusste Einzelmeldung durch den Verkäufer selbst hat kein
+   * Race-Problem mit einem zweiten, gleichzeitigen Report).
+   */
+  async reportAndEvaluate(projectionId: string, reportedPrice: number): Promise<EvaluateSaleOutcome> {
+    const projection = await this.dataSource.manager.findOneBy(MarketplaceProjectionEntity, {
+      id: projectionId,
+    });
+    if (!projection) throw new NotFoundException(`Listing ${projectionId} not found`);
+
+    const listing = await this.dataSource.manager.findOneByOrFail(CanonicalListingEntity, {
+      id: projection.canonicalListingId,
+    });
+
+    await this.reportSale({
+      projectionId,
+      externalEventId: `manual-${randomUUID()}`,
+      reportedPrice,
+    });
+
+    // Bundle-XOR (Doc 01 §3): genau eines von beiden ist gesetzt.
+    return listing.itemId
+      ? this.evaluateItemSaleOutcome(listing.itemId)
+      : this.evaluateBundleSaleOutcome(listing.bundleId!);
   }
 
   async evaluateItemSaleOutcome(itemId: string): Promise<EvaluateSaleOutcome> {

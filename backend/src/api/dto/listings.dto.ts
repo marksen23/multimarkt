@@ -1,4 +1,4 @@
-import { IsString, IsUUID, MinLength } from 'class-validator';
+import { IsNumber, IsPositive, IsString, IsUUID, MinLength } from 'class-validator';
 
 export class CreateListingDto {
   @IsUUID('4')
@@ -7,4 +7,10 @@ export class CreateListingDto {
   @IsString()
   @MinLength(1)
   marketplaceId: string;
+}
+
+export class MarkSoldDto {
+  @IsNumber()
+  @IsPositive()
+  reportedPrice: number;
 }

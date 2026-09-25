@@ -14,13 +14,18 @@ import { DataSource } from 'typeorm';
 import { CurrentActor } from '../auth/actor.decorator';
 import { ActorContextGuard } from '../auth/actor-context.guard';
 import { ResponseEnvelopeInterceptor } from '../interceptors/response-envelope.interceptor';
-import { CreateListingDto } from '../dto/listings.dto';
+import { CreateListingDto, MarkSoldDto } from '../dto/listings.dto';
 import { ActorContext } from '../../domain/actor-context';
+import { HumanGateBypassException } from '../../domain/errors/state-transition.errors';
 import {
   CapabilityCheckResult,
   CapabilityCheckService,
 } from '../../application/capability-check/capability-check.service';
 import { MarketplacePublishingService } from '../../application/listing/marketplace-publishing.service';
+import {
+  EvaluateSaleOutcome,
+  SaleIngestionService,
+} from '../../application/sale-conflict/sale-ingestion.service';
 import { StateGuardService } from '../../application/state-guard/state-guard.service';
 import { MarketplaceProjectionEntity } from '../../infrastructure/database/entities';
 
@@ -34,6 +39,7 @@ export class ListingsController {
     private readonly stateGuard: StateGuardService,
     private readonly capabilityCheck: CapabilityCheckService,
     private readonly publishing: MarketplacePublishingService,
+    private readonly saleIngestion: SaleIngestionService,
   ) {}
 
   @Post()
@@ -91,6 +97,27 @@ export class ListingsController {
       type: 'CANCEL_PENDING_TRIGGERED',
       actor,
     });
+  }
+
+  /**
+   * §4d/§4e-Gap (September 2026): Kleinanzeigen hat keine API und kann
+   * daher nie einen Sale-Webhook schicken (siehe WebhooksController) —
+   * ohne diesen Weg gab es für den einzigen aktiven Verkaufskanal keine
+   * Möglichkeit, einen Verkauf überhaupt ins System zu bekommen. Explizit
+   * ein Human-Gate (nur USER, nicht SYSTEM/WEBHOOK) — eine Verkaufsmeldung
+   * ist eine bewusste menschliche Aussage, kein automatisiertes Ereignis.
+   */
+  @Post(':id/mark-sold')
+  async markSold(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: MarkSoldDto,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<{ outcome: EvaluateSaleOutcome }> {
+    if (actor.type !== 'USER') {
+      throw new HumanGateBypassException('Only a USER actor may manually report a sale');
+    }
+    const outcome = await this.saleIngestion.reportAndEvaluate(id, dto.reportedPrice);
+    return { outcome };
   }
 
   @Post(':id/confirm-cancellation')
