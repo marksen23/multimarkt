@@ -12,9 +12,9 @@ import {
 // für Bildbearbeitung (Text+Bild-zu-Bild), nicht nur Text-zu-Bild.
 const MODEL_ID = 'gemini-3.1-flash-image';
 
-const EDIT_INSTRUCTION = `Optimiere dieses Produktfoto für ein Online-Verkaufsinserat:
-Hintergrund neutral und aufgeräumt (hell, keine Ablenkung), Produkt klar im Fokus, natürliche Farbkorrektur.
-WICHTIG: Verändere das Produkt selbst NICHT — keine anderen Farben, keine anderen Details, keine Beschädigungen entfernen oder hinzufügen. Nur Beleuchtung/Hintergrund/Bildausschnitt verbessern.`;
+const EDIT_INSTRUCTION = `Optimiere dieses Produktfoto für maximale Käuferwirkung als Titel-/Vorschaubild eines Online-Verkaufsinserats:
+Hintergrund neutral und aufgeräumt (hell, keine Ablenkung), Produkt füllt den Bildausschnitt und bleibt auch in kleiner Vorschaugröße (Trefferliste) klar erkennbar, natürliche Farbkorrektur und Belichtung.
+WICHTIG: Verändere das Produkt selbst NICHT — keine anderen Farben, keine anderen Details, keine Mängel oder Beschädigungen entfernen, verwischen oder hinzufügen. Nur Beleuchtung/Hintergrund/Bildausschnitt verbessern. Das Foto muss den echten Zustand des Artikels wahrheitsgetreu zeigen.`;
 
 /**
  * Echte Bildoptimierung über Gemini ("Nano Banana", docs/README.md
