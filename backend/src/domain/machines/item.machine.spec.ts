@@ -83,4 +83,14 @@ describe('itemMachine', () => {
   it('does not allow DISCARD once an item is LISTED (must go through conflict/sale resolution instead)', () => {
     expect(transition('LISTED', { type: 'DISCARD', actor: user })).toBe('LISTED');
   });
+
+  it('lets a bundle sale/cancellation cascade into BUNDLED items regardless of actor (system-driven cascade)', () => {
+    expect(transition('BUNDLED', { type: 'BUNDLE_SOLD', actor: system })).toBe('SOLD');
+    expect(transition('BUNDLED', { type: 'BUNDLE_CANCELLED', actor: user })).toBe('CANCELLED');
+  });
+
+  it('rejects BUNDLE_SOLD/BUNDLE_CANCELLED from any state other than BUNDLED', () => {
+    expect(transition('READY', { type: 'BUNDLE_SOLD', actor: system })).toBe('READY');
+    expect(transition('LISTED', { type: 'BUNDLE_CANCELLED', actor: system })).toBe('LISTED');
+  });
 });

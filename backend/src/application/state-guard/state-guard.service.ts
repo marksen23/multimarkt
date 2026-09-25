@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { AnyStateMachine, createActor } from 'xstate';
+import { ActorContext } from '../../domain/actor-context';
 import {
   HumanGateBypassException,
   InvalidStateTransitionException,
@@ -11,6 +12,7 @@ import { ItemMachineEvent, itemMachine } from '../../domain/machines/item.machin
 import { ListingMachineEvent, listingMachine } from '../../domain/machines/listing.machine';
 import {
   BundleEntity,
+  BundleItemEntity,
   CanonicalListingEntity,
   ItemAttributeEntity,
   ItemEntity,
@@ -166,7 +168,43 @@ export class StateGuardService {
     }
 
     bundle.status = nextStatus as BundleEntity['status'];
-    return manager.save(BundleEntity, bundle);
+    const saved = await manager.save(BundleEntity, bundle);
+
+    // Doc 02 §6 Postcondition ("alle Kind-Items -> SOLD bei Bundle-Verkauf")
+    // — bislang nirgends umgesetzt, obwohl bundle.machine.ts das explizit als
+    // hierher delegiert dokumentiert. Ohne diese Kaskade blieben Items nach
+    // einem Bundle-Verkauf/-Abbruch für immer in BUNDLED hängen.
+    if (nextStatus === 'SOLD' || nextStatus === 'CANCELLED') {
+      await this.cascadeBundleStatusToItems(manager, bundleId, nextStatus, event.actor);
+    }
+
+    return saved;
+  }
+
+  private async cascadeBundleStatusToItems(
+    manager: EntityManager,
+    bundleId: string,
+    bundleStatus: 'SOLD' | 'CANCELLED',
+    actor: ActorContext,
+  ): Promise<void> {
+    const memberships = await manager.find(BundleItemEntity, { where: { bundleId } });
+    const cascadeEvent = bundleStatus === 'SOLD' ? 'BUNDLE_SOLD' : 'BUNDLE_CANCELLED';
+    for (const membership of memberships) {
+      const item = await manager.findOne(ItemEntity, {
+        where: { id: membership.itemId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      // Nur BUNDLED-Items kaskadieren — ein Item, das (aus welchem Grund
+      // auch immer) nicht mehr BUNDLED ist, wird nicht rückwirkend
+      // überschrieben (die Maschine würde die Transition ohnehin ablehnen).
+      if (item && item.status === 'BUNDLED') {
+        item.status = this.resolveTransition(itemMachine, item.status, {
+          type: cascadeEvent,
+          actor,
+        }) as ItemEntity['status'];
+        await manager.save(ItemEntity, item);
+      }
+    }
   }
 
   /**

@@ -1,5 +1,6 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException } from '@nestjs/common';
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger } from '@nestjs/common';
 import { Response } from 'express';
+import { EntityNotFoundError } from 'typeorm';
 
 /**
  * Doc 04 §5: jede API-Fehlerantwort hat die Form
@@ -9,11 +10,44 @@ import { Response } from 'express';
  * (ValidationPipe, NotFoundException, UnauthorizedException, ...) auf
  * dieselbe Form, damit Clients nie zwei unterschiedliche Fehlerschemata
  * sehen.
+ *
+ * Catch-all (September 2026, Bug-Fix): `@Catch(HttpException)` allein ließ
+ * TypeORMs `findOneByOrFail`/`findOneOrFail` (wirft `EntityNotFoundError`,
+ * KEINE `HttpException`) sowie jeden anderen unerwarteten Fehler an Nests
+ * eingebautem Handler vorbei, der ein komplett anderes, nicht dokumentiertes
+ * Fehlerschema zurückgibt — ein reines Frontend-`ApiError`-Parsing hätte
+ * dort `body.message` als `undefined` gesehen. `EntityNotFoundError` wird
+ * jetzt explizit auf 404/ERR_NOT_FOUND gemappt (wie die expliziten
+ * `NotFoundException`-Stellen im Code), alles andere Unerwartete auf ein
+ * generisches 500 im dokumentierten Format — geloggt, damit der eigentliche
+ * Bug serverseitig sichtbar bleibt, statt nur als kryptischer Client-Fehler.
  */
-@Catch(HttpException)
+@Catch()
 export class DomainExceptionFilter implements ExceptionFilter {
-  catch(exception: HttpException, host: ArgumentsHost): void {
+  private readonly logger = new Logger(DomainExceptionFilter.name);
+
+  catch(exception: unknown, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<Response>();
+
+    if (exception instanceof EntityNotFoundError) {
+      response.status(404).json({
+        error_code: 'ERR_NOT_FOUND',
+        message: 'The requested resource was not found.',
+        details: {},
+      });
+      return;
+    }
+
+    if (!(exception instanceof HttpException)) {
+      this.logger.error('Unhandled non-HTTP exception', (exception as Error)?.stack ?? exception);
+      response.status(500).json({
+        error_code: 'ERR_UNKNOWN',
+        message: 'An unexpected error occurred.',
+        details: {},
+      });
+      return;
+    }
+
     const status = exception.getStatus();
     const body = exception.getResponse();
 

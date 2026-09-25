@@ -143,5 +143,76 @@ describe('T06 Bundle Lock Integrity', () => {
       });
       expect(sold.status).toBe('SOLD');
     });
+
+    it('cascades a bundle sale to all its BUNDLED member items (Doc 02 §6 Postcondition)', async () => {
+      const itemA = await dataSource.manager.save(ItemEntity, { userId, status: 'BUNDLED' });
+      const itemB = await dataSource.manager.save(ItemEntity, { userId, status: 'BUNDLED' });
+      const bundle = await dataSource.manager.save(BundleEntity, {
+        userId,
+        title: 'Konvolut zum Verkauf',
+        status: 'LISTED',
+      });
+      await dataSource.query('INSERT INTO bundle_items (bundle_id, item_id) VALUES ($1, $2), ($1, $3)', [
+        bundle.id,
+        itemA.id,
+        itemB.id,
+      ]);
+
+      await stateGuard.transitionBundle(bundle.id, {
+        type: 'SALE_CONFIRMED',
+        actor: { type: 'SYSTEM' },
+      });
+
+      const reloadedA = await dataSource.manager.findOneByOrFail(ItemEntity, { id: itemA.id });
+      const reloadedB = await dataSource.manager.findOneByOrFail(ItemEntity, { id: itemB.id });
+      expect(reloadedA.status).toBe('SOLD');
+      expect(reloadedB.status).toBe('SOLD');
+    });
+
+    it('cascades a bundle cancellation to all its BUNDLED member items', async () => {
+      const item = await dataSource.manager.save(ItemEntity, { userId, status: 'BUNDLED' });
+      const bundle = await dataSource.manager.save(BundleEntity, {
+        userId,
+        title: 'Konvolut, wird abgebrochen',
+        status: 'READY',
+      });
+      await dataSource.query('INSERT INTO bundle_items (bundle_id, item_id) VALUES ($1, $2)', [
+        bundle.id,
+        item.id,
+      ]);
+
+      await stateGuard.transitionBundle(bundle.id, {
+        type: 'CANCEL',
+        actor: { type: 'USER' },
+      });
+
+      const reloaded = await dataSource.manager.findOneByOrFail(ItemEntity, { id: item.id });
+      expect(reloaded.status).toBe('CANCELLED');
+    });
+
+    it('does not touch an item that is no longer BUNDLED when its (stale) bundle sells', async () => {
+      // Realistischer Edge-Case: ein Item könnte theoretisch über einen
+      // anderen Pfad seinen Status verändert haben, während die
+      // bundle_items-Zeile noch existiert. Die Kaskade darf so ein Item
+      // nicht rückwirkend überschreiben.
+      const item = await dataSource.manager.save(ItemEntity, { userId, status: 'ARCHIVED' });
+      const bundle = await dataSource.manager.save(BundleEntity, {
+        userId,
+        title: 'Konvolut mit inkonsistentem Item',
+        status: 'LISTED',
+      });
+      await dataSource.query('INSERT INTO bundle_items (bundle_id, item_id) VALUES ($1, $2)', [
+        bundle.id,
+        item.id,
+      ]);
+
+      await stateGuard.transitionBundle(bundle.id, {
+        type: 'SALE_CONFIRMED',
+        actor: { type: 'SYSTEM' },
+      });
+
+      const reloaded = await dataSource.manager.findOneByOrFail(ItemEntity, { id: item.id });
+      expect(reloaded.status).toBe('ARCHIVED');
+    });
   });
 });

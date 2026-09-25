@@ -28,7 +28,9 @@ export type ItemMachineEvent =
   | { type: 'RESOLVE_CONFLICT_SOLD'; actor: ActorContext }
   | { type: 'RESOLVE_CONFLICT_CANCEL'; actor: ActorContext }
   | { type: 'ARCHIVE'; actor: ActorContext }
-  | { type: 'DISCARD'; actor: ActorContext };
+  | { type: 'DISCARD'; actor: ActorContext }
+  | { type: 'BUNDLE_SOLD'; actor: ActorContext }
+  | { type: 'BUNDLE_CANCELLED'; actor: ActorContext };
 
 export const itemMachine = createMachine({
   id: 'item',
@@ -72,8 +74,18 @@ export const itemMachine = createMachine({
       },
     },
     BUNDLED: {
-      // Terminal innerhalb der Item-Maschine, solange das Bundle existiert
-      // (Doc 02 §12 Postcondition: ProductTruth-Manipulation untersagt).
+      // Innerhalb der Item-Maschine selbst nur über den Bundle-Lifecycle
+      // verlassbar (Doc 02 §12 Postcondition: ProductTruth-Manipulation
+      // untersagt, keine ITEM-eigenen Events wie START_LISTING/DISCARD).
+      // BUNDLE_SOLD/BUNDLE_CANCELLED werden ausschließlich vom
+      // StateGuardService beim Kaskadieren einer Bundle-Transition gesendet
+      // (Doc 02 §6 Postcondition "alle Kind-Items -> SOLD bei
+      // Bundle-Verkauf") — kein eigenes Human-Gate hier, weil die
+      // ursprüngliche Bundle-Aktion (SALE_CONFIRMED/CANCEL) bereits gated ist.
+      on: {
+        BUNDLE_SOLD: { target: 'SOLD' },
+        BUNDLE_CANCELLED: { target: 'CANCELLED' },
+      },
     },
     LISTED: {
       on: {
