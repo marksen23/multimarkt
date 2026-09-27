@@ -7,6 +7,7 @@ import {
   ItemEntity,
   ItemPriceResearchEntity,
 } from '../../infrastructure/database/entities';
+import { PriceRecommendationService } from './price-recommendation.service';
 import {
   BUYBACK_TO_RESALE_MULTIPLIER,
   PriceTriangulationService,
@@ -47,7 +48,13 @@ describe('PriceTriangulationService', () => {
   });
 
   const makeService = (dataSource: DataSource) =>
-    new PriceTriangulationService(dataSource, marketProvider, groundingProvider, buybackProvider);
+    new PriceTriangulationService(
+      dataSource,
+      marketProvider,
+      groundingProvider,
+      buybackProvider,
+      new PriceRecommendationService(),
+    );
 
   it('throws NotFoundException when the item does not exist', async () => {
     const { dataSource } = makeDataSource({ item: null, attributes: [] });

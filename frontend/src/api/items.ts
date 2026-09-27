@@ -10,6 +10,7 @@ import type {
   PhotoQualityReport,
   PriceResearchResult,
   SaleEvent,
+  SalesGoal,
   TitleSuggestion,
 } from './types';
 
@@ -23,10 +24,13 @@ export const itemsApi = {
     files.forEach((file) => form.append('files', file));
     return api.postForm<Item>(`/items/${id}/analyze`, form, onProgress);
   },
-  priceResearch: (id: string, forceRefresh?: boolean) =>
-    api.get<PriceResearchResult>(
-      `/items/${id}/price-research${forceRefresh ? '?forceRefresh=true' : ''}`,
-    ),
+  priceResearch: (id: string, forceRefresh?: boolean, salesGoal?: SalesGoal) => {
+    const params = new URLSearchParams();
+    if (forceRefresh) params.set('forceRefresh', 'true');
+    if (salesGoal) params.set('salesGoal', salesGoal);
+    const query = params.toString();
+    return api.get<PriceResearchResult>(`/items/${id}/price-research${query ? `?${query}` : ''}`);
+  },
   photoQuality: (id: string) => api.get<PhotoQualityReport>(`/items/${id}/photo-quality`),
   generateTitle: (id: string, channel: ListingChannel) =>
     api.get<TitleSuggestion>(`/items/${id}/generate-title?channel=${channel}`),

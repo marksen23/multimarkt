@@ -16,6 +16,7 @@ import {
   ItemEntity,
   ItemPriceResearchEntity,
 } from '../../infrastructure/database/entities';
+import { PriceRecommendationService } from './price-recommendation.service';
 import { PriceTriangulationService } from './price-triangulation.service';
 
 // Muss mit dem Platzhalter in render.yaml übereinstimmen (siehe auch
@@ -29,6 +30,7 @@ const GEMINI_PLACEHOLDER_KEY = 'unused-mock-provider-active';
   ],
   providers: [
     PriceTriangulationService,
+    PriceRecommendationService,
     // Austauschbare Provider (docs/README.md §9e, Umsetzungsplan Phase 4/5):
     // für die echten Anbindungen wird hier nur das Binding ersetzt, kein
     // Aufrufer-Code (Service/Controller) ändert sich.

@@ -374,8 +374,10 @@ export class ItemsController {
   async researchPrice(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('forceRefresh') forceRefresh?: string,
+    @Query('salesGoal') salesGoal?: string,
   ): Promise<PriceResearchResult> {
-    return this.priceTriangulation.research(id, { forceRefresh: forceRefresh === 'true' });
+    const goal = SALES_GOALS.includes(salesGoal as SalesGoal) ? (salesGoal as SalesGoal) : null;
+    return this.priceTriangulation.research(id, { forceRefresh: forceRefresh === 'true', salesGoal: goal });
   }
 
   @Post(':id/disposition')

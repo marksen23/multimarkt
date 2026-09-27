@@ -1,6 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { SalesGoal } from '../../domain/ai/description-generation-provider.interface';
 import {
   BUYBACK_ANCHOR_PROVIDER,
   BuybackAnchorProvider,
@@ -12,11 +13,13 @@ import {
   MIN_MARKET_SAMPLE_SIZE,
 } from '../../domain/pricing/market-distribution-provider.interface';
 import { PriceResearchSource } from '../../domain/pricing/price-research-vocabulary';
+import { PriceRecommendation } from '../../domain/pricing/price-recommendation';
 import {
   ItemAttributeEntity,
   ItemEntity,
   ItemPriceResearchEntity,
 } from '../../infrastructure/database/entities';
+import { PriceRecommendationService } from './price-recommendation.service';
 
 /**
  * Preis-Triangulation (docs/README.md §9e) — kombiniert eBay-Browse-
@@ -58,6 +61,14 @@ export interface PriceResearchResult {
   itemId: string;
   sources: PriceResearchSourceResult[];
   fetchedAt: Date;
+  /**
+   * §9e-Erweiterung: abgeleiteter Preisvorschlag (P_list/P_target/P_min) —
+   * `null`, wenn keine Markt-Verteilungsquelle Daten geliefert hat (siehe
+   * PriceRecommendationService). Wird bei JEDEM Aufruf frisch aus den
+   * (ggf. gecachten) `sources` berechnet, hängt also vom aktuell
+   * übergebenen `salesGoal` ab, auch wenn die Rohdaten aus dem Cache kommen.
+   */
+  recommendation: PriceRecommendation | null;
 }
 
 @Injectable()
@@ -70,15 +81,21 @@ export class PriceTriangulationService {
     private readonly groundingProvider: MarketDistributionProvider,
     @Inject(BUYBACK_ANCHOR_PROVIDER)
     private readonly buybackProvider: BuybackAnchorProvider,
+    private readonly recommendationService: PriceRecommendationService,
   ) {}
 
-  async research(itemId: string, options: { forceRefresh?: boolean } = {}): Promise<PriceResearchResult> {
+  async research(
+    itemId: string,
+    options: { forceRefresh?: boolean; salesGoal?: SalesGoal | null } = {},
+  ): Promise<PriceResearchResult> {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id: itemId });
     if (!item) throw new NotFoundException(`Item ${itemId} not found`);
 
     if (!options.forceRefresh) {
       const cached = await this.readFreshCache(itemId);
-      if (cached) return cached;
+      if (cached) {
+        return { ...cached, recommendation: this.recommendationService.recommend(cached.sources, options.salesGoal ?? null) };
+      }
     }
 
     const attributes = await this.dataSource.manager.find(ItemAttributeEntity, {
@@ -117,7 +134,12 @@ export class PriceTriangulationService {
     const fetchedAt = new Date();
     await this.persist(itemId, sources, fetchedAt);
 
-    return { itemId, sources, fetchedAt };
+    return {
+      itemId,
+      sources,
+      fetchedAt,
+      recommendation: this.recommendationService.recommend(sources, options.salesGoal ?? null),
+    };
   }
 
   private async researchMarketDistribution(
@@ -176,7 +198,9 @@ export class PriceTriangulationService {
    * zusammenzusetzen (nicht einzelne Quellen aus verschiedenen, älteren
    * Batches vermischen).
    */
-  private async readFreshCache(itemId: string): Promise<PriceResearchResult | null> {
+  private async readFreshCache(
+    itemId: string,
+  ): Promise<Omit<PriceResearchResult, 'recommendation'> | null> {
     const rows = await this.dataSource.manager.find(ItemPriceResearchEntity, {
       where: { itemId },
       order: { fetchedAt: 'DESC' },

@@ -149,10 +149,24 @@ export interface PriceResearchSourceResult {
   detail?: { comparableListings?: ComparableListing[]; buybackPrice?: number; multiplier?: number };
 }
 
+export type SalesGoal = 'MAX_PROFIT' | 'BALANCED' | 'FAST_SALE' | 'MINIMAL_EFFORT';
+
+export type PriceConfidence = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export interface PriceRecommendation {
+  listPrice: number;
+  targetPrice: number;
+  minPrice: number;
+  confidence: PriceConfidence;
+  buybackRecommended: boolean;
+  reasoning: string[];
+}
+
 export interface PriceResearchResult {
   itemId: string;
   sources: PriceResearchSourceResult[];
   fetchedAt: string;
+  recommendation: PriceRecommendation | null;
 }
 
 export type ListingChannel = 'KLEINANZEIGEN' | 'EBAY' | 'VINTED';
