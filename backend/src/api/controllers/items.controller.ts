@@ -35,7 +35,10 @@ import { ActorContext } from '../../domain/actor-context';
 import { SalesGoal } from '../../domain/ai/description-generation-provider.interface';
 import { ItemLifecycleState } from '../../domain/state-vocabulary';
 import { BundleAssignmentService } from '../../application/bundle/bundle-assignment.service';
-import { CanonicalListingService } from '../../application/listing/canonical-listing.service';
+import {
+  CanonicalListingService,
+  DescriptionSuggestion,
+} from '../../application/listing/canonical-listing.service';
 import {
   ListingSummary,
   ListingSummaryService,
@@ -302,9 +305,9 @@ export class ItemsController {
   async generateDescription(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('salesGoal') salesGoal?: string,
-  ): Promise<{ descriptionText: string }> {
+  ): Promise<DescriptionSuggestion> {
     const goal = SALES_GOALS.includes(salesGoal as SalesGoal) ? (salesGoal as SalesGoal) : null;
-    return { descriptionText: await this.canonicalListing.generateDescription(id, goal) };
+    return this.canonicalListing.generateDescription(id, goal);
   }
 
   // Rein technischer Hinweis (Schärfe/Belichtung/Auflösung/Duplikate) über

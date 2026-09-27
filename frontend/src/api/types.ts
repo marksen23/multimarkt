@@ -181,6 +181,17 @@ export interface TitleSuggestion {
   gapAnalysis: TitleGapAnalysis;
 }
 
+export interface VaguePhraseMatch {
+  phrase: string;
+  suggestion: string;
+}
+
+export interface DescriptionSuggestion {
+  descriptionText: string;
+  gapAnalysis: TitleGapAnalysis;
+  vaguePhrases: VaguePhraseMatch[];
+}
+
 export type PhotoQualityIssueType = 'BLURRY' | 'TOO_DARK' | 'TOO_BRIGHT' | 'LOW_RESOLUTION' | 'DUPLICATE';
 
 export interface PhotoQualityIssue {

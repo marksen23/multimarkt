@@ -1,6 +1,7 @@
 import { api } from './client';
 import type {
   CanonicalListing,
+  DescriptionSuggestion,
   Item,
   ItemAttribute,
   ItemDetail,
@@ -36,7 +37,7 @@ export const itemsApi = {
     api.get<TitleSuggestion>(`/items/${id}/generate-title?channel=${channel}`),
   updateTitle: (id: string, title: string) => api.patch<Item>(`/items/${id}/title`, { title }),
   generateDescription: (id: string, salesGoal?: string) =>
-    api.get<{ descriptionText: string }>(
+    api.get<DescriptionSuggestion>(
       `/items/${id}/generate-description${salesGoal ? `?salesGoal=${salesGoal}` : ''}`,
     ),
   optimizePhoto: (id: string, file: File) => {

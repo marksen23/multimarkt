@@ -32,6 +32,6 @@ const GEMINI_PLACEHOLDER_KEY = 'unused-mock-provider-active';
       },
     },
   ],
-  exports: [TitleGenerationService],
+  exports: [TitleGenerationService, TitleTokenAnalysisService],
 })
 export class TitleGenerationModule {}

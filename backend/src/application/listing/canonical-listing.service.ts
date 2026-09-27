@@ -17,6 +17,21 @@ import {
 } from '../../infrastructure/database/entities';
 import { PriceTriangulationService } from '../pricing/price-triangulation.service';
 import { StateGuardService } from '../state-guard/state-guard.service';
+import { TitleGapAnalysis, TitleTokenAnalysisService } from '../title-generation/title-token-analysis.service';
+import { VaguePhraseDetectorService, VaguePhraseMatch } from './vague-phrase-detector.service';
+
+export interface DescriptionSuggestion {
+  descriptionText: string;
+  /**
+   * §9e-Erweiterung (September 2026, "Konkurrenzanalyse vertiefen"):
+   * dieselbe deterministische Token-Lückenanalyse wie beim Titel
+   * (TitleTokenAnalysisService), hier auf den Beschreibungstext angewendet
+   * — echte Vergleichstitel, keine Erfindung.
+   */
+  gapAnalysis: TitleGapAnalysis;
+  /** Bekannte Floskeln im generierten Text, mit Vorschlag zur Konkretisierung. */
+  vaguePhrases: VaguePhraseMatch[];
+}
 
 /**
  * `POST /items/:id/prepare-listing` / `POST /bundles/:id/prepare-listing`
@@ -34,6 +49,8 @@ export class CanonicalListingService {
     @Inject(DESCRIPTION_GENERATION_PROVIDER)
     private readonly descriptionProvider: DescriptionGenerationProvider,
     private readonly priceTriangulation: PriceTriangulationService,
+    private readonly tokenAnalysis: TitleTokenAnalysisService,
+    private readonly vaguePhraseDetector: VaguePhraseDetectorService,
   ) {}
 
   /**
@@ -48,7 +65,10 @@ export class CanonicalListingService {
    * Gemini-Grounding-Preisrecherche, die für die Preisvorschläge ohnehin
    * schon läuft (§9e) — keine zusätzliche Recherche nötig.
    */
-  async generateDescription(itemId: string, salesGoal: SalesGoal | null = null): Promise<string> {
+  async generateDescription(
+    itemId: string,
+    salesGoal: SalesGoal | null = null,
+  ): Promise<DescriptionSuggestion> {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id: itemId });
     if (!item) throw new NotFoundException(`Item ${itemId} not found`);
 
@@ -57,7 +77,19 @@ export class CanonicalListingService {
     });
     const comparableListings = await this.fetchComparableListings(itemId);
 
-    return this.suggestDescription(item.title, item.condition, attributes, comparableListings, salesGoal);
+    const descriptionText = await this.suggestDescription(
+      item.title,
+      item.condition,
+      attributes,
+      comparableListings,
+      salesGoal,
+    );
+
+    return {
+      descriptionText,
+      gapAnalysis: this.tokenAnalysis.analyze(descriptionText, comparableListings),
+      vaguePhrases: this.vaguePhraseDetector.detect(descriptionText),
+    };
   }
 
   async prepareForItem(

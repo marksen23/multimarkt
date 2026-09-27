@@ -16,8 +16,10 @@ import {
 } from '../../infrastructure/database/entities';
 import { PriceTriangulationModule } from '../pricing/price-triangulation.module';
 import { StateGuardModule } from '../state-guard/state-guard.module';
+import { TitleGenerationModule } from '../title-generation/title-generation.module';
 import { CanonicalListingService } from './canonical-listing.service';
 import { ListingSummaryService } from './listing-summary.service';
+import { VaguePhraseDetectorService } from './vague-phrase-detector.service';
 
 // Muss mit dem Platzhalter in render.yaml übereinstimmen (siehe auch
 // ProductAnalysisModule/PriceTriangulationModule/ImageOptimizationModule).
@@ -35,10 +37,12 @@ const GEMINI_PLACEHOLDER_KEY = 'unused-mock-provider-active';
     StateGuardModule,
     ConfigModule,
     PriceTriangulationModule,
+    TitleGenerationModule,
   ],
   providers: [
     CanonicalListingService,
     ListingSummaryService,
+    VaguePhraseDetectorService,
     {
       provide: DESCRIPTION_GENERATION_PROVIDER,
       inject: [ConfigService],

@@ -296,6 +296,8 @@ function PrepareListingStep({
   const [salesGoal, setSalesGoal] = useState('BALANCED');
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [descriptionMissingTokens, setDescriptionMissingTokens] = useState<string[]>([]);
+  const [vaguePhrases, setVaguePhrases] = useState<{ phrase: string; suggestion: string }[]>([]);
 
   const generateDescription = async () => {
     setGenerating(true);
@@ -303,6 +305,8 @@ function PrepareListingStep({
     try {
       const result = await itemsApi.generateDescription(itemId, salesGoal);
       setDescription(result.descriptionText);
+      setDescriptionMissingTokens(result.gapAnalysis.missingTokens);
+      setVaguePhrases(result.vaguePhrases);
     } catch {
       setGenerateError('Vorschlag konnte nicht erzeugt werden.');
     } finally {
@@ -357,6 +361,20 @@ function PrepareListingStep({
           className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
         />
         {generateError && <p className="text-xs text-danger">{generateError}</p>}
+        {descriptionMissingTokens.length > 0 && (
+          <p className="text-xs text-ink-faint">
+            Vergleichsangebote nutzen zusätzlich: {descriptionMissingTokens.slice(0, 6).join(', ')}
+          </p>
+        )}
+        {vaguePhrases.length > 0 && (
+          <div className="text-xs text-ink-faint space-y-0.5">
+            {vaguePhrases.map((v, i) => (
+              <p key={i}>
+                ⚠️ „{v.phrase}“ ist vage — {v.suggestion}
+              </p>
+            ))}
+          </div>
+        )}
       </div>
       <button
         type="button"
