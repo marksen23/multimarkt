@@ -122,6 +122,17 @@ envVarGroups:
         sync: false
       - key: S3_PUBLIC_URL_BASE
         sync: false
+      # --- eBay Browse API (echte Preisrecherche) ---
+      # RealEbayBrowseProvider aktiviert sich automatisch, sobald EBAY_CLIENT_ID
+      # gesetzt ist (kein Platzhalter). Credentials aus dem eBay Developer Portal:
+      # developer.ebay.com -> Application Keys. `sync: false` ist Pflicht, weil
+      # ein fester `value:` die manuell gesetzten Werte bei jedem Blueprint-Sync
+      # überschreiben würde. Ohne diese Werte (oder mit Platzhalter) bleibt der
+      # MockEbayBrowseProvider aktiv — die App funktioniert weiterhin.
+      - key: EBAY_CLIENT_ID
+        sync: false
+      - key: EBAY_CLIENT_SECRET
+        sync: false
 
 services:
   # ------------------------------------------------------------------------
