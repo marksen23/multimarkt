@@ -7,6 +7,7 @@ import {
   MarketplaceProjectionEntity,
   SaleEventEntity,
 } from '../infrastructure/database/entities';
+import { AnkaufModule } from '../application/ankauf/ankauf.module';
 import { BundleAssignmentModule } from '../application/bundle/bundle-assignment.module';
 import { CanonicalListingModule } from '../application/listing/canonical-listing.module';
 import { CapabilityCheckModule } from '../application/capability-check/capability-check.module';
@@ -23,6 +24,7 @@ import { StorageModule } from '../infrastructure/storage/storage.module';
 import { SaleIngestionModule } from '../application/sale-conflict/sale-ingestion.module';
 import { StateGuardModule } from '../application/state-guard/state-guard.module';
 import { AccountController } from './controllers/account.controller';
+import { AnkaufController } from './controllers/ankauf.controller';
 import { BundlesController } from './controllers/bundles.controller';
 import { ItemsController } from './controllers/items.controller';
 import { ListingsController } from './controllers/listings.controller';
@@ -46,6 +48,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     ImageOptimizationModule,
     PhotoQualityModule,
     TitleGenerationModule,
+    AnkaufModule,
     BundleAssignmentModule,
     CanonicalListingModule,
     MarketplacePublishingModule,
@@ -61,6 +64,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     BundlesController,
     SaleEventsController,
     AccountController,
+    AnkaufController,
   ],
 })
 export class ApiModule {}
