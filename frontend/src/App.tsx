@@ -10,6 +10,7 @@ import { BundleDetailPage } from './pages/BundleDetailPage';
 import { AccountPage } from './pages/AccountPage';
 import { NegotiationDemoPage } from './pages/NegotiationDemoPage';
 import { ConfidenceCenterDemoPage } from './pages/ConfidenceCenterDemoPage';
+import { AngebotspaketPage } from './pages/AngebotspaketPage';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/new" element={<NewItemPage />} />
           <Route path="/items/:id" element={<ItemDetailPage />} />
+          <Route path="/items/:id/angebotspaket" element={<AngebotspaketPage />} />
           <Route path="/bundles" element={<BundlesPage />} />
           <Route path="/bundles/new" element={<NewBundlePage />} />
           <Route path="/bundles/:id" element={<BundleDetailPage />} />

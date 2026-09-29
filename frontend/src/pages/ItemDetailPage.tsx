@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import type { ItemDetail, ListingChannel, SaleEvent } from '../api/types';
@@ -15,6 +15,7 @@ import { StatusBadge } from '../components/StatusBadge';
 
 export function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [detail, setDetail] = useState<ItemDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -108,6 +109,15 @@ export function ItemDetailPage() {
         <div className="space-y-4">
           <div className="px-4 pt-4">
             <DispositionPanel itemId={id} />
+          </div>
+          <div className="px-4">
+            <button
+              type="button"
+              onClick={() => navigate(`/items/${id}/angebotspaket`)}
+              className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover transition-colors"
+            >
+              ✨ Angebotspaket erstellen
+            </button>
           </div>
           <PrepareListingStep
             itemId={id}
