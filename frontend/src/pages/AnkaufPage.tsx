@@ -56,6 +56,7 @@ export function AnkaufPage() {
   const [result, setResult] = useState<AnkaufResearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeCondition, setActiveCondition] = useState<ConditionKey>('alle');
+  const [showMargen, setShowMargen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const search = async (kw: string) => {
@@ -64,6 +65,7 @@ export function AnkaufPage() {
     setError(null);
     setResult(null);
     setActiveCondition('alle');
+    setShowMargen(false);
     try {
       setResult(await ankaufApi.search(kw.trim()));
     } catch {
@@ -142,11 +144,27 @@ export function AnkaufPage() {
                     {result.marketMedianEur.toFixed(2)} €
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-[11px] text-ink-faint">{result.listings.length} Angebote</p>
-                  <p className="text-[11px] text-ink-faint">{result.location}</p>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-[11px] text-ink-faint">{result.listings.length} Angebote</p>
+                    <p className="text-[11px] text-ink-faint">{result.location}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowMargen((v) => !v)}
+                    className="flex-shrink-0 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-accent/20 text-accent hover:bg-accent/30 transition-colors"
+                  >
+                    {showMargen ? 'Rechner ✕' : '% Marge'}
+                  </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Margen-Rechner */}
+          {showMargen && result.marketMedianEur !== null && (
+            <div className="mx-4 mb-4">
+              <MargenRechner marketMedian={result.marketMedianEur} />
             </div>
           )}
 
@@ -215,6 +233,73 @@ export function AnkaufPage() {
           </p>
           <p className="text-xs text-ink-faint mt-2">Standort: Berlin</p>
         </div>
+      )}
+    </div>
+  );
+}
+
+// Simplified platform fees for private sellers
+const PLATFORM_FEES: { id: string; label: string; color: string; fee: (price: number) => number }[] = [
+  { id: 'KLEINANZEIGEN', label: 'Kleinanzeigen', color: '#0ca35a', fee: () => 0 },
+  { id: 'EBAY', label: 'eBay', color: '#e53238', fee: (p) => p * 0.129 + 0.35 },
+  { id: 'VINTED', label: 'Vinted', color: '#09b1ba', fee: () => 0 },
+];
+
+function MargenRechner({ marketMedian }: { marketMedian: number }) {
+  const [buyPrice, setBuyPrice] = useState('');
+  const buy = parseFloat(buyPrice.replace(',', '.'));
+  const validBuy = !isNaN(buy) && buy > 0;
+
+  return (
+    <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
+      <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">Margen-Rechner</p>
+      <div className="flex gap-2 items-center">
+        <input
+          type="number"
+          inputMode="decimal"
+          placeholder="Einkaufspreis in €"
+          value={buyPrice}
+          onChange={(e) => setBuyPrice(e.target.value)}
+          className="flex-1 px-3 py-2 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft bg-transparent text-ink"
+        />
+        <span className="text-xs text-ink-faint">Verkaufspreis: {marketMedian.toFixed(2)} €</span>
+      </div>
+
+      {validBuy && (
+        <div className="space-y-2">
+          {PLATFORM_FEES.map((p) => {
+            const fee = p.fee(marketMedian);
+            const net = marketMedian - fee;
+            const margin = net - buy;
+            const marginPct = (margin / buy) * 100;
+            const isPositive = margin >= 0;
+            return (
+              <div
+                key={p.id}
+                className="flex items-center justify-between bg-surface-hover rounded-xl px-3 py-2"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />
+                  <span className="text-xs font-bold text-ink">{p.label}</span>
+                  {fee > 0 && <span className="text-[11px] text-ink-faint">−{fee.toFixed(2)} € Gebühr</span>}
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-ink">{net.toFixed(2)} € netto</p>
+                  <p className={`text-[11px] font-bold ${isPositive ? 'text-accent' : 'text-danger'}`}>
+                    {isPositive ? '+' : ''}{margin.toFixed(2)} € ({marginPct.toFixed(0)} %)
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+          <p className="text-[11px] text-ink-faint px-1">
+            * Kleinanzeigen &amp; Vinted: 0 % Verkäufergebühr (Privatanzeige). eBay: 12,9 % + 0,35 €.
+          </p>
+        </div>
+      )}
+
+      {!validBuy && buyPrice.length > 0 && (
+        <p className="text-xs text-danger">Bitte einen gültigen Preis eingeben.</p>
       )}
     </div>
   );
