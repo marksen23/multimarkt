@@ -19,6 +19,7 @@ export function ItemDetailPage() {
   const [detail, setDetail] = useState<ItemDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [schnellmodus, setSchnellmodus] = useState(false);
 
   const reload = useCallback(async () => {
     if (!id) return;
@@ -32,6 +33,12 @@ export function ItemDetailPage() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    if (schnellmodus && detail?.item.status === 'READY' && id) {
+      navigate(`/items/${id}/angebotspaket`);
+    }
+  }, [schnellmodus, detail?.item.status, navigate, id]);
 
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -92,6 +99,7 @@ export function ItemDetailPage() {
         <AnalyzeStep
           itemId={id}
           busy={busy || item.status === 'ANALYZING'}
+          onAnalyzeStart={() => setSchnellmodus(true)}
           onAnalyze={(files, onProgress) => run(() => itemsApi.analyze(id, files, onProgress))}
         />
       )}
@@ -242,10 +250,12 @@ function Centered({
 function AnalyzeStep({
   itemId,
   busy,
+  onAnalyzeStart,
   onAnalyze,
 }: {
   itemId: string;
   busy: boolean;
+  onAnalyzeStart: () => void;
   onAnalyze: (files: File[], onProgress?: (fraction: number) => void) => Promise<void>;
 }) {
   const [photos, setPhotos] = useState<File[]>([]);
@@ -253,6 +263,7 @@ function AnalyzeStep({
   const [analyzing, setAnalyzing] = useState(false);
 
   const start = async () => {
+    onAnalyzeStart();
     setUploadProgress(0);
     setAnalyzing(false);
     await onAnalyze(photos, (fraction) => {

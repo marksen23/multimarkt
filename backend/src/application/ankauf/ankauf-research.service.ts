@@ -3,6 +3,10 @@ import {
   ANKAUF_SEARCH_PROVIDER,
   AnkaufSearchProvider,
 } from '../../domain/ankauf/ankauf-search-provider.interface';
+import {
+  MARKET_DISTRIBUTION_PROVIDER,
+  MarketDistributionProvider,
+} from '../../domain/pricing/market-distribution-provider.interface';
 import type {
   AnkaufListing,
   AnkaufResearchResult,
@@ -21,6 +25,7 @@ const CONDITION_IMPACT: Record<string, ConditionPriceImpact> = {
 };
 
 const SCORE_THRESHOLDS = { SEHR_GUT: 0.70, GUT: 0.85, FAIR: 1.05 } as const;
+const CACHE_TTL_MS = 30 * 60 * 1000;
 
 function computeDealScore(price: number, marketMedian: number): DealScore {
   const ratio = price / marketMedian;
@@ -32,17 +37,46 @@ function computeDealScore(price: number, marketMedian: number): DealScore {
 
 const DEAL_SCORE_ORDER: DealScore[] = ['SEHR_GUT', 'GUT', 'FAIR', 'TEUER'];
 
+interface CacheEntry {
+  result: AnkaufResearchResult;
+  expiresAt: number;
+}
+
 @Injectable()
 export class AnkaufResearchService {
-  constructor(@Inject(ANKAUF_SEARCH_PROVIDER) private readonly provider: AnkaufSearchProvider) {}
+  private readonly cache = new Map<string, CacheEntry>();
+
+  constructor(
+    @Inject(ANKAUF_SEARCH_PROVIDER) private readonly provider: AnkaufSearchProvider,
+    @Inject(MARKET_DISTRIBUTION_PROVIDER) private readonly ebayProvider: MarketDistributionProvider,
+  ) {}
 
   async search(keywords: string): Promise<AnkaufResearchResult> {
-    const raw = await this.provider.search({ keywords, location: LOCATION });
+    const cacheKey = keywords.trim().toLowerCase();
+    const cached = this.cache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) return cached.result;
 
-    const marketMedian = raw?.marketMedian ?? null;
+    const [raw, ebayResult] = await Promise.all([
+      this.provider.search({ keywords, location: LOCATION }),
+      this.ebayProvider.search({ keywords, condition: null }),
+    ]);
+
+    const marketMedian = raw?.marketMedian ?? ebayResult?.median ?? null;
     const rawListings = raw?.listings ?? [];
 
-    const listings: AnkaufListing[] = rawListings
+    // Merge eBay comparableListings as additional EBAY-platform listings, dedup by title
+    const seenTitles = new Set(rawListings.map((l) => l.title.toLowerCase().trim()));
+    const ebayListings = (ebayResult?.comparableListings ?? [])
+      .filter((l) => l.price > 0 && !seenTitles.has(l.title.toLowerCase().trim()))
+      .map((l) => ({
+        title: l.title,
+        price: l.price,
+        platform: 'EBAY' as const,
+        url: l.url ?? null,
+        condition: null as string | null,
+      }));
+
+    const listings: AnkaufListing[] = [...rawListings, ...ebayListings]
       .filter((l) => l.price > 0)
       .map((l) => {
         const dealScore = marketMedian !== null ? computeDealScore(l.price, marketMedian) : null;
@@ -59,7 +93,7 @@ export class AnkaufResearchService {
         return a.price - b.price;
       });
 
-    return {
+    const result: AnkaufResearchResult = {
       keywords,
       location: LOCATION,
       marketMedianEur: marketMedian,
@@ -67,5 +101,8 @@ export class AnkaufResearchService {
       conditionPriceImpact: CONDITION_IMPACT,
       searchedAt: new Date().toISOString(),
     };
+
+    this.cache.set(cacheKey, { result, expiresAt: Date.now() + CACHE_TTL_MS });
+    return result;
   }
 }

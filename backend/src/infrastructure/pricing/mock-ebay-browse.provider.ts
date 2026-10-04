@@ -25,9 +25,9 @@ export class MockEbayBrowseProvider implements MarketDistributionProvider {
       currency: 'EUR',
       providerLabel: 'eBay Browse API (Mock)',
       comparableListings: [
-        { title: `${query.keywords} - sehr guter Zustand, kaum getragen`, price: 38 },
-        { title: `${query.keywords} TOP Zustand mit OVP`, price: 41 },
-        { title: `${query.keywords} gebraucht, Gebrauchsspuren`, price: 28 },
+        { title: `${query.keywords} - sehr guter Zustand, kaum getragen`, price: 38, url: 'https://www.ebay.de/itm/mock-1' },
+        { title: `${query.keywords} TOP Zustand mit OVP`, price: 41, url: 'https://www.ebay.de/itm/mock-2' },
+        { title: `${query.keywords} gebraucht, Gebrauchsspuren`, price: 28, url: 'https://www.ebay.de/itm/mock-3' },
       ],
     };
   }

@@ -20,6 +20,7 @@ interface TokenCache {
 interface EbayItemSummary {
   title: string;
   price?: { value: string };
+  itemWebUrl?: string;
 }
 
 interface EbaySearchResponse {
@@ -48,7 +49,7 @@ export class RealEbayBrowseProvider implements MarketDistributionProvider {
         sampleSize: prices.length,
         currency: 'EUR',
         providerLabel: 'eBay Browse API',
-        comparableListings: items.slice(0, 10).map((i) => ({ title: i.title, price: i.price })),
+        comparableListings: items.slice(0, 20).map((i) => ({ title: i.title, price: i.price, url: i.url })),
       };
     } catch {
       return null;
@@ -84,7 +85,7 @@ export class RealEbayBrowseProvider implements MarketDistributionProvider {
   private async fetchListings(
     token: string,
     keywords: string,
-  ): Promise<{ title: string; price: number }[]> {
+  ): Promise<{ title: string; price: number; url: string | null }[]> {
     const params = new URLSearchParams({
       q: keywords,
       limit: '50',
@@ -105,7 +106,7 @@ export class RealEbayBrowseProvider implements MarketDistributionProvider {
     const data = (await res.json()) as EbaySearchResponse;
     return (data.itemSummaries ?? [])
       .filter((i) => i.price?.value)
-      .map((i) => ({ title: i.title, price: parseFloat(i.price!.value) }))
+      .map((i) => ({ title: i.title, price: parseFloat(i.price!.value), url: i.itemWebUrl ?? null }))
       .filter((i) => !isNaN(i.price) && i.price > 0);
   }
 

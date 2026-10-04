@@ -62,6 +62,6 @@ const EBAY_PLACEHOLDER_KEY = 'unused-mock-provider-active';
       },
     },
   ],
-  exports: [PriceTriangulationService],
+  exports: [PriceTriangulationService, MARKET_DISTRIBUTION_PROVIDER],
 })
 export class PriceTriangulationModule {}

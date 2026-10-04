@@ -145,7 +145,7 @@ describe('RealEbayBrowseProvider', () => {
     const result = await provider.search({ keywords: 'Test', condition: null });
 
     expect(result).not.toBeNull();
-    expect(result!.comparableListings).toHaveLength(10);
+    expect(result!.comparableListings).toHaveLength(15);
     expect(result!.sampleSize).toBe(15);
   });
 });
