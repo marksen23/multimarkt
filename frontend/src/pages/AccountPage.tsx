@@ -3,6 +3,7 @@ import { accountApi } from '../api/account';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import { clearAccessToken } from '../components/TokenGate';
+import { useTheme } from '../hooks/useTheme';
 import type { DeletionAuditLog, ItemListEntry, ItemLifecycleState } from '../api/types';
 
 const AKTIV_STATES: ItemLifecycleState[] = ['LISTED', 'SALE_CONFLICT'];
@@ -36,6 +37,7 @@ export function AccountPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DeletionAuditLog | null>(null);
   const [stats, setStats] = useState<AccountStats | null>(null);
+  const { pref: themePref, setPref: setThemePref } = useTheme();
 
   useEffect(() => {
     itemsApi.list().then((entries) => setStats(computeStats(entries))).catch(() => {});
@@ -100,6 +102,34 @@ export function AccountPage() {
           )}
         </div>
       )}
+
+      {/* Darstellung */}
+      <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
+        <p className="text-sm font-bold text-ink">Darstellung</p>
+        <div className="flex gap-2">
+          {(['auto', 'light', 'dark'] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setThemePref(t)}
+              className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-colors ${
+                themePref === t
+                  ? 'bg-accent text-accent-ink border-accent'
+                  : 'bg-surface-hover text-ink-muted border-line hover:border-accent hover:text-accent'
+              }`}
+            >
+              {t === 'auto' ? '⚙ Auto' : t === 'light' ? '☀ Hell' : '☾ Dunkel'}
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-ink-faint">
+          {themePref === 'auto'
+            ? 'Folgt dem Systemdesign.'
+            : themePref === 'light'
+            ? 'Helles Design erzwungen.'
+            : 'Dunkles Design erzwungen.'}
+        </p>
+      </div>
 
       {/* Abmelden */}
       <div className="bg-surface border border-line rounded-2xl p-4 space-y-2">

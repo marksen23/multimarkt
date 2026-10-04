@@ -219,7 +219,19 @@ function SourceCard({
           <ul className="mt-1 space-y-0.5">
             {listings.map((listing, i) => (
               <li key={i}>
-                {listing.title} — {listing.price.toFixed(2)} €
+                {listing.url ? (
+                  <a
+                    href={listing.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-accent transition-colors underline underline-offset-2"
+                  >
+                    {listing.title}
+                  </a>
+                ) : (
+                  listing.title
+                )}{' '}
+                — {listing.price.toFixed(2)} €
               </li>
             ))}
           </ul>

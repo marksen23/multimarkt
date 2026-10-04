@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { itemsApi } from '../api/items';
-import type { ListingChannel, SalesGoal } from '../api/types';
+import { ApiRequestError } from '../api/client';
+import type { CanonicalListing, Item, ListingChannel, SalesGoal } from '../api/types';
 
 const PORTALS: {
   id: ListingChannel;
@@ -60,11 +61,14 @@ function useCopy() {
 
 export function AngebotspaketPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [salesGoal, setSalesGoal] = useState<SalesGoal>('BALANCED');
   const [activePortal, setActivePortal] = useState<ListingChannel>('KLEINANZEIGEN');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [price, setPrice] = useState<number | null>(null);
+  const [itemStatus, setItemStatus] = useState<string | null>(null);
+  const [listing, setListing] = useState<CanonicalListing | null>(null);
   const [drafts, setDrafts] = useState<Record<ListingChannel, PortalDraft>>({
     KLEINANZEIGEN: { title: '', description: '' },
     EBAY: { title: '', description: '' },
@@ -77,13 +81,15 @@ export function AngebotspaketPage() {
       setLoading(true);
       setError(null);
       try {
-        const [klein, ebay, vinted, descResult, priceResult] = await Promise.all([
+        const [klein, ebay, vinted, descResult, priceResult, itemDetail] = await Promise.all([
           itemsApi.generateTitle(id, 'KLEINANZEIGEN'),
           itemsApi.generateTitle(id, 'EBAY'),
           itemsApi.generateTitle(id, 'VINTED'),
           itemsApi.generateDescription(id, goal),
           itemsApi.priceResearch(id, false, goal),
+          itemsApi.get(id),
         ]);
+        setItemStatus(itemDetail.item.status);
 
         setDrafts({
           KLEINANZEIGEN: { title: klein.title, description: descResult.descriptionText },
@@ -158,9 +164,34 @@ export function AngebotspaketPage() {
       )}
 
       {price !== null && !loading && (
-        <div className="mx-4 mb-5 bg-accent-soft border border-accent/20 rounded-xl px-4 py-3 flex items-center justify-between">
+        <div className="mx-4 mb-4 bg-accent-soft border border-accent/20 rounded-xl px-4 py-3 flex items-center justify-between">
           <span className="text-xs font-bold text-ink-muted uppercase tracking-wide">Empfohlener Startpreis</span>
           <span className="text-xl font-bold text-accent">{price.toFixed(2)} €</span>
+        </div>
+      )}
+
+      {/* Listing anlegen — nur wenn Status READY */}
+      {itemStatus === 'READY' && !loading && id && (
+        <div className="mx-4 mb-5">
+          <PrepareListing
+            itemId={id}
+            suggestedPrice={price}
+            activeDescription={drafts[activePortal].description}
+            onSuccess={(result) => {
+              setListing(result);
+              setItemStatus('LISTED');
+            }}
+            onNavigate={() => navigate(`/items/${id}`)}
+          />
+        </div>
+      )}
+
+      {listing && !loading && (
+        <div className="mx-4 mb-5 bg-accent-soft border border-accent/20 rounded-xl px-4 py-3">
+          <p className="text-xs font-bold text-accent mb-1">Listing angelegt ✓</p>
+          <p className="text-[11px] text-ink-muted">
+            Verkaufspreis: <span className="font-bold text-ink">{listing.sellingPrice.toFixed(2)} €</span>
+          </p>
         </div>
       )}
 
@@ -200,6 +231,86 @@ export function AngebotspaketPage() {
           />
         ))}
       </div>
+    </div>
+  );
+}
+
+function PrepareListing({
+  itemId,
+  suggestedPrice,
+  activeDescription,
+  onSuccess,
+  onNavigate,
+}: {
+  itemId: string;
+  suggestedPrice: number | null;
+  activeDescription: string;
+  onSuccess: (listing: CanonicalListing) => void;
+  onNavigate: () => void;
+}) {
+  const [priceInput, setPriceInput] = useState(suggestedPrice != null ? suggestedPrice.toFixed(2) : '');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const parsedPrice = parseFloat(priceInput.replace(',', '.'));
+  const valid = !isNaN(parsedPrice) && parsedPrice > 0;
+
+  const submit = async () => {
+    if (!valid) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const result = await itemsApi.prepareListing(itemId, parsedPrice, activeDescription || undefined);
+      onSuccess(result);
+    } catch (e) {
+      setErr(e instanceof ApiRequestError ? e.body.message : 'Fehler beim Anlegen');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="bg-surface border border-accent/30 rounded-2xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-bold text-ink">Listing anlegen</p>
+        <span className="text-[11px] px-2 py-0.5 rounded-full bg-accent-soft text-accent font-bold border border-accent/30">
+          Bereit
+        </span>
+      </div>
+      <p className="text-xs text-ink-faint">
+        Verkaufspreis festlegen — Beschreibung wird vom aktiven Portal übernommen.
+      </p>
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            min="0.01"
+            value={priceInput}
+            onChange={(e) => setPriceInput(e.target.value)}
+            placeholder="Preis in €"
+            className="w-full pl-3 pr-8 py-2.5 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft bg-transparent text-ink"
+          />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint pointer-events-none">€</span>
+        </div>
+        <button
+          type="button"
+          disabled={!valid || busy}
+          onClick={() => void submit()}
+          className="px-4 py-2.5 rounded-xl font-bold text-sm bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors whitespace-nowrap"
+        >
+          {busy ? 'Anlegen…' : 'Anlegen'}
+        </button>
+      </div>
+      {err && <p className="text-xs text-danger">{err}</p>}
+      <button
+        type="button"
+        onClick={onNavigate}
+        className="text-[11px] text-ink-faint hover:text-ink-muted transition-colors"
+      >
+        ← Zurück zu Artikel-Details
+      </button>
     </div>
   );
 }
