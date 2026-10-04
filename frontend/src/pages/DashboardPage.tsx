@@ -5,6 +5,7 @@ import { ApiRequestError } from '../api/client';
 import type { ItemListEntry, ItemLifecycleState } from '../api/types';
 import { ListSkeleton } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
+import { usePendingActions } from '../contexts/PendingActionsContext';
 
 type FilterKey = 'alle' | 'handlung' | 'aktiv' | 'abgeschlossen';
 
@@ -32,13 +33,18 @@ export function DashboardPage() {
   const [entries, setEntries] = useState<ItemListEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>('alle');
+  const { setPendingCount } = usePendingActions();
 
   useEffect(() => {
     itemsApi
       .list()
-      .then(setEntries)
+      .then((list) => {
+        setEntries(list);
+        const count = list.filter((e) => (HANDLUNG_STATES as ItemLifecycleState[]).includes(e.item.status)).length;
+        setPendingCount(count);
+      })
       .catch((e) => setError(e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler'));
-  }, []);
+  }, [setPendingCount]);
 
   const stats = entries ? computeStats(entries) : null;
   const visible = entries?.filter((e) => matchesFilter(e, filter)) ?? null;

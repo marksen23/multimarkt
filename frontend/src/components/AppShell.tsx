@@ -1,15 +1,17 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { clearAccessToken } from './TokenGate';
+import { usePendingActions } from '../contexts/PendingActionsContext';
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Dashboard', end: true, icon: IconHome },
-  { to: '/ankauf', label: 'Ankauf', end: false, icon: IconSearch },
-  { to: '/bundles', label: 'Bundles', end: false, icon: IconPackage },
-  { to: '/account', label: 'Konto', end: false, icon: IconUser },
+  { to: '/', label: 'Dashboard', end: true, icon: IconHome, showBadge: true },
+  { to: '/ankauf', label: 'Ankauf', end: false, icon: IconSearch, showBadge: false },
+  { to: '/bundles', label: 'Bundles', end: false, icon: IconPackage, showBadge: false },
+  { to: '/account', label: 'Konto', end: false, icon: IconUser, showBadge: false },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const { pendingCount } = usePendingActions();
   return (
     <div className="min-h-screen bg-bg">
       <header className="bg-surface/90 backdrop-blur border-b border-line sticky top-0 z-20">
@@ -67,7 +69,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               >
                 {({ isActive }) => (
                   <>
-                    <Icon active={isActive} />
+                    <span className="relative">
+                      <Icon active={isActive} />
+                      {item.showBadge && pendingCount > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 border border-surface" aria-hidden="true" />
+                      )}
+                    </span>
                     {item.label}
                   </>
                 )}

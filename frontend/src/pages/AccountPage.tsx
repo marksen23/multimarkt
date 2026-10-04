@@ -1,7 +1,33 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { accountApi } from '../api/account';
+import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
-import type { DeletionAuditLog } from '../api/types';
+import { clearAccessToken } from '../components/TokenGate';
+import type { DeletionAuditLog, ItemListEntry, ItemLifecycleState } from '../api/types';
+
+const AKTIV_STATES: ItemLifecycleState[] = ['LISTED', 'SALE_CONFLICT'];
+const SOLD_STATES: ItemLifecycleState[] = ['SOLD'];
+const PENDING_STATES: ItemLifecycleState[] = ['READY', 'REVIEW_REQUIRED'];
+
+interface AccountStats {
+  total: number;
+  pending: number;
+  aktiv: number;
+  sold: number;
+  erloes: number;
+}
+
+function computeStats(entries: ItemListEntry[]): AccountStats {
+  return {
+    total: entries.length,
+    pending: entries.filter((e) => (PENDING_STATES as ItemLifecycleState[]).includes(e.item.status)).length,
+    aktiv: entries.filter((e) => (AKTIV_STATES as ItemLifecycleState[]).includes(e.item.status)).length,
+    sold: entries.filter((e) => (SOLD_STATES as ItemLifecycleState[]).includes(e.item.status)).length,
+    erloes: entries
+      .filter((e) => e.item.status === 'LISTED' && e.listings.length > 0)
+      .reduce((sum, e) => sum + e.listings[0].sellingPrice, 0),
+  };
+}
 
 /** Doc 04 §16 / Doc 01 §15 — Hard-Delete-Lifecycle (T08-1). */
 export function AccountPage() {
@@ -9,6 +35,11 @@ export function AccountPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DeletionAuditLog | null>(null);
+  const [stats, setStats] = useState<AccountStats | null>(null);
+
+  useEffect(() => {
+    itemsApi.list().then((entries) => setStats(computeStats(entries))).catch(() => {});
+  }, []);
 
   const requestDeletion = async () => {
     setBusy(true);
@@ -48,10 +79,46 @@ export function AccountPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto p-6 space-y-4">
+    <div className="max-w-md mx-auto p-6 space-y-5">
       <h1 className="text-xl font-extrabold text-ink tracking-tight">Konto</h1>
 
-      <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6 space-y-3">
+      {/* Stats */}
+      {stats && (
+        <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
+          <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">Übersicht</p>
+          <div className="grid grid-cols-2 gap-2">
+            <MiniStat label="Artikel gesamt" value={stats.total} />
+            <MiniStat label="Handlung nötig" value={stats.pending} highlight={stats.pending > 0} />
+            <MiniStat label="Aktiv gelistet" value={stats.aktiv} />
+            <MiniStat label="Verkauft" value={stats.sold} />
+          </div>
+          {stats.erloes > 0 && (
+            <p className="text-xs text-ink-muted pt-1 border-t border-line">
+              Erwarteter Erlös aus aktiven Listings:{' '}
+              <span className="font-bold text-ink">{stats.erloes.toFixed(2)} €</span>
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Abmelden */}
+      <div className="bg-surface border border-line rounded-2xl p-4 space-y-2">
+        <p className="text-sm font-bold text-ink">Sitzung</p>
+        <p className="text-xs text-ink-faint">
+          Personal Resale OS — Einzelnutzer-Modus. Kein Passwort, nur ein Zugriffstoken.
+        </p>
+        <button
+          type="button"
+          onClick={clearAccessToken}
+          className="w-full mt-1 p-2.5 rounded-xl border border-line text-sm font-bold text-ink-muted hover:bg-surface-hover hover:text-ink transition-colors text-left flex items-center gap-2"
+        >
+          <span className="text-base">↩</span>
+          Abmelden (Token entfernen)
+        </button>
+      </div>
+
+      {/* Danger zone */}
+      <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4 space-y-3">
         <h2 className="font-bold text-red-700 dark:text-red-400">Account löschen</h2>
         <p className="text-xs text-red-700/90 dark:text-red-400/90">
           Löscht unwiderruflich alle Items, Listings, Bundles und Verkaufsdaten (DB-Kaskade). Diese
@@ -90,6 +157,23 @@ export function AccountPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: number;
+  highlight?: boolean;
+}) {
+  return (
+    <div className="bg-surface-hover rounded-xl p-3">
+      <p className={`text-lg font-extrabold ${highlight ? 'text-accent' : 'text-ink'}`}>{value}</p>
+      <p className="text-[11px] text-ink-faint mt-0.5">{label}</p>
     </div>
   );
 }
