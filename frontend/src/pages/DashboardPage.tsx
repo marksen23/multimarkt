@@ -109,14 +109,7 @@ export function DashboardPage() {
 
       {!entries && !error && <ListSkeleton />}
 
-      {entries && entries.length === 0 && (
-        <div className="bg-surface border border-line rounded-2xl p-8 text-center space-y-2">
-          <p className="text-sm text-ink-muted">Noch keine Artikel erfasst.</p>
-          <Link to="/new" className="text-sm font-bold text-accent hover:text-accent-hover">
-            Ersten Artikel anlegen
-          </Link>
-        </div>
-      )}
+      {entries && entries.length === 0 && <EmptyState />}
 
       {visible && visible.length === 0 && entries && entries.length > 0 && (
         <div className="bg-surface border border-line rounded-2xl p-6 text-center">
@@ -129,7 +122,13 @@ export function DashboardPage() {
           <Link
             key={item.id}
             to={`/items/${item.id}`}
-            className="block bg-surface border border-line rounded-2xl p-4 hover:border-accent/40 hover:shadow-md transition"
+            className={`block bg-surface rounded-2xl p-4 hover:shadow-md transition border ${
+              item.status === 'READY'
+                ? 'border-accent/40 ring-1 ring-accent/20'
+                : item.status === 'REVIEW_REQUIRED'
+                ? 'border-amber-400/50'
+                : 'border-line hover:border-accent/40'
+            }`}
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
@@ -184,6 +183,68 @@ function computeStats(entries: ItemListEntry[]) {
     .filter((e) => e.item.status === 'LISTED' && e.listings.length > 0)
     .reduce((sum, e) => sum + e.listings[0].sellingPrice, 0);
   return { handlungNoetig, aktiv, erwarteterErloes };
+}
+
+function EmptyState() {
+  return (
+    <div className="bg-surface border border-line rounded-2xl p-8 space-y-6">
+      <div className="text-center space-y-1">
+        <p className="text-base font-bold text-ink">Dein erster Artikel</p>
+        <p className="text-sm text-ink-muted">Foto machen — der Rest geht von selbst.</p>
+      </div>
+
+      <div className="space-y-3">
+        {[
+          { step: '1', icon: CameraIcon, label: 'Foto aufnehmen', sub: 'Artikel fotografieren, fertig.' },
+          { step: '2', icon: SparkIcon, label: 'KI analysiert', sub: 'Titel, Zustand, Preis — automatisch.' },
+          { step: '3', icon: CopyIcon, label: 'Texte kopieren', sub: 'Fertige Angebote für jedes Portal.' },
+        ].map(({ step, icon: Icon, label, sub }) => (
+          <div key={step} className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-full bg-accent-soft flex items-center justify-center flex-shrink-0">
+              <Icon />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-ink">{label}</p>
+              <p className="text-xs text-ink-faint">{sub}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Link
+        to="/new"
+        className="block w-full p-3 rounded-xl font-bold bg-accent text-accent-ink text-center hover:bg-accent-hover transition-colors"
+      >
+        + Ersten Artikel anlegen
+      </Link>
+    </div>
+  );
+}
+
+function CameraIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent" aria-hidden="true">
+      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  );
+}
+
+function SparkIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent" aria-hidden="true">
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent" aria-hidden="true">
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+    </svg>
+  );
 }
 
 function StatCard({

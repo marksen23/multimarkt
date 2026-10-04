@@ -61,6 +61,7 @@ function useCopy() {
 export function AngebotspaketPage() {
   const { id } = useParams<{ id: string }>();
   const [salesGoal, setSalesGoal] = useState<SalesGoal>('BALANCED');
+  const [activePortal, setActivePortal] = useState<ListingChannel>('KLEINANZEIGEN');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [price, setPrice] = useState<number | null>(null);
@@ -163,8 +164,31 @@ export function AngebotspaketPage() {
         </div>
       )}
 
-      <div className="space-y-4 px-4">
+      {/* Portal tabs */}
+      <div className="px-4 flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide">
         {PORTALS.map((portal) => (
+          <button
+            key={portal.id}
+            type="button"
+            onClick={() => setActivePortal(portal.id)}
+            className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold border transition-colors ${
+              activePortal === portal.id
+                ? 'border-transparent text-white'
+                : 'bg-surface border-line text-ink-muted hover:border-accent hover:text-accent'
+            }`}
+            style={activePortal === portal.id ? { backgroundColor: portal.color, borderColor: portal.color } : {}}
+          >
+            <span
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ backgroundColor: activePortal === portal.id ? 'rgba(255,255,255,0.6)' : portal.color }}
+            />
+            {portal.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="px-4">
+        {PORTALS.filter((p) => p.id === activePortal).map((portal) => (
           <PortalCard
             key={portal.id}
             portal={portal}

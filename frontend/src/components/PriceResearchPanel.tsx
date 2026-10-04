@@ -25,9 +25,11 @@ const CONFIDENCE_LABELS: Record<string, string> = {
 export function PriceResearchPanel({
   itemId,
   onSuggestPrice,
+  onMedianAvailable,
 }: {
   itemId: string;
   onSuggestPrice: (price: number) => void;
+  onMedianAvailable?: (median: number) => void;
 }) {
   const [result, setResult] = useState<PriceResearchResult | null>(null);
   const [salesGoal, setSalesGoal] = useState<SalesGoal>('BALANCED');
@@ -42,7 +44,11 @@ export function PriceResearchPanel({
     itemsApi
       .priceResearch(itemId, false, salesGoal)
       .then((r) => {
-        if (!cancelled) setResult(r);
+        if (!cancelled) {
+          setResult(r);
+          const med = r.recommendation?.listPrice ?? r.sources.find((s) => s.median !== null)?.median;
+          if (med != null) onMedianAvailable?.(med);
+        }
       })
       .catch(() => {
         if (!cancelled) setFailed(true);

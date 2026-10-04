@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useToast } from '../components/Toast';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import type { ItemDetail, ListingChannel, SaleEvent } from '../api/types';
@@ -16,6 +17,7 @@ import { StatusBadge } from '../components/StatusBadge';
 export function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
   const [detail, setDetail] = useState<ItemDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -47,7 +49,9 @@ export function ItemDetailPage() {
       await fn();
       await reload();
     } catch (e) {
-      setError(e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler');
+      const msg = e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler';
+      setError(msg);
+      toast(msg, 'error');
     } finally {
       setBusy(false);
     }
@@ -81,6 +85,8 @@ export function ItemDetailPage() {
           <StatusBadge status={item.status} />
         </div>
       </div>
+
+      <ItemStepper status={item.status} />
 
       {error && (
         <div className="mx-4 mb-3 bg-danger-soft border border-danger/20 rounded-xl p-3 text-xs text-danger">
@@ -172,6 +178,67 @@ export function ItemDetailPage() {
           />
         </div>
       )}
+    </div>
+  );
+}
+
+type StepState = 'done' | 'current' | 'todo';
+
+const STEPS: { key: string; label: string; statuses: string[] }[] = [
+  { key: 'foto', label: 'Foto', statuses: [] },
+  { key: 'analyse', label: 'Analyse', statuses: ['NEW', 'ANALYZING'] },
+  { key: 'pruefung', label: 'Prüfung', statuses: ['REVIEW_REQUIRED'] },
+  { key: 'bereit', label: 'Bereit', statuses: ['READY'] },
+  { key: 'listing', label: 'Listing', statuses: ['LISTED', 'SALE_CONFLICT'] },
+  { key: 'verkauft', label: 'Fertig', statuses: ['SOLD', 'CANCELLED', 'ARCHIVED'] },
+];
+
+function stepState(stepIndex: number, currentStatus: string): StepState {
+  const currentStepIndex = STEPS.findIndex((s) => s.statuses.includes(currentStatus));
+  if (currentStepIndex === -1) return stepIndex === 0 ? 'done' : 'todo';
+  if (stepIndex < currentStepIndex) return 'done';
+  if (stepIndex === currentStepIndex) return 'current';
+  return 'todo';
+}
+
+function ItemStepper({ status }: { status: string }) {
+  const hiddenStatuses = ['BUNDLED', 'SOLD', 'CANCELLED', 'ARCHIVED'];
+  if (hiddenStatuses.includes(status)) return null;
+
+  return (
+    <div className="px-4 pb-3">
+      <div className="flex items-center">
+        {STEPS.map((step, i) => {
+          const state = stepState(i, status);
+          return (
+            <div key={step.key} className="flex items-center flex-1 last:flex-none">
+              <div className="flex flex-col items-center gap-0.5">
+                <div
+                  className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                    state === 'done'
+                      ? 'bg-accent'
+                      : state === 'current'
+                      ? 'bg-accent animate-pulse'
+                      : 'bg-line'
+                  }`}
+                />
+                <span
+                  className={`text-[9px] font-bold uppercase tracking-wide whitespace-nowrap ${
+                    state === 'done' || state === 'current' ? 'text-accent' : 'text-ink-faint'
+                  }`}
+                >
+                  {step.label}
+                </span>
+              </div>
+              {i < STEPS.length - 1 && (
+                <div
+                  className={`flex-1 h-px mx-1 mb-3 ${state === 'done' ? 'bg-accent/40' : 'bg-line'}`}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -313,6 +380,7 @@ function PrepareListingStep({
   onPrepare: (price: number, description?: string) => Promise<void>;
 }) {
   const [price, setPrice] = useState('');
+  const [marketMedian, setMarketMedian] = useState<number | null>(null);
   const [description, setDescription] = useState('');
   const [salesGoal, setSalesGoal] = useState('BALANCED');
   const [generating, setGenerating] = useState(false);
@@ -339,7 +407,11 @@ function PrepareListingStep({
     <div className="p-4 space-y-4">
       <h1 className="text-lg font-bold text-ink">Verkaufspreis festlegen</h1>
       <TitleEditor itemId={itemId} currentTitle={currentTitle} busy={busy} onUpdateTitle={onUpdateTitle} />
-      <PriceResearchPanel itemId={itemId} onSuggestPrice={(p) => setPrice(String(p))} />
+      <PriceResearchPanel
+        itemId={itemId}
+        onSuggestPrice={(p) => setPrice(String(p))}
+        onMedianAvailable={(m) => setMarketMedian(m)}
+      />
       <input
         type="number"
         inputMode="decimal"
@@ -350,6 +422,7 @@ function PrepareListingStep({
         onChange={(e) => setPrice(e.target.value)}
         className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
       />
+      <PriceHint enteredPrice={Number(price)} marketMedian={marketMedian} />
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs font-bold text-ink-muted uppercase tracking-wide shrink-0">Beschreibung</span>
@@ -407,6 +480,27 @@ function PrepareListingStep({
       </button>
     </div>
   );
+}
+
+function PriceHint({ enteredPrice, marketMedian }: { enteredPrice: number; marketMedian: number | null }) {
+  if (!marketMedian || !enteredPrice || isNaN(enteredPrice) || enteredPrice <= 0) return null;
+  const ratio = enteredPrice / marketMedian;
+  const pct = Math.round((ratio - 1) * 100);
+
+  let label: string;
+  let cls: string;
+  if (ratio < 0.8) {
+    label = `${pct} % unter Marktmedian (${marketMedian.toFixed(0)} €) — sehr günstig`;
+    cls = 'text-accent';
+  } else if (ratio <= 1.1) {
+    label = `${pct >= 0 ? '+' : ''}${pct} % zum Marktmedian (${marketMedian.toFixed(0)} €) — fairer Preis`;
+    cls = 'text-ink-muted';
+  } else {
+    label = `+${pct} % über Marktmedian (${marketMedian.toFixed(0)} €) — eher hoch`;
+    cls = 'text-amber-600 dark:text-amber-400';
+  }
+
+  return <p className={`text-[11px] ${cls}`}>{label}</p>;
 }
 
 function TitleEditor({

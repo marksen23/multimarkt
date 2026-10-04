@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
 import { TokenGate } from './components/TokenGate';
+import { ToastProvider } from './components/Toast';
 import { DashboardPage } from './pages/DashboardPage';
 import { NewItemPage } from './pages/NewItemPage';
 import { ItemDetailPage } from './pages/ItemDetailPage';
@@ -15,6 +16,7 @@ import { AnkaufPage } from './pages/AnkaufPage';
 
 function App() {
   return (
+    <ToastProvider>
     <TokenGate>
       <AppShell>
         <Routes>
@@ -32,6 +34,7 @@ function App() {
         </Routes>
       </AppShell>
     </TokenGate>
+    </ToastProvider>
   );
 }
 
