@@ -1,4 +1,5 @@
 import { api } from './client';
+import type { ExpectedMargin } from '../margin/expected-margin';
 
 export type DispositionUserGoal = 'MAX_PROFIT' | 'BALANCED' | 'FAST_SALE' | 'MINIMAL_EFFORT';
 export type DispositionAction =
@@ -19,6 +20,8 @@ export interface DispositionRecommendation {
   recommendedPlatforms: PlatformRecommendation[];
   rationale: string;
   estimatedEffortMinutes: number;
+  margin: ExpectedMargin;
+  individualSaleNotice: string | null;
 }
 
 export interface EvaluateDispositionInput {

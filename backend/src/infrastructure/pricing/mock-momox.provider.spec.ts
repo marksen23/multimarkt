@@ -12,5 +12,6 @@ describe('MockMomoxProvider', () => {
     expect(result).not.toBeNull();
     expect(result?.portalName).toContain('Mock');
     expect(result?.buybackPrice).toBeGreaterThan(0);
+    expect(result?.illustrative).toBe(true);
   });
 });

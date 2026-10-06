@@ -39,6 +39,17 @@ function round2(value: number): number {
 }
 
 /**
+ * Momox ist ein Mock (Feature-Plan 2.3). Solange die Quelle als Beispiel
+ * gekennzeichnet ist — explizit oder über das „(Mock)“ im Label —, darf
+ * ihre Zahl die Schmerzgrenze nicht anheben und keinen Ankauf empfehlen.
+ */
+function isIllustrativeBuyback(source: PriceResearchSourceResult): boolean {
+  if (source.source !== 'ANKAUF_PORTAL') return false;
+  if (source.detail?.illustrative === true) return true;
+  return /\(Mock\)/i.test(source.providerLabel);
+}
+
+/**
  * Reine, deterministische Berechnung — keine DB-/Netzwerk-Abhängigkeit,
  * bewusst getrennt von PriceTriangulationService (das holt/cached die
  * Rohdaten, das hier verdichtet sie nur). Liefert `null`, wenn keine
@@ -79,9 +90,16 @@ export class PriceRecommendationService {
     );
 
     const buybackSource = sources.find((s) => s.source === 'ANKAUF_PORTAL');
+    const illustrativeBuyback = buybackSource != null && isIllustrativeBuyback(buybackSource);
     const buybackRecommended =
-      buybackSource?.median != null && buybackSource.median >= BUYBACK_RECOMMENDATION_THRESHOLD * targetPrice;
-    if (buybackSource?.median != null) {
+      !illustrativeBuyback &&
+      buybackSource?.median != null &&
+      buybackSource.median >= BUYBACK_RECOMMENDATION_THRESHOLD * targetPrice;
+    if (illustrativeBuyback && buybackSource) {
+      reasoning.push(
+        `Ankaufsalternative (${buybackSource.providerLabel}) ist nur ein Beispiel und fließt weder in die Schmerzgrenze noch in eine Ankauf-Empfehlung ein.`,
+      );
+    } else if (buybackSource?.median != null) {
       minPrice = Math.max(minPrice, buybackSource.median);
       reasoning.push(
         `Ankaufsalternative (${buybackSource.providerLabel}): ${buybackSource.median.toFixed(2)} €${

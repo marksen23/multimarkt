@@ -10,6 +10,7 @@ import { PhotoCapture } from '../components/PhotoCapture';
 import { PhotoGallery } from '../components/PhotoGallery';
 import { PhotoQualityPanel } from '../components/PhotoQualityPanel';
 import { PriceResearchPanel } from '../components/PriceResearchPanel';
+import { PurchasePanel } from '../components/PurchasePanel';
 import { DetailPageSkeleton } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
 
@@ -81,6 +82,21 @@ export function ItemDetailPage() {
         </div>
       )}
 
+      <div className="px-4 mb-4">
+        <PurchasePanel
+          key={[
+            item.purchasePriceEur,
+            item.purchasePortal,
+            item.purchaseDate,
+            item.purchaseCondition,
+            item.purchaseUrl,
+          ].join('|')}
+          item={item}
+          busy={busy}
+          onSave={(draft) => run(() => itemsApi.updatePurchase(id, draft))}
+        />
+      </div>
+
       {detail.photos.length > 0 && (
         <div className="px-4 mb-4 space-y-3">
           <PhotoGallery photos={detail.photos} />
@@ -121,6 +137,7 @@ export function ItemDetailPage() {
           </div>
           <PrepareListingStep
             itemId={id}
+            purchasePriceEur={item.purchasePriceEur}
             currentTitle={item.title}
             busy={busy}
             onUpdateTitle={(title) => run(() => itemsApi.updateTitle(id, title))}
@@ -290,12 +307,14 @@ function AnalyzeStep({
 
 function PrepareListingStep({
   itemId,
+  purchasePriceEur,
   currentTitle,
   busy,
   onUpdateTitle,
   onPrepare,
 }: {
   itemId: string;
+  purchasePriceEur: number | null;
   currentTitle: string | null;
   busy: boolean;
   onUpdateTitle: (title: string) => Promise<void>;
@@ -328,7 +347,11 @@ function PrepareListingStep({
     <div className="p-4 space-y-4">
       <h1 className="text-lg font-bold text-ink">Verkaufspreis festlegen</h1>
       <TitleEditor itemId={itemId} currentTitle={currentTitle} busy={busy} onUpdateTitle={onUpdateTitle} />
-      <PriceResearchPanel itemId={itemId} onSuggestPrice={(p) => setPrice(String(p))} />
+      <PriceResearchPanel
+        itemId={itemId}
+        purchasePriceEur={purchasePriceEur}
+        onSuggestPrice={(p) => setPrice(String(p))}
+      />
       <input
         type="number"
         inputMode="decimal"

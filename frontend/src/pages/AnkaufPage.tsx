@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ankaufApi } from '../api/ankauf';
+import { itemsApi } from '../api/items';
 import type { AnkaufListing, AnkaufResearchResult, DealScore } from '../api/types';
 
 type ConditionKey = 'alle' | 'wie_neu' | 'gut' | 'gebraucht' | 'defekt';
@@ -50,13 +52,41 @@ function matchesCondition(listing: AnkaufListing, condition: ConditionKey): bool
   return keywords.some((kw) => text.includes(kw));
 }
 
+function todayLocal(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
 export function AnkaufPage() {
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnkaufResearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeCondition, setActiveCondition] = useState<ConditionKey>('alle');
+  const [adoptingKey, setAdoptingKey] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const adopt = async (listing: AnkaufListing, key: string) => {
+    setAdoptingKey(key);
+    setError(null);
+    try {
+      const item = await itemsApi.createFromPurchase({
+        title: listing.title,
+        price: listing.price,
+        portal: PLATFORM_LABELS[listing.platform] ?? listing.platform,
+        date: todayLocal(),
+        condition: listing.condition,
+        url: listing.url,
+      });
+      navigate(`/items/${item.id}`);
+    } catch {
+      setError('Einkauf konnte nicht übernommen werden.');
+      setAdoptingKey(null);
+    }
+  };
 
   const search = async (kw: string) => {
     if (!kw.trim()) return;
@@ -201,9 +231,17 @@ export function AnkaufPage() {
                 Keine Angebote für diesen Filter gefunden.
               </p>
             )}
-            {visibleListings.map((listing, i) => (
-              <ListingCard key={i} listing={listing} />
-            ))}
+            {visibleListings.map((listing, i) => {
+              const key = `${listing.platform}-${listing.title}-${i}`;
+              return (
+                <ListingCard
+                  key={key}
+                  listing={listing}
+                  adopting={adoptingKey === key}
+                  onAdopt={() => void adopt(listing, key)}
+                />
+              );
+            })}
           </div>
         </>
       )}
@@ -220,7 +258,15 @@ export function AnkaufPage() {
   );
 }
 
-function ListingCard({ listing }: { listing: AnkaufListing }) {
+function ListingCard({
+  listing,
+  adopting,
+  onAdopt,
+}: {
+  listing: AnkaufListing;
+  adopting: boolean;
+  onAdopt: () => void;
+}) {
   const score = listing.dealScore;
   const scoreConfig = score ? SCORE_CONFIG[score] : null;
   const platformColor = PLATFORM_COLORS[listing.platform] ?? '#6b7280';
@@ -251,14 +297,14 @@ function ListingCard({ listing }: { listing: AnkaufListing }) {
         )}
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: platformColor }} />
           <span className="text-xs text-ink-muted">{platformLabel}</span>
           {listing.condition && (
             <>
               <span className="text-ink-faint">·</span>
-              <span className="text-xs text-ink-faint truncate max-w-[140px]">{listing.condition}</span>
+              <span className="text-xs text-ink-faint truncate">{listing.condition}</span>
             </>
           )}
         </div>
@@ -267,14 +313,22 @@ function ListingCard({ listing }: { listing: AnkaufListing }) {
             href={listing.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs font-bold text-accent hover:text-accent-hover transition-colors flex-shrink-0"
+            className="text-xs font-bold text-ink-muted hover:text-accent transition-colors flex-shrink-0"
           >
-            Anzeige öffnen ↗
+            Anzeige ↗
           </a>
         ) : (
           <span className="text-xs text-ink-faint flex-shrink-0">Kein Link</span>
         )}
       </div>
+      <button
+        type="button"
+        disabled={adopting}
+        onClick={onAdopt}
+        className="w-full text-xs font-bold px-3 py-2 rounded-lg border border-accent text-accent hover:bg-accent-soft disabled:opacity-60 transition-colors"
+      >
+        {adopting ? 'Übernimmt…' : 'als Einkauf übernehmen'}
+      </button>
     </div>
   );
 }
