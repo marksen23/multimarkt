@@ -5,6 +5,7 @@ import { clearAccessToken } from './TokenGate';
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/verkaeufe', label: 'Verkäufe', end: false },
+  { to: '/sicherung', label: 'Sicherung', end: false },
   { to: '/ankauf', label: 'Ankauf', end: false },
   { to: '/bundles', label: 'Bundles', end: false },
   { to: '/account', label: 'Konto', end: false },
