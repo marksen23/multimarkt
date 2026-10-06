@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { prefersBuyback } from '../../domain/category/taxonomy';
 import {
   LogisticsProfile,
   SHIPPING_PORTAL_KEYS,
@@ -51,7 +52,6 @@ export interface DispositionRecommendation {
 }
 
 const LOW_VALUE_THRESHOLD_EUR = 10;
-const BUYBACK_CATEGORIES = ['electronics', 'books', 'media'];
 
 @Injectable()
 export class DispositionEngineService {
@@ -72,7 +72,9 @@ export class DispositionEngineService {
     // Feature-Plan 2.3: ein illustrativer Portal-Quote (Momox-Mock) wird
     // hier bewusst nicht gelesen. Diese Ankauf-Empfehlung hängt nur an
     // Kategorie und Verkaufsziel, nicht an der Platzhalterzahl.
-    if (BUYBACK_CATEGORIES.includes(product.category)) {
+    // Feature-Plan 3.9: Elektronik und Medien, auch die früheren Schlüssel
+    // electronics, books und media.
+    if (prefersBuyback(product.category)) {
       const estimatedBuybackPrice = marketPrice * 0.4;
       if (product.userGoal === 'FAST_SALE' || product.userGoal === 'MINIMAL_EFFORT') {
         return {

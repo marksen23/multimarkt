@@ -3,6 +3,7 @@ import { dispositionApi } from '../api/disposition';
 import type { DispositionRecommendation, DispositionUserGoal } from '../api/disposition';
 import { ApiRequestError } from '../api/client';
 import { shippingCostEur, shippingPortalsAllowed, type LogisticsProfile } from '../logistics/profile';
+import { RESALE_CATEGORIES, resolveCategory } from '../category/taxonomy';
 import { flushMarginAssumptions } from '../margin/use-margin-assumptions';
 
 const USER_GOALS: { value: DispositionUserGoal; label: string }[] = [
@@ -45,12 +46,14 @@ const ACTION_COLORS: Record<string, string> = {
 export function DispositionPanel({
   itemId,
   logistics,
+  itemCategory,
 }: {
   itemId: string;
   logistics: LogisticsProfile;
+  itemCategory?: string | null;
 }) {
   const [open, setOpen] = useState(false);
-  const [category, setCategory] = useState('household');
+  const [category, setCategory] = useState<string>(resolveCategory(itemCategory) ?? 'Haushalt');
   const [marketMedianPrice, setMarketMedianPrice] = useState('');
   const [userGoal, setUserGoal] = useState<DispositionUserGoal>('BALANCED');
   const [result, setResult] = useState<DispositionRecommendation | null>(null);
@@ -119,13 +122,11 @@ export function DispositionPanel({
           onChange={(e) => setCategory(e.target.value)}
           className="p-2 border border-line rounded-lg text-xs bg-surface text-ink"
         >
-          <option value="household">Haushalt</option>
-          <option value="furniture">Möbel</option>
-          <option value="fashion">Mode</option>
-          <option value="shoes">Schuhe</option>
-          <option value="electronics">Elektronik</option>
-          <option value="books">Bücher</option>
-          <option value="media">Medien</option>
+          {RESALE_CATEGORIES.map((entry) => (
+            <option key={entry} value={entry}>
+              {entry}
+            </option>
+          ))}
         </select>
         <select
           value={userGoal}

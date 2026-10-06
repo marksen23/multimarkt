@@ -2,6 +2,11 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import {
+  canonicalCategory,
+  CATEGORY_REQUIRED_FACTS,
+  normalizeFunctionChecked,
+} from '../../domain/category/taxonomy';
+import {
   CapabilityCheckFailedException,
   UnconfirmedConditionException,
 } from '../../domain/errors/state-transition.errors';
@@ -27,7 +32,8 @@ export interface CapabilityCheckResult {
  *    sein — Defense-in-Depth zusätzlich zur Precondition in Schritt 3
  *    (Doc 02 §11), damit Publish niemals von einer geschwächten früheren
  *    Prüfung abhängt (T02-2).
- * 2. marktplatzspezifisch: Pflichtfelder aus der Capability-Registry.
+ * 2. kategorieabhängig: Pflichtfelder der Taxonomie. Fallbacks kommen aus
+ *    der Capability-Registry und bleiben projektionslokal.
  */
 @Injectable()
 export class CapabilityCheckService {
@@ -62,16 +68,16 @@ export class CapabilityCheckService {
       where: { itemId: item.id },
     });
     const byKey = new Map(attributes.map((a) => [a.attributeKey, a]));
+    const category = canonicalCategory(byKey.get('category')?.attributeValue);
+    const requiredKeys = category
+      ? ['category', ...CATEGORY_REQUIRED_FACTS[category]]
+      : ['category'];
 
     const missing: string[] = [];
     const fallbackData: Record<string, string> = {};
 
-    for (const key of profile.requiredAttributeKeys) {
-      const attr = byKey.get(key);
-      const hasConfirmedOrInferredValue =
-        attr && attr.truthState !== 'UNKNOWN' && attr.attributeValue;
-
-      if (hasConfirmedOrInferredValue) continue;
+    for (const key of requiredKeys) {
+      if (factIsPresent(key, byKey.get(key))) continue;
 
       const fallback = profile.genericFallbacks[key];
       if (fallback) {
@@ -90,4 +96,11 @@ export class CapabilityCheckService {
 
     return { ok: true, fallbackData };
   }
+}
+
+function factIsPresent(key: string, attr: ItemAttributeEntity | undefined): boolean {
+  if (!attr || attr.truthState === 'UNKNOWN' || !attr.attributeValue?.trim()) return false;
+  if (key === 'category') return canonicalCategory(attr.attributeValue) !== null;
+  if (key === 'functionChecked') return normalizeFunctionChecked(attr.attributeValue) !== null;
+  return true;
 }

@@ -116,13 +116,30 @@ describe('T07 Marketplace Publishing', () => {
       status: 'READY',
       condition: 'good',
     });
-    await dataSource.manager.save(ItemAttributeEntity, {
-      itemId: item.id,
-      attributeKey: 'category',
-      attributeValue: 'Bekleidung',
-      truthState: 'USER_CONFIRMED',
-      source: 'USER_INPUT',
-    });
+    // Kleidung verlangt Größe und Marke (Feature-Plan 3.9).
+    await dataSource.manager.save(ItemAttributeEntity, [
+      {
+        itemId: item.id,
+        attributeKey: 'category',
+        attributeValue: 'Kleidung',
+        truthState: 'USER_CONFIRMED',
+        source: 'USER_INPUT',
+      },
+      {
+        itemId: item.id,
+        attributeKey: 'size',
+        attributeValue: 'M',
+        truthState: 'USER_CONFIRMED',
+        source: 'USER_INPUT',
+      },
+      {
+        itemId: item.id,
+        attributeKey: 'brand',
+        attributeValue: 'Nike',
+        truthState: 'USER_CONFIRMED',
+        source: 'USER_INPUT',
+      },
+    ]);
     const listing = await dataSource.manager.save(CanonicalListingEntity, {
       userId,
       itemId: item.id,

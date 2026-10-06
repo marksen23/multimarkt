@@ -6,6 +6,7 @@ import {
   AI_VISION_PROVIDER,
   AiVisionProvider,
 } from '../../domain/ai/ai-vision-provider.interface';
+import { projectVisionClaims } from '../../domain/category/taxonomy';
 import { TruthState } from '../../domain/state-vocabulary';
 import { ItemAttributeEntity, ItemEntity } from '../../infrastructure/database/entities';
 import { StateGuardService } from '../state-guard/state-guard.service';
@@ -37,9 +38,12 @@ export class ProductAnalysisService {
     if (!item) throw new NotFoundException(`Item ${itemId} not found`);
 
     const result = await this.aiProvider.analyzeItem({ imageUrls });
+    // Nur Sichtbares übernehmen, Kategorie auf die Taxonomie legen, Lücken
+    // nur für die Pflichtangaben dieser Kategorie (Feature-Plan 3.9).
+    const claims = projectVisionClaims(result.attributes);
 
     await this.dataSource.transaction(async (manager) => {
-      for (const claim of result.attributes) {
+      for (const claim of claims) {
         const truthState: TruthState = claim.value ? 'INFERRED' : 'UNKNOWN';
         await manager.upsert(
           ItemAttributeEntity,

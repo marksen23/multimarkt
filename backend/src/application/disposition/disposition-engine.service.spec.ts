@@ -63,6 +63,18 @@ describe('DispositionEngineService', () => {
     expect(result.action).toBe('BUYBACK_SERVICE');
   });
 
+  it('recommends BUYBACK_SERVICE for the taxonomy labels Elektronik and Medien', () => {
+    for (const category of ['Elektronik', 'Medien']) {
+      const result = service.evaluate({
+        ...baseProfile,
+        category,
+        marketMedianPrice: 100,
+        userGoal: 'MINIMAL_EFFORT',
+      });
+      expect(result.action).toBe('BUYBACK_SERVICE');
+    }
+  });
+
   it('does not force BUYBACK_SERVICE for electronics when the goal is MAX_PROFIT', () => {
     const result = service.evaluate({
       ...baseProfile,
