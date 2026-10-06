@@ -31,8 +31,10 @@ import {
   UpdateTitleDto,
 } from '../dto/items.dto';
 import { CreateFromPurchaseDto, UpdatePurchaseDto } from '../dto/purchase.dto';
+import { RecordSaleCloseoutDto } from '../dto/sale-closeout.dto';
 import { EvaluateDispositionDto } from '../dto/disposition.dto';
 import { ActorContext } from '../../domain/actor-context';
+import { HumanGateBypassException } from '../../domain/errors/state-transition.errors';
 import { SalesGoal } from '../../domain/ai/description-generation-provider.interface';
 import { ItemLifecycleState } from '../../domain/state-vocabulary';
 import { BundleAssignmentService } from '../../application/bundle/bundle-assignment.service';
@@ -69,6 +71,7 @@ import { PhotoQualityService } from '../../application/photo-quality/photo-quali
 import { PhotoQualityReport } from '../../domain/photo-quality/photo-quality.types';
 import { TitleGenerationService, TitleSuggestion } from '../../application/title-generation/title-generation.service';
 import { ListingChannel } from '../../domain/ai/title-generation-provider.interface';
+import { SaleCloseoutService } from '../../application/sales/sale-closeout.service';
 import { StateGuardService } from '../../application/state-guard/state-guard.service';
 import { STORAGE_PROVIDER, StorageProvider } from '../../domain/storage/storage-provider.interface';
 import {
@@ -108,6 +111,7 @@ export class ItemsController {
     private readonly titleGeneration: TitleGenerationService,
     private readonly listingSummary: ListingSummaryService,
     private readonly attributeConfirmation: ItemAttributeConfirmationService,
+    private readonly saleCloseout: SaleCloseoutService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
   ) {}
 
@@ -484,6 +488,28 @@ export class ItemsController {
     @CurrentActor() actor: ActorContext,
   ): Promise<ItemEntity> {
     return this.conflictResolution.resolve(id, dto.winningSaleEventId, actor);
+  }
+
+  /**
+   * Feature-Plan 3.4: Abschluss nachholen, wenn der Artikel schon verkauft
+   * ist (Konfliktauflösung, Webhook) und die Kosten noch fehlen.
+   */
+  @Post(':id/sale-closeout')
+  async recordSaleCloseout(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RecordSaleCloseoutDto,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<ItemEntity> {
+    if (actor.type !== 'USER') {
+      throw new HumanGateBypassException('Only a USER actor may record a sale closeout');
+    }
+    return this.saleCloseout.recordForSoldItem(id, {
+      proceedsEur: dto.proceedsEur,
+      portal: dto.portal,
+      feeEur: dto.feeEur,
+      shippingEur: dto.shippingEur,
+      paymentMethod: dto.paymentMethod ?? null,
+    });
   }
 
   @Get(':id/sale-events')

@@ -11,6 +11,7 @@ import { PhotoGallery } from '../components/PhotoGallery';
 import { PhotoQualityPanel } from '../components/PhotoQualityPanel';
 import { PriceResearchPanel } from '../components/PriceResearchPanel';
 import { PurchasePanel } from '../components/PurchasePanel';
+import { SaleResultPanel } from '../components/SaleResultPanel';
 import { DetailPageSkeleton } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
 
@@ -156,6 +157,7 @@ export function ItemDetailPage() {
             busy={busy}
             run={run}
             emptyLabel="Noch kein Canonical Listing vorhanden."
+            purchasePriceEur={item.purchasePriceEur}
           />
         </div>
       )}
@@ -172,7 +174,18 @@ export function ItemDetailPage() {
         />
       )}
 
-      {(item.status === 'SOLD' || item.status === 'CANCELLED' || item.status === 'ARCHIVED') && (
+      {item.status === 'SOLD' && (
+        <div className="p-4 space-y-4">
+          <h1 className="text-lg font-bold text-ink">{item.title ?? 'Artikel'}</h1>
+          <SaleResultPanel
+            item={item}
+            busy={busy}
+            onRecord={(draft) => run(() => itemsApi.recordSaleCloseout(id, draft))}
+          />
+        </div>
+      )}
+
+      {(item.status === 'CANCELLED' || item.status === 'ARCHIVED') && (
         <div className="p-4">
           <Centered
             title={item.title ?? 'Artikel'}

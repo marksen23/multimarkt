@@ -68,6 +68,69 @@ export class ItemEntity {
   @Column({ name: 'purchase_url', type: 'text', nullable: true })
   purchaseUrl: string | null;
 
+  // Verkaufsabschluss (Feature-Plan 3.4). Die Beträge sind der erfasste
+  // Verkauf, nicht die erwartete Marge. `salePurchasePriceEur` ist der
+  // Einstand in diesem Moment; `saleNetProfitEur` ist Netto minus diesen
+  // Einstand. Beides bleibt stehen, wenn der Einkauf später geändert wird.
+  @Column({
+    name: 'sale_proceeds_eur',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  saleProceedsEur: number | null;
+
+  @Column({ name: 'sale_portal', type: 'text', nullable: true })
+  salePortal: string | null;
+
+  @Column({
+    name: 'sale_fee_eur',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  saleFeeEur: number | null;
+
+  @Column({
+    name: 'sale_shipping_eur',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  saleShippingEur: number | null;
+
+  @Column({ name: 'sale_payment_method', type: 'text', nullable: true })
+  salePaymentMethod: string | null;
+
+  @Column({
+    name: 'sale_purchase_price_eur',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  salePurchasePriceEur: number | null;
+
+  @Column({
+    name: 'sale_net_profit_eur',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  saleNetProfitEur: number | null;
+
+  @Column({ name: 'sold_at', type: 'timestamptz', nullable: true })
+  soldAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

@@ -1,3 +1,4 @@
+import type { SaleCloseoutDraft } from '../margin/sale-closeout';
 import { api } from './client';
 import type {
   CanonicalListing,
@@ -75,6 +76,8 @@ export const itemsApi = {
     }),
   bundle: (id: string, title: string, itemIds: string[]) =>
     api.post(`/items/${id}/bundle`, { title, itemIds }),
+  recordSaleCloseout: (id: string, draft: SaleCloseoutDraft) =>
+    api.post<Item>(`/items/${id}/sale-closeout`, draft),
   saleEvents: (id: string) => api.get<SaleEvent[]>(`/items/${id}/sale-events`),
   resolveConflict: (id: string, winningSaleEventId: string) =>
     api.post<Item>(`/items/${id}/resolve-conflict`, { winningSaleEventId }),
