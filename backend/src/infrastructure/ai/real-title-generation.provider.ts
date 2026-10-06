@@ -10,6 +10,17 @@ import {
 
 const MODEL_ID = 'gemini-flash-latest';
 
+const FACT_LABELS: Record<string, string> = {
+  category: 'Kategorie',
+  categoryDetail: 'Artikelart',
+  size: 'Größe',
+  measurements: 'Maße',
+  brand: 'Marke',
+  functionChecked: 'Funktion geprüft',
+  color: 'Farbe',
+  material: 'Material',
+};
+
 const CHANNEL_SCHEME: Record<ListingChannel, string> = {
   KLEINANZEIGEN:
     'Schema: [Marke] [Modell/Kategorie] [variantenkritisches Merkmal] [Zustandskürzel, nur falls suchrelevant]. Trenner "|" statt Kommas erlaubt. Keine Füllwörter ("Hammer", "Schnäppchen", "MUSS SEHEN"), kein "VB" im Titel.',
@@ -38,7 +49,7 @@ export class RealTitleGenerationProvider implements TitleGenerationProvider {
   async generate(input: TitleGenerationInput): Promise<string | null> {
     const knownFacts = input.attributes
       .filter((a) => a.value)
-      .map((a) => `${a.key}: ${a.value}`)
+      .map((a) => `${FACT_LABELS[a.key] ?? a.key}: ${a.value}`)
       .join(', ');
 
     const limit = CHANNEL_TITLE_LIMITS[input.channel];
@@ -57,7 +68,7 @@ Bekannte Merkmale: ${knownFacts || 'keine weiteren Angaben'}
 ${CHANNEL_SCHEME[input.channel]}
 ${comparablesBlock}
 
-WICHTIG: Verwende für die FAKTEN AUSSCHLIESSLICH die oben genannten Angaben zu diesem Produkt. Erfinde KEINE Marke, kein Modell, keine Größe oder Farbe, die dort nicht steht — auch nicht aus den Vergleichstiteln übernommen, die sind nur Vokabular-Vorbild, nicht Faktenquelle. Halte die Zeichenzahl strikt ein. Antworte NUR mit dem Titel selbst, ohne Anführungszeichen, ohne Erklärung.`;
+WICHTIG: Verwende für die FAKTEN AUSSCHLIESSLICH die oben genannten Angaben zu diesem Produkt. Pflichtangaben (Größe, Maße, Marke, Funktion geprüft) nur einsetzen, wenn sie unter den bekannten Merkmalen stehen. Erfinde KEINE Marke, kein Modell, keine Größe, keine Maße und keine Farbe, die dort nicht steht — auch nicht aus den Vergleichstiteln übernommen, die sind nur Vokabular-Vorbild, nicht Faktenquelle. Halte die Zeichenzahl strikt ein. Antworte NUR mit dem Titel selbst, ohne Anführungszeichen, ohne Erklärung.`;
 
     const response = await this.client.models.generateContent({
       model: MODEL_ID,

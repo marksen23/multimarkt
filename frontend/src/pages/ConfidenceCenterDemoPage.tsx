@@ -41,9 +41,18 @@ const initialDetail: ItemDetail = {
       id: 'a1',
       itemId: 'demo-item-1',
       attributeKey: 'category',
+      attributeValue: 'Kleidung',
+      truthState: 'INFERRED',
+      source: 'mock-gemini-vision-stub-v1',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'a1b',
+      itemId: 'demo-item-1',
+      attributeKey: 'categoryDetail',
       attributeValue: 'Bekleidung > Herren > Jacken',
-      truthState: 'USER_CONFIRMED',
-      source: 'USER_INPUT',
+      truthState: 'INFERRED',
+      source: 'mock-gemini-vision-stub-v1',
       createdAt: new Date().toISOString(),
     },
     {
@@ -107,19 +116,25 @@ export function ConfidenceCenterDemoPage() {
       onConfirmAttribute={async (key, value) => {
         setSaving(true);
         await new Promise((r) => setTimeout(r, 400));
-        setDetail((prev) => ({
-          ...prev,
-          attributes: prev.attributes.map((a) =>
-            a.attributeKey === key
-              ? {
-                  ...a,
-                  attributeValue: value ?? a.attributeValue,
-                  truthState: 'USER_CONFIRMED',
-                  source: 'USER_INPUT',
-                }
-              : a,
-          ),
-        }));
+        setDetail((prev) => {
+          const nextValue = value ?? prev.attributes.find((a) => a.attributeKey === key)?.attributeValue ?? null;
+          const exists = prev.attributes.some((a) => a.attributeKey === key);
+          const confirmed = {
+            id: key,
+            itemId: prev.item.id,
+            attributeKey: key,
+            attributeValue: nextValue,
+            truthState: 'USER_CONFIRMED' as const,
+            source: 'USER_INPUT',
+            createdAt: new Date().toISOString(),
+          };
+          return {
+            ...prev,
+            attributes: exists
+              ? prev.attributes.map((a) => (a.attributeKey === key ? { ...a, ...confirmed } : a))
+              : [...prev.attributes, confirmed],
+          };
+        });
         setSaving(false);
       }}
     />

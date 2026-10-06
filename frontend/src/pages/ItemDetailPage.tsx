@@ -167,6 +167,10 @@ export function ItemDetailPage() {
             <DispositionPanel
               itemId={id}
               logistics={toLogisticsProfile(item)}
+              itemCategory={
+                detail.attributes.find((attribute) => attribute.attributeKey === "category")
+                  ?.attributeValue ?? null
+              }
             />
           </div>
           <div className="px-4">

@@ -80,4 +80,28 @@ describe('RealTitleGenerationProvider', () => {
     expect(prompt).toContain('Ähnliche Jacke OVP');
     expect(prompt).toContain('NICHT als Faktenquelle');
   });
+
+  it('labels category facts in German and only when they are known', async () => {
+    generateContentMock.mockResolvedValue({ text: 'Nike Jacke M' });
+
+    const provider = new RealTitleGenerationProvider(makeConfig({ GEMINI_API_KEY: 'real-key' }));
+    await provider.generate({
+      title: 'Jacke',
+      condition: 'good',
+      attributes: [
+        { key: 'category', value: 'Kleidung' },
+        { key: 'brand', value: 'Nike' },
+        { key: 'size', value: 'M' },
+        { key: 'measurements', value: null },
+      ],
+      channel: 'VINTED',
+      comparableListings: [],
+    });
+
+    const prompt = generateContentMock.mock.calls[0][0].contents as string;
+    expect(prompt).toContain('Kategorie: Kleidung');
+    expect(prompt).toContain('Marke: Nike');
+    expect(prompt).toContain('Größe: M');
+    expect(prompt).not.toContain('Maße:');
+  });
 });

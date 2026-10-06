@@ -59,8 +59,8 @@ export function NewItemPage() {
         <div>
           <h1 className="text-xl font-extrabold text-ink tracking-tight">Neuer Artikel</h1>
           <p className="text-sm text-ink-muted mt-1">
-            Fotografiere den Gegenstand, ein Etikett oder Typenschild. Die KI schlägt danach
-            Kategorie, Marke und weitere Angaben vor — du bestätigst.
+            Fotografiere den Gegenstand, ein Etikett oder Typenschild. Die KI trägt nur ein,
+            was sie sieht. Fehlende Pflichtangaben der Kategorie fragst du danach.
           </p>
         </div>
 
