@@ -11,6 +11,17 @@ import { CanonicalListingEntity, MarketplaceProjectionEntity } from '../../infra
 import { CapabilityCheckService } from '../capability-check/capability-check.service';
 import { StateGuardService } from '../state-guard/state-guard.service';
 
+/** Kopieren und selbst bestätigen. Kein Anlegen und kein Löschen über eine API. */
+const COPY_CONFIRM_MARKETPLACES = new Set(['KLEINANZEIGEN', 'EBAY', 'VINTED']);
+
+export function shouldCallMarketplaceDelist(
+  marketplaceId: string,
+  externalPlatformId: string | null,
+): boolean {
+  if (!externalPlatformId) return false;
+  return !COPY_CONFIRM_MARKETPLACES.has(marketplaceId);
+}
+
 /**
  * Orchestriert den vollständigen Publish-Pfad (Doc 02 §5, Doc 03 §6).
  *
@@ -146,11 +157,14 @@ export class MarketplacePublishingService {
     if (!projection) throw new NotFoundException(`Listing ${projectionId} not found`);
 
     const adapter = this.adapters.get(projection.marketplaceId);
-    if (adapter && projection.externalPlatformId) {
-      // Doc 03 §10 Pfad A: nur bei verifizierter API-Bestätigung gilt das
-      // Storno als abgeschlossen. Für die Formatierungshilfe (kein
-      // externalPlatformId) bleibt es reine Human Assertion (Pfad B).
-      await adapter.delist(projection.externalPlatformId);
+    if (
+      adapter &&
+      shouldCallMarketplaceDelist(projection.marketplaceId, projection.externalPlatformId)
+    ) {
+      // Doc 03 §10 Pfad A gilt nur für einen echten API-Kanal. Kleinanzeigen,
+      // Vinted und eBay sind Kopierwege — der Mock-eBay-Adapter löscht nichts
+      // und gilt nicht als veröffentlicht.
+      await adapter.delist(projection.externalPlatformId!);
     }
 
     return this.stateGuard.transitionProjection(projectionId, {

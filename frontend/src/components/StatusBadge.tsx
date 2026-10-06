@@ -12,6 +12,7 @@ const COLORS: Record<string, string> = {
   CANCELLED: 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400',
   // Projection
   DRAFT: 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400',
+  COPIED: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
   PUBLISHING: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
   ONLINE: 'bg-accent-soft text-accent',
   CANCEL_PENDING: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
@@ -29,9 +30,10 @@ const LABELS: Record<string, string> = {
   SALE_CONFLICT: 'Verkaufskonflikt',
   CANCELLED: 'Storniert',
   DRAFT: 'Entwurf',
+  COPIED: 'Kopiert',
   PUBLISHING: 'Wird veröffentlicht',
   ONLINE: 'Online',
-  CANCEL_PENDING: 'Storno ausstehend',
+  CANCEL_PENDING: 'Bitte zurückziehen',
 };
 
 export function StatusBadge({ status }: { status: string }) {

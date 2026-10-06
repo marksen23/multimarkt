@@ -18,6 +18,8 @@ import {
 import { PriceTriangulationService } from '../pricing/price-triangulation.service';
 import { StateGuardService } from '../state-guard/state-guard.service';
 import { TitleGapAnalysis, TitleTokenAnalysisService } from '../title-generation/title-token-analysis.service';
+import { ListingChannel } from '../../domain/ai/title-generation-provider.interface';
+import { finalizeChannelDescription } from '../../domain/listing/channel-description';
 import { VaguePhraseDetectorService, VaguePhraseMatch } from './vague-phrase-detector.service';
 
 export interface DescriptionSuggestion {
@@ -68,6 +70,7 @@ export class CanonicalListingService {
   async generateDescription(
     itemId: string,
     salesGoal: SalesGoal | null = null,
+    channel: ListingChannel | null = null,
   ): Promise<DescriptionSuggestion> {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id: itemId });
     if (!item) throw new NotFoundException(`Item ${itemId} not found`);
@@ -76,6 +79,7 @@ export class CanonicalListingService {
       where: { itemId },
     });
     const comparableListings = await this.fetchComparableListings(itemId);
+    const missingTokens = this.tokenAnalysis.analyze(item.title, comparableListings).missingTokens;
 
     const descriptionText = await this.suggestDescription(
       item.title,
@@ -83,6 +87,8 @@ export class CanonicalListingService {
       attributes,
       comparableListings,
       salesGoal,
+      channel,
+      missingTokens,
     );
 
     return {
@@ -178,14 +184,27 @@ export class CanonicalListingService {
     attributes: ItemAttributeEntity[],
     comparableListings: ComparableListingRef[],
     salesGoal: SalesGoal | null,
+    channel: ListingChannel | null = null,
+    missingTokens: string[] = [],
   ): Promise<string> {
+    const mappedAttributes = attributes.map((a) => ({ key: a.attributeKey, value: a.attributeValue }));
     const suggestion = await this.descriptionProvider.generate({
       title,
       condition,
-      attributes: attributes.map((a) => ({ key: a.attributeKey, value: a.attributeValue })),
+      attributes: mappedAttributes,
       comparableListings,
       salesGoal,
+      channel,
+      missingTokens,
     });
+    if (channel) {
+      return finalizeChannelDescription(channel, suggestion, {
+        title,
+        condition,
+        attributes: mappedAttributes,
+        missingTokens,
+      });
+    }
     // Provider liefert `null`, wenn keine Generierung möglich war (z.B.
     // Gemini-Antwort leer) — nie einen kaputten/leeren Text durchreichen.
     return suggestion ?? `${title ?? 'Artikel'} — Zustand: ${condition ?? 'unbekannt'}`;

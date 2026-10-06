@@ -9,6 +9,7 @@ import {
   MarketplaceProjectionEntity,
   SaleEventEntity,
 } from '../../infrastructure/database/entities';
+import { flagSiblingChannelCards } from '../listing/flag-sibling-channel-cards';
 import { StateGuardService } from '../state-guard/state-guard.service';
 
 /**
@@ -67,6 +68,8 @@ export class ConflictResolutionService {
           actor,
         });
       }
+
+      await flagSiblingChannelCards(manager, this.stateGuard, winner.projectionId);
 
       return this.stateGuard.transitionItemWithManager(manager, itemId, {
         type: 'RESOLVE_CONFLICT_SOLD',

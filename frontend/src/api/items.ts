@@ -1,6 +1,7 @@
 import { api } from './client';
 import type {
   CanonicalListing,
+  ChannelPackage,
   DescriptionSuggestion,
   Item,
   ItemAttribute,
@@ -40,6 +41,17 @@ export const itemsApi = {
     api.get<DescriptionSuggestion>(
       `/items/${id}/generate-description${salesGoal ? `?salesGoal=${salesGoal}` : ''}`,
     ),
+  channelPackage: (id: string, salesGoal?: SalesGoal, fresh?: boolean) => {
+    const params = new URLSearchParams();
+    if (salesGoal) params.set('salesGoal', salesGoal);
+    if (fresh) params.set('fresh', 'true');
+    const query = params.toString();
+    return api.get<ChannelPackage>(`/items/${id}/channel-package${query ? `?${query}` : ''}`);
+  },
+  saveChannelPackage: (
+    id: string,
+    cards: { marketplaceId: ListingChannel; title: string; descriptionText: string; suggestedPrice: number }[],
+  ) => api.post<ChannelPackage>(`/items/${id}/channel-package`, { cards }),
   optimizePhoto: (id: string, file: File) => {
     const form = new FormData();
     form.append('file', file);

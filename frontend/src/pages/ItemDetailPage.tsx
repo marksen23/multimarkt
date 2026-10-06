@@ -1,21 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
-import type { ItemDetail, ListingChannel, SaleEvent } from '../api/types';
+import type { ItemDetail, SaleEvent } from '../api/types';
+import { ChannelCards } from '../components/ChannelCards';
 import { ConfidenceCenter } from '../components/ConfidenceCenter';
 import { DispositionPanel } from '../components/DispositionPanel';
-import { ListingsManager } from '../components/ListingsManager';
 import { PhotoCapture } from '../components/PhotoCapture';
 import { PhotoGallery } from '../components/PhotoGallery';
 import { PhotoQualityPanel } from '../components/PhotoQualityPanel';
-import { PriceResearchPanel } from '../components/PriceResearchPanel';
 import { DetailPageSkeleton } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
 
 export function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [detail, setDetail] = useState<ItemDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -110,38 +108,18 @@ export function ItemDetailPage() {
           <div className="px-4 pt-4">
             <DispositionPanel itemId={id} />
           </div>
-          <div className="px-4">
-            <button
-              type="button"
-              onClick={() => navigate(`/items/${id}/angebotspaket`)}
-              className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover transition-colors"
+          <div className="px-4 pb-8">
+            <Link
+              to={`/items/${id}/angebotspaket`}
+              className="block w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover transition-colors text-center"
             >
-              ✨ Angebotspaket erstellen
-            </button>
+              Kanal-Karten erstellen
+            </Link>
           </div>
-          <PrepareListingStep
-            itemId={id}
-            currentTitle={item.title}
-            busy={busy}
-            onUpdateTitle={(title) => run(() => itemsApi.updateTitle(id, title))}
-            onPrepare={(price, description) =>
-              run(() => itemsApi.prepareListing(id, price, description))
-            }
-          />
         </div>
       )}
 
-      {item.status === 'LISTED' && (
-        <div className="p-4 space-y-4">
-          <h1 className="text-lg font-bold text-ink">Listings</h1>
-          <ListingsManager
-            listings={detail.listings}
-            busy={busy}
-            run={run}
-            emptyLabel="Noch kein Canonical Listing vorhanden."
-          />
-        </div>
-      )}
+      {item.status === 'LISTED' && <ChannelCards itemId={id} onChanged={reload} />}
 
       {item.status === 'SALE_CONFLICT' && (
         <ConflictResolutionPanel itemId={id} busy={busy} run={run} />
@@ -155,7 +133,16 @@ export function ItemDetailPage() {
         />
       )}
 
-      {(item.status === 'SOLD' || item.status === 'CANCELLED' || item.status === 'ARCHIVED') && (
+      {item.status === 'SOLD' && (
+        <div className="pb-4">
+          <ChannelCards itemId={id} onChanged={reload} />
+          <p className="px-4 text-xs text-ink-faint">
+            Ein Verkauf setzt die anderen Karten auf „bitte zurückziehen“, bis du das bestätigst.
+          </p>
+        </div>
+      )}
+
+      {(item.status === 'CANCELLED' || item.status === 'ARCHIVED') && (
         <div className="p-4">
           <Centered
             title={item.title ?? 'Artikel'}
@@ -284,205 +271,6 @@ function AnalyzeStep({
         {busy && !analyzing && uploadProgress > 0 && `Fotos werden hochgeladen… ${Math.round(uploadProgress * 100)}%`}
         {busy && !analyzing && uploadProgress === 0 && 'Analysiert…'}
       </button>
-    </div>
-  );
-}
-
-function PrepareListingStep({
-  itemId,
-  currentTitle,
-  busy,
-  onUpdateTitle,
-  onPrepare,
-}: {
-  itemId: string;
-  currentTitle: string | null;
-  busy: boolean;
-  onUpdateTitle: (title: string) => Promise<void>;
-  onPrepare: (price: number, description?: string) => Promise<void>;
-}) {
-  const [price, setPrice] = useState('');
-  const [description, setDescription] = useState('');
-  const [salesGoal, setSalesGoal] = useState('BALANCED');
-  const [generating, setGenerating] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
-  const [descriptionMissingTokens, setDescriptionMissingTokens] = useState<string[]>([]);
-  const [vaguePhrases, setVaguePhrases] = useState<{ phrase: string; suggestion: string }[]>([]);
-
-  const generateDescription = async () => {
-    setGenerating(true);
-    setGenerateError(null);
-    try {
-      const result = await itemsApi.generateDescription(itemId, salesGoal);
-      setDescription(result.descriptionText);
-      setDescriptionMissingTokens(result.gapAnalysis.missingTokens);
-      setVaguePhrases(result.vaguePhrases);
-    } catch {
-      setGenerateError('Vorschlag konnte nicht erzeugt werden.');
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  return (
-    <div className="p-4 space-y-4">
-      <h1 className="text-lg font-bold text-ink">Verkaufspreis festlegen</h1>
-      <TitleEditor itemId={itemId} currentTitle={currentTitle} busy={busy} onUpdateTitle={onUpdateTitle} />
-      <PriceResearchPanel itemId={itemId} onSuggestPrice={(p) => setPrice(String(p))} />
-      <input
-        type="number"
-        inputMode="decimal"
-        min="0"
-        step="0.01"
-        placeholder="Preis in €"
-        value={price}
-        onChange={(e) => setPrice(e.target.value)}
-        className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
-      />
-      <div className="space-y-1">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-bold text-ink-muted uppercase tracking-wide shrink-0">Beschreibung</span>
-          <div className="flex items-center gap-2">
-            <select
-              value={salesGoal}
-              onChange={(e) => setSalesGoal(e.target.value)}
-              className="text-[11px] border border-line rounded-lg px-1.5 py-1 bg-surface text-ink-muted outline-none focus:border-accent"
-            >
-              <option value="BALANCED">Ausgewogen</option>
-              <option value="FAST_SALE">Schnell verkaufen</option>
-              <option value="MAX_PROFIT">Maximaler Erlös</option>
-              <option value="MINIMAL_EFFORT">Minimaler Aufwand</option>
-            </select>
-            <button
-              type="button"
-              onClick={generateDescription}
-              disabled={generating}
-              className="text-[11px] font-bold text-ink-muted hover:text-accent disabled:opacity-60 transition-colors shrink-0"
-            >
-              {generating ? 'Generiert…' : '✨ Vorschlag generieren'}
-            </button>
-          </div>
-        </div>
-        <textarea
-          rows={3}
-          placeholder="Beschreibung (optional — leer lassen für eine einfache Standardvorlage)"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
-        />
-        {generateError && <p className="text-xs text-danger">{generateError}</p>}
-        {descriptionMissingTokens.length > 0 && (
-          <p className="text-xs text-ink-faint">
-            Vergleichsangebote nutzen zusätzlich: {descriptionMissingTokens.slice(0, 6).join(', ')}
-          </p>
-        )}
-        {vaguePhrases.length > 0 && (
-          <div className="text-xs text-ink-faint space-y-0.5">
-            {vaguePhrases.map((v, i) => (
-              <p key={i}>
-                ⚠️ „{v.phrase}“ ist vage — {v.suggestion}
-              </p>
-            ))}
-          </div>
-        )}
-      </div>
-      <button
-        type="button"
-        disabled={busy || !price}
-        onClick={() => onPrepare(Number(price), description || undefined)}
-        className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
-      >
-        {busy ? 'Wird angelegt…' : 'Listing anlegen'}
-      </button>
-    </div>
-  );
-}
-
-function TitleEditor({
-  itemId,
-  currentTitle,
-  busy,
-  onUpdateTitle,
-}: {
-  itemId: string;
-  currentTitle: string | null;
-  busy: boolean;
-  onUpdateTitle: (title: string) => Promise<void>;
-}) {
-  const [title, setTitle] = useState(currentTitle ?? '');
-  const [channel, setChannel] = useState<ListingChannel>('KLEINANZEIGEN');
-  const [missingTokens, setMissingTokens] = useState<string[]>([]);
-  const [generating, setGenerating] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-
-  const saveTitle = async () => {
-    await onUpdateTitle(title);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
-
-  const generateTitle = async () => {
-    setGenerating(true);
-    setGenerateError(null);
-    try {
-      const result = await itemsApi.generateTitle(itemId, channel);
-      setTitle(result.title);
-      setMissingTokens(result.gapAnalysis.missingTokens);
-    } catch {
-      setGenerateError('Vorschlag konnte nicht erzeugt werden.');
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-bold text-ink-muted uppercase tracking-wide shrink-0">Titel</span>
-        <div className="flex items-center gap-2">
-          <select
-            value={channel}
-            onChange={(e) => setChannel(e.target.value as ListingChannel)}
-            className="text-[11px] border border-line rounded-lg px-1.5 py-1 bg-surface text-ink-muted outline-none focus:border-accent"
-          >
-            <option value="KLEINANZEIGEN">Kleinanzeigen</option>
-            <option value="EBAY">eBay</option>
-            <option value="VINTED">Vinted</option>
-          </select>
-          <button
-            type="button"
-            onClick={generateTitle}
-            disabled={generating}
-            className="text-[11px] font-bold text-ink-muted hover:text-accent disabled:opacity-60 transition-colors shrink-0"
-          >
-            {generating ? 'Generiert…' : '✨ Vorschlag generieren'}
-          </button>
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          placeholder="Titel"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="flex-1 p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
-        />
-        <button
-          type="button"
-          disabled={busy || !title || title === currentTitle}
-          onClick={saveTitle}
-          className="px-3 rounded-xl text-xs font-bold bg-surface border border-line text-ink-muted hover:text-accent disabled:opacity-50 transition-colors"
-        >
-          {saved ? '✓ Gespeichert' : 'Speichern'}
-        </button>
-      </div>
-      {generateError && <p className="text-xs text-danger">{generateError}</p>}
-      {missingTokens.length > 0 && (
-        <p className="text-xs text-ink-faint">
-          Vergleichsangebote nutzen zusätzlich: {missingTokens.slice(0, 6).join(', ')}
-        </p>
-      )}
     </div>
   );
 }

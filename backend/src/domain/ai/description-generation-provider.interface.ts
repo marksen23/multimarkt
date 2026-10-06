@@ -1,3 +1,5 @@
+import type { ListingChannel } from './title-generation-provider.interface';
+
 /**
  * Provider-Abstraktion für Beschreibungs-Generierung (docs/README.md §9b).
  * Bewusst nur ein VORSCHLAG: der Aufrufer (Controller/Frontend) zeigt den
@@ -32,6 +34,16 @@ export interface DescriptionGenerationInput {
    */
   comparableListings: ComparableListingRef[];
   salesGoal: SalesGoal | null;
+  /**
+   * Gesetzt, wenn der Text für eine Kanal-Karte entsteht. Ohne Kanal bleibt
+   * die bisherige, kanalneutrale Vorlage.
+   */
+  channel?: ListingChannel | null;
+  /**
+   * Fehlende Suchbegriffe aus der Titel-Lückenanalyse. Der Text darf sie
+   * nur aufnehmen, wenn sie schon in den bekannten Fakten stehen.
+   */
+  missingTokens?: string[];
 }
 
 export interface DescriptionGenerationProvider {
