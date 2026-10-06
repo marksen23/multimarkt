@@ -30,6 +30,7 @@ import {
   PrepareListingDto,
   UpdateTitleDto,
 } from '../dto/items.dto';
+import { CreateFromPurchaseDto, UpdatePurchaseDto } from '../dto/purchase.dto';
 import { EvaluateDispositionDto } from '../dto/disposition.dto';
 import { ActorContext } from '../../domain/actor-context';
 import { SalesGoal } from '../../domain/ai/description-generation-provider.interface';
@@ -48,6 +49,12 @@ import {
   DispositionEngineService,
   DispositionRecommendation,
 } from '../../application/disposition/disposition-engine.service';
+import {
+  computeExpectedMargin,
+  ExpectedMargin,
+  individualSaleNotice,
+  roundMoney,
+} from '../../domain/pricing/expected-margin';
 import { ItemAttributeConfirmationService } from '../../application/product-analysis/item-attribute-confirmation.service';
 import { ProductAnalysisService } from '../../application/product-analysis/product-analysis.service';
 import {
@@ -72,6 +79,7 @@ import {
   ItemPhotoEntity,
   MarketplaceProjectionEntity,
   SaleEventEntity,
+  UserEntity,
 } from '../../infrastructure/database/entities';
 import { ResolveConflictDto } from '../dto/sale-events.dto';
 
@@ -109,6 +117,28 @@ export class ItemsController {
       userId: actor.userId!,
       title: dto.title ?? null,
       status: 'NEW',
+    });
+  }
+
+  /**
+   * Feature-Plan 3.3: aus der Ankaufsuche wird ein Artikel mit Einstand
+   * (Preis, Portal, Datum, Zustand, Link). Der bestätigte Artikelzustand
+   * bleibt unberührt — der Einkaufszustand steht nur am Einkauf.
+   */
+  @Post('from-purchase')
+  async createFromPurchase(
+    @Body() dto: CreateFromPurchaseDto,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<ItemEntity> {
+    return this.dataSource.manager.save(ItemEntity, {
+      userId: actor.userId!,
+      title: dto.title.trim(),
+      status: 'NEW',
+      purchasePriceEur: roundMoney(dto.price),
+      purchasePortal: dto.portal.trim(),
+      purchaseDate: dto.date ?? todayIsoDate(),
+      purchaseCondition: blankToNull(dto.condition),
+      purchaseUrl: blankToNull(dto.url),
     });
   }
 
@@ -343,6 +373,23 @@ export class ItemsController {
   // nachträglich zu ändern — ohne diesen Endpunkt wäre der Titel-Vorschlag
   // oben unbenutzbar. Keine State-Machine-Transition nötig: `title` ist kein
   // Status-Feld (siehe StateGuardService-Zuständigkeit nur für `status`).
+  @Patch(':id/purchase')
+  async updatePurchase(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdatePurchaseDto,
+  ): Promise<ItemEntity> {
+    const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
+    if (!item) throw new NotFoundException(`Item ${id} not found`);
+    if (dto.price !== undefined) {
+      item.purchasePriceEur = dto.price == null ? null : roundMoney(dto.price);
+    }
+    if (dto.portal !== undefined) item.purchasePortal = blankToNull(dto.portal);
+    if (dto.date !== undefined) item.purchaseDate = dto.date ?? null;
+    if (dto.condition !== undefined) item.purchaseCondition = blankToNull(dto.condition);
+    if (dto.url !== undefined) item.purchaseUrl = blankToNull(dto.url);
+    return this.dataSource.manager.save(item);
+  }
+
   @Patch(':id/title')
   async updateTitle(
     @Param('id', ParseUUIDPipe) id: string,
@@ -387,7 +434,7 @@ export class ItemsController {
   async evaluateDisposition(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: EvaluateDispositionDto,
-  ): Promise<DispositionRecommendation> {
+  ): Promise<DispositionRecommendation & { margin: ExpectedMargin; individualSaleNotice: string | null }> {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
     if (!item) throw new NotFoundException(`Item ${id} not found`);
 
@@ -397,7 +444,11 @@ export class ItemsController {
     // berechnend zurück, ohne eine gewählte Strategie zu persistieren — ein
     // Schema-Feld dafür wäre eine bewusste Vertragserweiterung, die hier
     // nicht einseitig vorgenommen wurde (siehe Abschlussbericht).
-    return this.dispositionEngine.evaluate({
+    //
+    // Feature-Plan 2.3: kein Ankaufs-Quote (Momox-Mock) fließt hier ein.
+    // Die Marge nutzt den eingegebenen Marktpreis, den Einstand des
+    // Artikels und die vom Nutzer gepflegten Annahmen.
+    const recommendation = this.dispositionEngine.evaluate({
       id: item.id,
       category: dto.category,
       condition: item.condition ?? 'unknown',
@@ -405,6 +456,15 @@ export class ItemsController {
       isBulky: dto.isBulky ?? false,
       userGoal: dto.userGoal,
     });
+    const user = await this.dataSource.manager.findOneBy(UserEntity, { id: item.userId });
+    const margin = computeExpectedMargin({
+      salePriceEur: dto.marketMedianPrice,
+      purchasePriceEur: item.purchasePriceEur,
+      feePercent: user?.feePercent ?? 0,
+      shippingEur: user?.shippingEur ?? 0,
+      singleSaleThresholdEur: user?.singleSaleThresholdEur ?? null,
+    });
+    return { ...recommendation, margin, individualSaleNotice: individualSaleNotice(margin) };
   }
 
   @Post(':id/bundle')
@@ -435,4 +495,14 @@ export class ItemsController {
       .where('l.item_id = :itemId', { itemId: id })
       .getMany();
   }
+}
+
+function blankToNull(value: string | null | undefined): string | null {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? null : trimmed;
+}
+
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
 }

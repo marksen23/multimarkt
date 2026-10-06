@@ -21,6 +21,9 @@ export class MockMomoxProvider implements BuybackAnchorProvider {
       buybackPrice: 15,
       currency: 'EUR',
       portalName: 'momox (Mock)',
+      // Feature-Plan 2.3: Beispielwert, kein Angebot. PriceRecommendationService
+      // hebt damit weder P_min an noch setzt es buybackRecommended.
+      illustrative: true,
     };
   }
 }

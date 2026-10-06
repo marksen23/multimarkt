@@ -55,6 +55,9 @@ export class DispositionEngineService {
       };
     }
 
+    // Feature-Plan 2.3: ein illustrativer Portal-Quote (Momox-Mock) wird
+    // hier bewusst nicht gelesen. Diese Ankauf-Empfehlung hängt nur an
+    // Kategorie und Verkaufsziel, nicht an der Platzhalterzahl.
     if (BUYBACK_CATEGORIES.includes(product.category)) {
       const estimatedBuybackPrice = marketPrice * 0.4;
       if (product.userGoal === 'FAST_SALE' || product.userGoal === 'MINIMAL_EFFORT') {

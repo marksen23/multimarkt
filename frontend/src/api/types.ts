@@ -34,6 +34,11 @@ export interface Item {
   status: ItemLifecycleState;
   title: string | null;
   condition: string | null;
+  purchasePriceEur: number | null;
+  purchasePortal: string | null;
+  purchaseDate: string | null;
+  purchaseCondition: string | null;
+  purchaseUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -146,7 +151,12 @@ export interface PriceResearchSourceResult {
   p75: number | null;
   sampleSize: number;
   currency: string;
-  detail?: { comparableListings?: ComparableListing[]; buybackPrice?: number; multiplier?: number };
+  detail?: {
+    comparableListings?: ComparableListing[];
+    buybackPrice?: number;
+    multiplier?: number;
+    illustrative?: boolean;
+  };
 }
 
 export type SalesGoal = 'MAX_PROFIT' | 'BALANCED' | 'FAST_SALE' | 'MINIMAL_EFFORT';

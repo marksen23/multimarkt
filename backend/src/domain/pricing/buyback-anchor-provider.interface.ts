@@ -21,6 +21,12 @@ export interface BuybackQuote {
   buybackPrice: number;
   currency: string;
   portalName: string;
+  /**
+   * Platzhalter ohne echtes Angebot. Solange das gesetzt ist, darf die
+   * Zahl weder P_min anheben noch die Disposition auf Ankauf lenken
+   * (Feature-Plan 2.3). In der Preisrecherche als Beispiel kennzeichnen.
+   */
+  illustrative?: boolean;
 }
 
 export interface BuybackAnchorProvider {

@@ -19,6 +19,24 @@ export const itemsApi = {
   list: (status?: ItemLifecycleState) =>
     api.get<ItemListEntry[]>(status ? `/items?status=${status}` : '/items'),
   create: (title?: string) => api.post<Item>('/items', { title }),
+  createFromPurchase: (body: {
+    title: string;
+    price: number;
+    portal: string;
+    date?: string;
+    condition?: string | null;
+    url?: string | null;
+  }) => api.post<Item>('/items/from-purchase', body),
+  updatePurchase: (
+    id: string,
+    body: {
+      price: number | null;
+      portal: string | null;
+      date: string | null;
+      condition: string | null;
+      url: string | null;
+    },
+  ) => api.patch<Item>(`/items/${id}/purchase`, body),
   get: (id: string) => api.get<ItemDetail>(`/items/${id}`),
   analyze: (id: string, files: File[], onProgress?: (fraction: number) => void) => {
     const form = new FormData();
