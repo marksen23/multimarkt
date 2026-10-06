@@ -108,7 +108,7 @@ export function DashboardPage() {
 
       {/* Stats strip */}
       {stats && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <StatCard
             label="Handlung nötig"
             value={stats.handlungNoetig}
@@ -119,6 +119,11 @@ export function DashboardPage() {
             label="Aktiv gelistet"
             value={stats.aktiv}
             onClick={() => setFilter('aktiv')}
+          />
+          <StatCard
+            label="Verkauft"
+            value={stats.verkauft}
+            onClick={() => setFilter('abgeschlossen')}
           />
           <StatCard
             label="Erw. Erlös"
@@ -158,7 +163,11 @@ export function DashboardPage() {
 
       {visible && visible.length === 0 && entries && entries.length > 0 && (
         <div className="bg-surface border border-line rounded-2xl p-6 text-center">
-          <p className="text-sm text-ink-muted">Keine Artikel in dieser Kategorie.</p>
+          <p className="text-sm text-ink-muted">
+            {search.trim()
+              ? `Keine Ergebnisse für „${search.trim()}"`
+              : 'Keine Artikel in dieser Kategorie.'}
+          </p>
         </div>
       )}
 
@@ -193,7 +202,14 @@ export function DashboardPage() {
                   </p>
                 </div>
               </div>
-              <StatusBadge status={item.status} />
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                <StatusBadge status={item.status} />
+                {listings.length > 0 && (item.status === 'LISTED' || item.status === 'SOLD') && (
+                  <span className="text-[11px] font-semibold text-ink-muted">
+                    {listings[0].sellingPrice.toFixed(2)} €
+                  </span>
+                )}
+              </div>
             </div>
             {listings.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
@@ -224,10 +240,11 @@ function computeStats(entries: ItemListEntry[]) {
   const aktiv = entries.filter((e) =>
     (AKTIV_STATES as ItemLifecycleState[]).includes(e.item.status),
   ).length;
+  const verkauft = entries.filter((e) => e.item.status === 'SOLD').length;
   const erwarteterErloes = entries
     .filter((e) => e.item.status === 'LISTED' && e.listings.length > 0)
     .reduce((sum, e) => sum + e.listings[0].sellingPrice, 0);
-  return { handlungNoetig, aktiv, erwarteterErloes };
+  return { handlungNoetig, aktiv, verkauft, erwarteterErloes };
 }
 
 function EmptyState() {

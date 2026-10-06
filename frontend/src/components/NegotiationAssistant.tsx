@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useToast } from './Toast';
 
 interface SuggestedAction {
   id: string;
@@ -54,6 +55,7 @@ export function NegotiationAssistant({
   offeredPrice,
   suggestedActions,
 }: Props) {
+  const toast = useToast();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reply, setReply] = useState('');
 
@@ -65,12 +67,9 @@ export function NegotiationAssistant({
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(reply);
-      window.alert(`Antwort kopiert! Füge sie bei ${platform} ein.`);
+      toast(`Kopiert — bei ${platform} einfügen.`, 'success');
     } catch {
-      // Clipboard-API kann aus vielen Gründen scheitern (fehlende
-      // Berechtigung, kein sicherer Kontext, iframe-Policy) — ohne diesen
-      // Fallback wäre der einzige Button der Seite lautlos wirkungslos.
-      window.alert('Kopieren nicht möglich — markiere den Text oben und kopiere ihn manuell.');
+      toast('Kopieren nicht möglich — Text oben manuell markieren und kopieren.', 'error');
     }
   };
 

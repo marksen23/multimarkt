@@ -28,12 +28,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                  `relative px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                     isActive ? 'bg-accent text-accent-ink' : 'text-ink-muted hover:bg-surface-hover'
                   }`
                 }
               >
                 {item.label}
+                {item.showBadge && pendingCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-red-500" aria-hidden="true" />
+                )}
               </NavLink>
             ))}
             <button
