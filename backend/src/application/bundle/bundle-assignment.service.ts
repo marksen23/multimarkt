@@ -3,7 +3,10 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { ActorContext } from '../../domain/actor-context';
 import { InvalidStateTransitionException } from '../../domain/errors/state-transition.errors';
-import { BundleEntity, BundleItemEntity } from '../../infrastructure/database/entities';
+import {
+  BundleEntity,
+  BundleItemEntity,
+} from '../../infrastructure/database/entities';
 import { StateGuardService } from '../state-guard/state-guard.service';
 
 /**
@@ -25,9 +28,15 @@ export class BundleAssignmentService {
     title: string,
     itemIds: string[],
     actor: ActorContext,
+    description: string | null = null,
   ): Promise<BundleEntity> {
     return this.dataSource.transaction(async (manager) => {
-      const bundle = await manager.save(BundleEntity, { userId, title, status: 'NEW' });
+      const bundle = await manager.save(BundleEntity, {
+        userId,
+        title,
+        description,
+        status: 'NEW',
+      });
       for (const itemId of itemIds) {
         await this.stateGuard.transitionItemWithManager(manager, itemId, {
           type: 'ASSIGN_TO_BUNDLE',

@@ -1,5 +1,11 @@
 import { api } from './client';
-import type { Bundle, BundleDetail, BundleListEntry, CanonicalListing } from './types';
+import type {
+  Bundle,
+  BundleDetail,
+  BundleListEntry,
+  BundleSuggestionList,
+  CanonicalListing,
+} from './types';
 
 export const bundlesApi = {
   list: () => api.get<BundleListEntry[]>('/bundles'),
@@ -13,4 +19,9 @@ export const bundlesApi = {
       sellingPrice,
       descriptionText,
     }),
+  suggestions: () => api.get<BundleSuggestionList>('/bundles/suggestions'),
+  acceptSuggestion: (fingerprint: string) =>
+    api.post<Bundle>('/bundles/suggestions/accept', { fingerprint }),
+  dismissSuggestion: (fingerprint: string) =>
+    api.post<{ dismissed: true }>('/bundles/suggestions/dismiss', { fingerprint }),
 };
