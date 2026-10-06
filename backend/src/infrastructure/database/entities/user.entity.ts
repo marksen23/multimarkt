@@ -45,6 +45,68 @@ export class UserEntity {
   })
   singleSaleThresholdEur: number | null;
 
+  // Gebührenannahmen je Kanal (Feature-Plan 3.10). Keine Tarife.
+  // Kleinanzeigen 0 €, eBay-Provision, Vinted-Käuferschutz.
+  @Column({
+    name: 'kleinanzeigen_fee_percent',
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
+  kleinanzeigenFeePercent: number;
+
+  @Column({
+    name: 'kleinanzeigen_fee_fixed_eur',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
+  kleinanzeigenFeeFixedEur: number;
+
+  @Column({
+    name: 'ebay_fee_percent',
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    default: 11,
+    transformer: numericTransformer,
+  })
+  ebayFeePercent: number;
+
+  @Column({
+    name: 'ebay_fee_fixed_eur',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
+  ebayFeeFixedEur: number;
+
+  @Column({
+    name: 'vinted_fee_percent',
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    default: 5,
+    transformer: numericTransformer,
+  })
+  vintedFeePercent: number;
+
+  @Column({
+    name: 'vinted_fee_fixed_eur',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0.7,
+    transformer: numericTransformer,
+  })
+  vintedFeeFixedEur: number;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

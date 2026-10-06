@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { accountApi } from '../api/account';
+import { DEFAULT_CHANNEL_FEE_ASSUMPTIONS } from './channel-fees';
 import type { MarginAssumptions } from './expected-margin';
 
 let current: MarginAssumptions | null = null;
@@ -23,9 +24,13 @@ function loadAssumptions(): Promise<MarginAssumptions> {
 }
 
 export function persistMarginAssumptions(next: MarginAssumptions): Promise<void> {
-  current = next;
+  const full: MarginAssumptions = {
+    ...next,
+    channels: next.channels ?? current?.channels ?? DEFAULT_CHANNEL_FEE_ASSUMPTIONS,
+  };
+  current = full;
   notify();
-  const run = saveChain.then(() => accountApi.updateMarginAssumptions(next)).then(() => undefined);
+  const run = saveChain.then(() => accountApi.updateMarginAssumptions(full)).then(() => undefined);
   saveChain = run.catch(() => undefined);
   return run;
 }
