@@ -3,6 +3,7 @@ export * from './item.entity';
 export * from './item-attribute.entity';
 export * from './bundle.entity';
 export * from './bundle-item.entity';
+export * from './bundle-suggestion-dismissal.entity';
 export * from './canonical-listing.entity';
 export * from './marketplace-projection.entity';
 export * from './listing-price-change.entity';

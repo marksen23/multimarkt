@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { bundlesApi } from '../api/bundles';
 import { ApiRequestError } from '../api/client';
 import type { BundleDetail } from '../api/types';
@@ -9,11 +9,14 @@ import { StatusBadge } from '../components/StatusBadge';
 
 export function BundleDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const [detail, setDetail] = useState<BundleDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [price, setPrice] = useState('');
-  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState<string | null>(null);
+  const [description, setDescription] = useState<string | null>(null);
+  const priceValue = price ?? searchParams.get('preis') ?? '';
+  const descriptionValue = description ?? detail?.bundle.description ?? '';
 
   const reload = useCallback(async () => {
     if (!id) return;
@@ -51,7 +54,7 @@ export function BundleDetailPage() {
   const { bundle, items, listings } = detail;
 
   const prepareListing = () =>
-    run(() => bundlesApi.prepareListing(id, Number(price), description));
+    run(() => bundlesApi.prepareListing(id, Number(priceValue), descriptionValue));
 
   return (
     <div className="max-w-md mx-auto p-4 space-y-4">
@@ -105,7 +108,7 @@ export function BundleDetailPage() {
             min="0"
             step="0.01"
             placeholder="Preis in €"
-            value={price}
+            value={priceValue}
             onChange={(e) => setPrice(e.target.value)}
             autoFocus
             className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
@@ -113,13 +116,13 @@ export function BundleDetailPage() {
           <textarea
             rows={3}
             placeholder="Beschreibung"
-            value={description}
+            value={descriptionValue}
             onChange={(e) => setDescription(e.target.value)}
             className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
           />
           <button
             type="button"
-            disabled={busy || !price || !description}
+            disabled={busy || !priceValue || !descriptionValue}
             onClick={prepareListing}
             className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
           >

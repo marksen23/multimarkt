@@ -15,10 +15,16 @@ import { DataSource, In } from 'typeorm';
 import { CurrentActor } from '../auth/actor.decorator';
 import { ActorContextGuard } from '../auth/actor-context.guard';
 import { ResponseEnvelopeInterceptor } from '../interceptors/response-envelope.interceptor';
-import { AddBundleItemsDto, CreateBundleDto } from '../dto/bundles.dto';
+import {
+  AddBundleItemsDto,
+  BundleSuggestionFingerprintDto,
+  CreateBundleDto,
+} from '../dto/bundles.dto';
 import { PrepareListingDto } from '../dto/items.dto';
 import { ActorContext } from '../../domain/actor-context';
 import { BundleAssignmentService } from '../../application/bundle/bundle-assignment.service';
+import { BundleSuggestionService } from '../../application/bundle/bundle-suggestion.service';
+import { BundleSuggestionResult } from '../../domain/bundle/bundle-suggestions';
 import { CanonicalListingService } from '../../application/listing/canonical-listing.service';
 import {
   ListingSummary,
@@ -39,6 +45,7 @@ export class BundlesController {
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly bundleAssignment: BundleAssignmentService,
+    private readonly bundleSuggestions: BundleSuggestionService,
     private readonly canonicalListing: CanonicalListingService,
     private readonly listingSummary: ListingSummaryService,
   ) {}
@@ -65,8 +72,37 @@ export class BundlesController {
       where: { userId: actor.userId! },
       order: { createdAt: 'DESC' },
     });
-    const listingsByBundle = await this.listingSummary.forBundleIds(bundles.map((b) => b.id));
-    return bundles.map((bundle) => ({ bundle, listings: listingsByBundle.get(bundle.id) ?? [] }));
+    const listingsByBundle = await this.listingSummary.forBundleIds(
+      bundles.map((b) => b.id),
+    );
+    return bundles.map((bundle) => ({
+      bundle,
+      listings: listingsByBundle.get(bundle.id) ?? [],
+    }));
+  }
+
+  /** Feature-Plan 3.8. Statische Route vor `:id`. */
+  @Get('suggestions')
+  async suggestions(
+    @CurrentActor() actor: ActorContext,
+  ): Promise<BundleSuggestionResult> {
+    return this.bundleSuggestions.list(actor.userId!);
+  }
+
+  @Post('suggestions/accept')
+  async acceptSuggestion(
+    @Body() dto: BundleSuggestionFingerprintDto,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<BundleEntity> {
+    return this.bundleSuggestions.accept(actor.userId!, dto.fingerprint, actor);
+  }
+
+  @Post('suggestions/dismiss')
+  async dismissSuggestion(
+    @Body() dto: BundleSuggestionFingerprintDto,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<{ dismissed: true }> {
+    return this.bundleSuggestions.dismiss(actor.userId!, dto.fingerprint);
   }
 
   @Get(':id')
@@ -75,7 +111,9 @@ export class BundlesController {
     items: ItemEntity[];
     listings: ListingSummary[];
   }> {
-    const bundle = await this.dataSource.manager.findOneBy(BundleEntity, { id });
+    const bundle = await this.dataSource.manager.findOneBy(BundleEntity, {
+      id,
+    });
     if (!bundle) throw new NotFoundException(`Bundle ${id} not found`);
 
     const memberships = await this.dataSource.manager.find(BundleItemEntity, {
@@ -96,7 +134,11 @@ export class BundlesController {
     @Body() dto: AddBundleItemsDto,
     @CurrentActor() actor: ActorContext,
   ): Promise<BundleEntity> {
-    return this.bundleAssignment.addItemsToExistingBundle(id, dto.itemIds, actor);
+    return this.bundleAssignment.addItemsToExistingBundle(
+      id,
+      dto.itemIds,
+      actor,
+    );
   }
 
   @Post(':id/prepare-listing')
@@ -106,7 +148,9 @@ export class BundlesController {
     @CurrentActor() actor: ActorContext,
   ): Promise<CanonicalListingEntity> {
     if (!dto.descriptionText) {
-      throw new BadRequestException('descriptionText is required for bundle listings');
+      throw new BadRequestException(
+        'descriptionText is required for bundle listings',
+      );
     }
     return this.canonicalListing.prepareForBundle(
       actor.userId!,

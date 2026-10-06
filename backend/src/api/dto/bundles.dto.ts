@@ -1,4 +1,12 @@
-import { ArrayNotEmpty, IsArray, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class CreateBundleDto {
   @IsString()
@@ -15,4 +23,11 @@ export class AddBundleItemsDto {
   @ArrayNotEmpty()
   @IsUUID('4', { each: true })
   itemIds: string[];
+}
+
+export class BundleSuggestionFingerprintDto {
+  @IsString()
+  @MinLength(8)
+  @MaxLength(64)
+  fingerprint: string;
 }
