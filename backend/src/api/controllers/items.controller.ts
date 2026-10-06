@@ -32,6 +32,7 @@ import {
 } from '../dto/items.dto';
 import { CreateFromPurchaseDto, UpdatePurchaseDto } from '../dto/purchase.dto';
 import { UpdateLogisticsProfileDto } from '../dto/logistics-profile.dto';
+import { RecordPriceDropDto } from '../dto/price-drop.dto';
 import { RecordSaleCloseoutDto } from '../dto/sale-closeout.dto';
 import { EvaluateDispositionDto } from '../dto/disposition.dto';
 import { ActorContext } from '../../domain/actor-context';
@@ -43,6 +44,11 @@ import {
   CanonicalListingService,
   DescriptionSuggestion,
 } from '../../application/listing/canonical-listing.service';
+import {
+  FollowUpService,
+  ItemFollowUp,
+  PriceDropResult,
+} from '../../application/listing/follow-up.service';
 import {
   ListingSummary,
   ListingSummaryService,
@@ -70,12 +76,18 @@ import {
 } from '../../application/pricing/price-triangulation.service';
 import { PhotoQualityService } from '../../application/photo-quality/photo-quality.service';
 import { PhotoQualityReport } from '../../domain/photo-quality/photo-quality.types';
-import { TitleGenerationService, TitleSuggestion } from '../../application/title-generation/title-generation.service';
+import {
+  TitleGenerationService,
+  TitleSuggestion,
+} from '../../application/title-generation/title-generation.service';
 import { ListingChannel } from '../../domain/ai/title-generation-provider.interface';
 import { SaleCloseoutService } from '../../application/sales/sale-closeout.service';
 import { toLogisticsProfile } from '../../domain/logistics/logistics-profile';
 import { StateGuardService } from '../../application/state-guard/state-guard.service';
-import { STORAGE_PROVIDER, StorageProvider } from '../../domain/storage/storage-provider.interface';
+import {
+  STORAGE_PROVIDER,
+  StorageProvider,
+} from '../../domain/storage/storage-provider.interface';
 import {
   BundleEntity,
   CanonicalListingEntity,
@@ -90,8 +102,18 @@ import { ResolveConflictDto } from '../dto/sale-events.dto';
 
 const MAX_PHOTOS_PER_UPLOAD = 10;
 const MAX_PHOTO_SIZE_BYTES = 15 * 1024 * 1024;
-const ALLOWED_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic']);
-const SALES_GOALS: SalesGoal[] = ['MAX_PROFIT', 'BALANCED', 'FAST_SALE', 'MINIMAL_EFFORT'];
+const ALLOWED_PHOTO_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+]);
+const SALES_GOALS: SalesGoal[] = [
+  'MAX_PROFIT',
+  'BALANCED',
+  'FAST_SALE',
+  'MINIMAL_EFFORT',
+];
 const LISTING_CHANNELS: ListingChannel[] = ['KLEINANZEIGEN', 'EBAY', 'VINTED'];
 
 /** Doc 04 §7/§8/§12 — Item-Aggregat. */
@@ -114,11 +136,15 @@ export class ItemsController {
     private readonly listingSummary: ListingSummaryService,
     private readonly attributeConfirmation: ItemAttributeConfirmationService,
     private readonly saleCloseout: SaleCloseoutService,
+    private readonly followUps: FollowUpService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
   ) {}
 
   @Post()
-  async create(@Body() dto: CreateItemDto, @CurrentActor() actor: ActorContext): Promise<ItemEntity> {
+  async create(
+    @Body() dto: CreateItemDto,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<ItemEntity> {
     return this.dataSource.manager.save(ItemEntity, {
       userId: actor.userId!,
       title: dto.title ?? null,
@@ -160,12 +186,22 @@ export class ItemsController {
   async list(
     @CurrentActor() actor: ActorContext,
     @Query('status') status?: ItemLifecycleState,
-  ): Promise<{ item: ItemEntity; listings: ListingSummary[]; thumbnailUrl: string | null }[]> {
+  ): Promise<
+    {
+      item: ItemEntity;
+      listings: ListingSummary[];
+      thumbnailUrl: string | null;
+    }[]
+  > {
     const items = await this.dataSource.manager.find(ItemEntity, {
-      where: status ? { userId: actor.userId!, status } : { userId: actor.userId! },
+      where: status
+        ? { userId: actor.userId!, status }
+        : { userId: actor.userId! },
       order: { createdAt: 'DESC' },
     });
-    const listingsByItem = await this.listingSummary.forItemIds(items.map((i) => i.id));
+    const listingsByItem = await this.listingSummary.forItemIds(
+      items.map((i) => i.id),
+    );
     // Fotogalerie (September 2026): nur das jeweils erste Foto je Item für
     // die Dashboard-Kachel — die volle Galerie liefert erst GET /items/:id.
     const photos = items.length
@@ -177,7 +213,8 @@ export class ItemsController {
       : [];
     const thumbnailByItem = new Map<string, string>();
     for (const photo of photos) {
-      if (!thumbnailByItem.has(photo.itemId)) thumbnailByItem.set(photo.itemId, photo.url);
+      if (!thumbnailByItem.has(photo.itemId))
+        thumbnailByItem.set(photo.itemId, photo.url);
     }
     return items.map((item) => ({
       item,
@@ -225,11 +262,15 @@ export class ItemsController {
     @CurrentActor() actor: ActorContext,
   ): Promise<ItemEntity> {
     if (!files?.length) {
-      throw new BadRequestException('At least one photo is required (field "files")');
+      throw new BadRequestException(
+        'At least one photo is required (field "files")',
+      );
     }
     for (const file of files) {
       if (!ALLOWED_PHOTO_MIME_TYPES.has(file.mimetype)) {
-        throw new BadRequestException(`Unsupported image type: ${file.mimetype}`);
+        throw new BadRequestException(
+          `Unsupported image type: ${file.mimetype}`,
+        );
       }
     }
 
@@ -267,14 +308,20 @@ export class ItemsController {
    * Item-Lifecycle nicht), daher nur ein Existenz-Check.
    */
   @Post(':id/optimize-photo')
-  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_PHOTO_SIZE_BYTES } }))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: MAX_PHOTO_SIZE_BYTES },
+    }),
+  )
   async optimizePhoto(
     @Param('id', ParseUUIDPipe) id: string,
     @UploadedFile() file: Express.Multer.File,
   ): Promise<OptimizedPhoto | { url: null }> {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
     if (!item) throw new NotFoundException(`Item ${id} not found`);
-    if (!file) throw new BadRequestException('A photo is required (field "file")');
+    if (!file)
+      throw new BadRequestException('A photo is required (field "file")');
     if (!ALLOWED_PHOTO_MIME_TYPES.has(file.mimetype)) {
       throw new BadRequestException(`Unsupported image type: ${file.mimetype}`);
     }
@@ -342,7 +389,9 @@ export class ItemsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Query('salesGoal') salesGoal?: string,
   ): Promise<DescriptionSuggestion> {
-    const goal = SALES_GOALS.includes(salesGoal as SalesGoal) ? (salesGoal as SalesGoal) : null;
+    const goal = SALES_GOALS.includes(salesGoal as SalesGoal)
+      ? (salesGoal as SalesGoal)
+      : null;
     return this.canonicalListing.generateDescription(id, goal);
   }
 
@@ -352,7 +401,9 @@ export class ItemsController {
   // September 2026: Konkurrenz-Bildscoring ist mangels Datenzugriff bewusst
   // NICHT gebaut).
   @Get(':id/photo-quality')
-  async photoQualityReport(@Param('id', ParseUUIDPipe) id: string): Promise<PhotoQualityReport> {
+  async photoQualityReport(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<PhotoQualityReport> {
     const photos = await this.dataSource.manager.find(ItemPhotoEntity, {
       where: { itemId: id },
       order: { createdAt: 'ASC' },
@@ -391,7 +442,8 @@ export class ItemsController {
     }
     if (dto.portal !== undefined) item.purchasePortal = blankToNull(dto.portal);
     if (dto.date !== undefined) item.purchaseDate = dto.date ?? null;
-    if (dto.condition !== undefined) item.purchaseCondition = blankToNull(dto.condition);
+    if (dto.condition !== undefined)
+      item.purchaseCondition = blankToNull(dto.condition);
     if (dto.url !== undefined) item.purchaseUrl = blankToNull(dto.url);
     return this.dataSource.manager.save(item);
   }
@@ -427,7 +479,11 @@ export class ItemsController {
   ): Promise<ItemEntity> {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
     if (!item) throw new NotFoundException(`Item ${id} not found`);
-    await this.dataSource.manager.update(ItemEntity, { id }, { title: dto.title });
+    await this.dataSource.manager.update(
+      ItemEntity,
+      { id },
+      { title: dto.title },
+    );
     return { ...item, title: dto.title };
   }
 
@@ -456,15 +512,25 @@ export class ItemsController {
     @Query('forceRefresh') forceRefresh?: string,
     @Query('salesGoal') salesGoal?: string,
   ): Promise<PriceResearchResult> {
-    const goal = SALES_GOALS.includes(salesGoal as SalesGoal) ? (salesGoal as SalesGoal) : null;
-    return this.priceTriangulation.research(id, { forceRefresh: forceRefresh === 'true', salesGoal: goal });
+    const goal = SALES_GOALS.includes(salesGoal as SalesGoal)
+      ? (salesGoal as SalesGoal)
+      : null;
+    return this.priceTriangulation.research(id, {
+      forceRefresh: forceRefresh === 'true',
+      salesGoal: goal,
+    });
   }
 
   @Post(':id/disposition')
   async evaluateDisposition(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: EvaluateDispositionDto,
-  ): Promise<DispositionRecommendation & { margin: ExpectedMargin; individualSaleNotice: string | null }> {
+  ): Promise<
+    DispositionRecommendation & {
+      margin: ExpectedMargin;
+      individualSaleNotice: string | null;
+    }
+  > {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
     if (!item) throw new NotFoundException(`Item ${id} not found`);
 
@@ -488,15 +554,23 @@ export class ItemsController {
       logistics: toLogisticsProfile(item),
       userGoal: dto.userGoal,
     });
-    const user = await this.dataSource.manager.findOneBy(UserEntity, { id: item.userId });
+    const user = await this.dataSource.manager.findOneBy(UserEntity, {
+      id: item.userId,
+    });
     const margin = computeExpectedMargin({
       salePriceEur: dto.marketMedianPrice,
       purchasePriceEur: item.purchasePriceEur,
       feePercent: user?.feePercent ?? 0,
-      shippingEur: item.logisticsCaptured ? recommendation.shippingCostEur : (user?.shippingEur ?? 0),
+      shippingEur: item.logisticsCaptured
+        ? recommendation.shippingCostEur
+        : (user?.shippingEur ?? 0),
       singleSaleThresholdEur: user?.singleSaleThresholdEur ?? null,
     });
-    return { ...recommendation, margin, individualSaleNotice: individualSaleNotice(margin) };
+    return {
+      ...recommendation,
+      margin,
+      individualSaleNotice: individualSaleNotice(margin),
+    };
   }
 
   @Post(':id/bundle')
@@ -506,7 +580,12 @@ export class ItemsController {
     @CurrentActor() actor: ActorContext,
   ): Promise<BundleEntity> {
     const itemIds = Array.from(new Set([id, ...dto.itemIds]));
-    return this.bundleAssignment.createBundleWithItems(actor.userId!, dto.title, itemIds, actor);
+    return this.bundleAssignment.createBundleWithItems(
+      actor.userId!,
+      dto.title,
+      itemIds,
+      actor,
+    );
   }
 
   @Post(':id/resolve-conflict')
@@ -529,7 +608,9 @@ export class ItemsController {
     @CurrentActor() actor: ActorContext,
   ): Promise<ItemEntity> {
     if (actor.type !== 'USER') {
-      throw new HumanGateBypassException('Only a USER actor may record a sale closeout');
+      throw new HumanGateBypassException(
+        'Only a USER actor may record a sale closeout',
+      );
     }
     return this.saleCloseout.recordForSoldItem(id, {
       proceedsEur: dto.proceedsEur,
@@ -540,8 +621,43 @@ export class ItemsController {
     });
   }
 
+  /** Feature-Plan 3.6: fälliges Nachfassen und bereits eingetragene Preissenkungen. */
+  @Get(':id/follow-up')
+  async followUp(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<ItemFollowUp> {
+    return this.followUps.forItem(actor.userId!, id);
+  }
+
+  /**
+   * Feature-Plan 3.6: der Nutzer bestätigt den neuen Preis. Gespeichert
+   * werden nur dieser Preis, der bisherige Preis und der Vermerk. Der
+   * Anzeigentext bleibt, die Live-Anzeige wird nicht angefasst.
+   */
+  @Post(':id/price-drop')
+  async recordPriceDrop(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RecordPriceDropDto,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<PriceDropResult> {
+    if (actor.type !== 'USER') {
+      throw new HumanGateBypassException(
+        'Only a USER actor may record a price drop',
+      );
+    }
+    return this.followUps.recordPriceDrop({
+      userId: actor.userId!,
+      itemId: id,
+      newPrice: dto.newPrice,
+      canonicalListingId: dto.canonicalListingId,
+    });
+  }
+
   @Get(':id/sale-events')
-  async listSaleEvents(@Param('id', ParseUUIDPipe) id: string): Promise<SaleEventEntity[]> {
+  async listSaleEvents(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<SaleEventEntity[]> {
     return this.dataSource.manager
       .createQueryBuilder(SaleEventEntity, 'se')
       .innerJoin(MarketplaceProjectionEntity, 'p', 'p.id = se.projection_id')
