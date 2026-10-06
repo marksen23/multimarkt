@@ -18,6 +18,8 @@ import {
 import { PriceTriangulationService } from '../pricing/price-triangulation.service';
 import { StateGuardService } from '../state-guard/state-guard.service';
 import { TitleGapAnalysis, TitleTokenAnalysisService } from '../title-generation/title-token-analysis.service';
+import { applyLogisticsListingText, fulfillmentClause } from '../../domain/logistics/listing-text';
+import { toLogisticsProfile } from '../../domain/logistics/logistics-profile';
 import { VaguePhraseDetectorService, VaguePhraseMatch } from './vague-phrase-detector.service';
 
 export interface DescriptionSuggestion {
@@ -78,8 +80,7 @@ export class CanonicalListingService {
     const comparableListings = await this.fetchComparableListings(itemId);
 
     const descriptionText = await this.suggestDescription(
-      item.title,
-      item.condition,
+      item,
       attributes,
       comparableListings,
       salesGoal,
@@ -113,8 +114,7 @@ export class CanonicalListingService {
       const finalDescription =
         descriptionText ??
         (await this.suggestDescription(
-          item.title,
-          item.condition,
+          item,
           await manager.find(ItemAttributeEntity, { where: { itemId } }),
           await this.fetchComparableListings(itemId),
           null,
@@ -173,22 +173,29 @@ export class CanonicalListingService {
   }
 
   private async suggestDescription(
-    title: string | null,
-    condition: string | null,
+    item: Parameters<typeof toLogisticsProfile>[0] & { title: string | null; condition: string | null },
     attributes: ItemAttributeEntity[],
     comparableListings: ComparableListingRef[],
     salesGoal: SalesGoal | null,
   ): Promise<string> {
+    const profile = toLogisticsProfile(item);
     const suggestion = await this.descriptionProvider.generate({
-      title,
-      condition,
+      title: item.title,
+      condition: item.condition,
       attributes: attributes.map((a) => ({ key: a.attributeKey, value: a.attributeValue })),
       comparableListings,
       salesGoal,
+      logisticsHint: profile.captured ? fulfillmentClause(profile) : null,
     });
     // Provider liefert `null`, wenn keine Generierung möglich war (z.B.
     // Gemini-Antwort leer) — nie einen kaputten/leeren Text durchreichen.
-    return suggestion ?? `${title ?? 'Artikel'} — Zustand: ${condition ?? 'unbekannt'}`;
+    const base = suggestion ?? `${item.title ?? 'Artikel'} — Zustand: ${item.condition ?? 'unbekannt'}`;
+    return applyLogisticsListingText({
+      body: base,
+      title: item.title,
+      condition: item.condition,
+      profile,
+    });
   }
 
   /**

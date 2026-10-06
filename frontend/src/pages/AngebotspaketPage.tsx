@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { itemsApi } from '../api/items';
 import type { ListingChannel, SalesGoal } from '../api/types';
+import { shippingPortalsAllowed, toLogisticsProfile } from '../logistics/profile';
 
 const PORTALS: {
   id: ListingChannel;
@@ -69,6 +70,8 @@ export function AngebotspaketPage() {
     EBAY: { title: '', description: '' },
     VINTED: { title: '', description: '' },
   });
+  const [portals, setPortals] = useState(PORTALS);
+  const [pickupOnlyNote, setPickupOnlyNote] = useState(false);
 
   const generate = useCallback(
     async (goal: SalesGoal) => {
@@ -76,13 +79,18 @@ export function AngebotspaketPage() {
       setLoading(true);
       setError(null);
       try {
-        const [klein, ebay, vinted, descResult, priceResult] = await Promise.all([
+        const [detail, klein, ebay, vinted, descResult, priceResult] = await Promise.all([
+          itemsApi.get(id),
           itemsApi.generateTitle(id, 'KLEINANZEIGEN'),
           itemsApi.generateTitle(id, 'EBAY'),
           itemsApi.generateTitle(id, 'VINTED'),
           itemsApi.generateDescription(id, goal),
           itemsApi.priceResearch(id, false, goal),
         ]);
+        const profile = toLogisticsProfile(detail.item);
+        const hideShipping = profile.captured && !shippingPortalsAllowed(profile);
+        setPickupOnlyNote(hideShipping);
+        setPortals(hideShipping ? PORTALS.filter((portal) => portal.id === 'KLEINANZEIGEN') : PORTALS);
 
         setDrafts({
           KLEINANZEIGEN: { title: klein.title, description: descResult.descriptionText },
@@ -163,8 +171,14 @@ export function AngebotspaketPage() {
         </div>
       )}
 
+      {pickupOnlyNote && !loading && (
+        <p className="mx-4 mb-4 text-xs text-ink-muted">
+          Versandportale entfallen. Der Artikel ist sperrig oder nur zur Abholung.
+        </p>
+      )}
+
       <div className="space-y-4 px-4">
-        {PORTALS.map((portal) => (
+        {portals.map((portal) => (
           <PortalCard
             key={portal.id}
             portal={portal}

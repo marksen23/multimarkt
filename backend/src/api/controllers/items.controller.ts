@@ -31,6 +31,7 @@ import {
   UpdateTitleDto,
 } from '../dto/items.dto';
 import { CreateFromPurchaseDto, UpdatePurchaseDto } from '../dto/purchase.dto';
+import { UpdateLogisticsProfileDto } from '../dto/logistics-profile.dto';
 import { RecordSaleCloseoutDto } from '../dto/sale-closeout.dto';
 import { EvaluateDispositionDto } from '../dto/disposition.dto';
 import { ActorContext } from '../../domain/actor-context';
@@ -72,6 +73,7 @@ import { PhotoQualityReport } from '../../domain/photo-quality/photo-quality.typ
 import { TitleGenerationService, TitleSuggestion } from '../../application/title-generation/title-generation.service';
 import { ListingChannel } from '../../domain/ai/title-generation-provider.interface';
 import { SaleCloseoutService } from '../../application/sales/sale-closeout.service';
+import { toLogisticsProfile } from '../../domain/logistics/logistics-profile';
 import { StateGuardService } from '../../application/state-guard/state-guard.service';
 import { STORAGE_PROVIDER, StorageProvider } from '../../domain/storage/storage-provider.interface';
 import {
@@ -394,6 +396,30 @@ export class ItemsController {
     return this.dataSource.manager.save(item);
   }
 
+  /**
+   * Feature-Plan 3.5: kurzes Logistikprofil nach der Zustandsbestätigung.
+   * Keine State-Machine-Transition — Gewicht und Versand sind keine
+   * Produktwahrheit.
+   */
+  @Patch(':id/logistics')
+  async updateLogistics(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateLogisticsProfileDto,
+  ): Promise<ItemEntity> {
+    const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
+    if (!item) throw new NotFoundException(`Item ${id} not found`);
+    item.weightGrams = dto.weightGrams ?? null;
+    item.lengthCm = dto.lengthCm ?? null;
+    item.widthCm = dto.widthCm ?? null;
+    item.heightCm = dto.heightCm ?? null;
+    item.logisticsBulky = dto.bulky;
+    item.pickupOnly = dto.pickupOnly;
+    item.shippingPossible = dto.shippingPossible;
+    item.postalCode = blankToNull(dto.postalCode);
+    item.logisticsCaptured = true;
+    return this.dataSource.manager.save(item);
+  }
+
   @Patch(':id/title')
   async updateTitle(
     @Param('id', ParseUUIDPipe) id: string,
@@ -450,14 +476,16 @@ export class ItemsController {
     // nicht einseitig vorgenommen wurde (siehe Abschlussbericht).
     //
     // Feature-Plan 2.3: kein Ankaufs-Quote (Momox-Mock) fließt hier ein.
-    // Die Marge nutzt den eingegebenen Marktpreis, den Einstand des
-    // Artikels und die vom Nutzer gepflegten Annahmen.
+    // Feature-Plan 3.5: Versandkosten der Disposition kommen aus dem
+    // Logistikprofil, nicht aus der Ja/Nein-Sperrig-Flagge und nicht aus
+    // den pauschalen 1,50 €. Solange das Profil fehlt, bleibt die vom
+    // Nutzer gepflegte Versandannahme in der Marge (Feature-Plan 3.3).
     const recommendation = this.dispositionEngine.evaluate({
       id: item.id,
       category: dto.category,
       condition: item.condition ?? 'unknown',
       marketMedianPrice: dto.marketMedianPrice,
-      isBulky: dto.isBulky ?? false,
+      logistics: toLogisticsProfile(item),
       userGoal: dto.userGoal,
     });
     const user = await this.dataSource.manager.findOneBy(UserEntity, { id: item.userId });
@@ -465,7 +493,7 @@ export class ItemsController {
       salePriceEur: dto.marketMedianPrice,
       purchasePriceEur: item.purchasePriceEur,
       feePercent: user?.feePercent ?? 0,
-      shippingEur: user?.shippingEur ?? 0,
+      shippingEur: item.logisticsCaptured ? recommendation.shippingCostEur : (user?.shippingEur ?? 0),
       singleSaleThresholdEur: user?.singleSaleThresholdEur ?? null,
     });
     return { ...recommendation, margin, individualSaleNotice: individualSaleNotice(margin) };

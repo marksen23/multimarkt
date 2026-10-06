@@ -47,6 +47,15 @@ export interface Item {
   salePurchasePriceEur: number | null;
   saleNetProfitEur: number | null;
   soldAt: string | null;
+  weightGrams: number | null;
+  lengthCm: number | null;
+  widthCm: number | null;
+  heightCm: number | null;
+  logisticsBulky: boolean;
+  pickupOnly: boolean;
+  shippingPossible: boolean;
+  postalCode: string | null;
+  logisticsCaptured: boolean;
   createdAt: string;
   updatedAt: string;
 }

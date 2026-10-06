@@ -32,6 +32,13 @@ export interface DescriptionGenerationInput {
    */
   comparableListings: ComparableListingRef[];
   salesGoal: SalesGoal | null;
+  /**
+   * Feature-Plan 3.5: verbindliche Abholung- oder Versandzeile aus dem
+   * Logistikprofil. `null`, solange das Profil nicht gespeichert ist.
+   * Der Aufrufer hängt dieselbe Zeile danach noch einmal deterministisch
+   * an, damit ein Modell sie nicht in die andere Richtung umschreibt.
+   */
+  logisticsHint?: string | null;
 }
 
 export interface DescriptionGenerationProvider {

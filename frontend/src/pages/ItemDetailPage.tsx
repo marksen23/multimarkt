@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { itemsApi } from '../api/items';
+import { toLogisticsProfile } from '../logistics/profile';
 import { ApiRequestError } from '../api/client';
 import type { ItemDetail, ListingChannel, SaleEvent } from '../api/types';
 import { ConfidenceCenter } from '../components/ConfidenceCenter';
 import { DispositionPanel } from '../components/DispositionPanel';
+import { LogisticsProfileForm } from '../components/LogisticsProfileForm';
 import { ListingsManager } from '../components/ListingsManager';
 import { PhotoCapture } from '../components/PhotoCapture';
 import { PhotoGallery } from '../components/PhotoGallery';
@@ -125,7 +127,25 @@ export function ItemDetailPage() {
       {item.status === 'READY' && (
         <div className="space-y-4">
           <div className="px-4 pt-4">
-            <DispositionPanel itemId={id} />
+            <LogisticsProfileForm
+              key={[
+                item.logisticsCaptured,
+                item.weightGrams,
+                item.lengthCm,
+                item.widthCm,
+                item.heightCm,
+                item.logisticsBulky,
+                item.pickupOnly,
+                item.shippingPossible,
+                item.postalCode,
+              ].join('|')}
+              item={item}
+              busy={busy}
+              onSave={(draft) => run(() => itemsApi.updateLogistics(id, draft))}
+            />
+          </div>
+          <div className="px-4">
+            <DispositionPanel itemId={id} logistics={toLogisticsProfile(item)} />
           </div>
           <div className="px-4">
             <button

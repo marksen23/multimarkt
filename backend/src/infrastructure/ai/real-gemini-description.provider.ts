@@ -56,13 +56,16 @@ export class RealGeminiDescriptionProvider implements DescriptionGenerationProvi
         : '';
 
     const goalInstruction = GOAL_INSTRUCTIONS[input.salesGoal ?? 'BALANCED'];
+    const logisticsBlock = input.logisticsHint
+      ? `\nLogistik (verbindlich, nicht widersprechen und nicht in die andere Richtung umschreiben): ${input.logisticsHint}`
+      : '';
 
     const prompt = `Schreibe einen kurzen Verkaufstext (3-5 Sätze, Deutsch) für ein Kleinanzeigen-Inserat.
 Titel: ${input.title ?? 'unbekannt'}
 Zustand: ${input.condition ?? 'unbekannt'}
 Bekannte Merkmale: ${knownFacts || 'keine weiteren Angaben'}
 ${goalInstruction}
-${comparablesBlock}
+${comparablesBlock}${logisticsBlock}
 
 WICHTIG: Verwende für die FAKTEN AUSSCHLIESSLICH die oben genannten Angaben zu diesem Produkt. Erfinde KEINE zusätzlichen Details (keine Marke, kein Material, keine Maße), die dort nicht stehen — auch nicht aus den Vergleichsangeboten übernommen, die sind nur Stil-Vorbild, nicht Faktenquelle. Wenn wenig bekannt ist, bleib entsprechend allgemein, statt Lücken mit Vermutungen zu füllen. Antworte NUR mit dem Beschreibungstext, ohne Anrede, ohne Überschrift, ohne Anführungszeichen.`;
 

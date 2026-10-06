@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { dispositionApi } from '../api/disposition';
 import type { DispositionRecommendation, DispositionUserGoal } from '../api/disposition';
 import { ApiRequestError } from '../api/client';
+import { shippingCostEur, shippingPortalsAllowed, type LogisticsProfile } from '../logistics/profile';
 import { flushMarginAssumptions } from '../margin/use-margin-assumptions';
 
 const USER_GOALS: { value: DispositionUserGoal; label: string }[] = [
@@ -19,6 +20,13 @@ const ACTION_LABELS: Record<string, string> = {
   BUYBACK_SERVICE: 'Ankaufsdienst nutzen',
 };
 
+const PLATFORM_LABELS: Record<string, string> = {
+  KLEINANZEIGEN: 'Kleinanzeigen',
+  EBAY: 'eBay',
+  VINTED: 'Vinted',
+  BUYBACK_SERVICE: 'Ankauf',
+};
+
 const ACTION_COLORS: Record<string, string> = {
   SELL_ONLINE: 'bg-accent-soft text-accent',
   LOCAL_PICKUP_ONLY: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
@@ -34,15 +42,36 @@ const ACTION_COLORS: Record<string, string> = {
  * Schema). Diese Komponente ist deshalb ein Rechner, kein Formular mit
  * Speicherzustand.
  */
-export function DispositionPanel({ itemId }: { itemId: string }) {
+export function DispositionPanel({
+  itemId,
+  logistics,
+}: {
+  itemId: string;
+  logistics: LogisticsProfile;
+}) {
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState('household');
   const [marketMedianPrice, setMarketMedianPrice] = useState('');
-  const [isBulky, setIsBulky] = useState(false);
   const [userGoal, setUserGoal] = useState<DispositionUserGoal>('BALANCED');
   const [result, setResult] = useState<DispositionRecommendation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const logisticsKey = [
+    logistics.captured,
+    logistics.weightGrams,
+    logistics.lengthCm,
+    logistics.widthCm,
+    logistics.heightCm,
+    logistics.bulky,
+    logistics.pickupOnly,
+    logistics.shippingPossible,
+    logistics.postalCode,
+  ].join('|');
+  const [seenLogisticsKey, setSeenLogisticsKey] = useState(logisticsKey);
+  if (seenLogisticsKey !== logisticsKey) {
+    setSeenLogisticsKey(logisticsKey);
+    setResult(null);
+  }
 
   const evaluate = async () => {
     setBusy(true);
@@ -53,7 +82,6 @@ export function DispositionPanel({ itemId }: { itemId: string }) {
         await dispositionApi.evaluate(itemId, {
           category,
           marketMedianPrice: Number(marketMedianPrice),
-          isBulky,
           userGoal,
         }),
       );
@@ -92,6 +120,7 @@ export function DispositionPanel({ itemId }: { itemId: string }) {
           className="p-2 border border-line rounded-lg text-xs bg-surface text-ink"
         >
           <option value="household">Haushalt</option>
+          <option value="furniture">Möbel</option>
           <option value="fashion">Mode</option>
           <option value="shoes">Schuhe</option>
           <option value="electronics">Elektronik</option>
@@ -120,10 +149,7 @@ export function DispositionPanel({ itemId }: { itemId: string }) {
         onChange={(e) => setMarketMedianPrice(e.target.value)}
         className="w-full p-2 border border-line rounded-lg text-xs outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
       />
-      <label className="flex items-center gap-2 text-xs text-ink-muted">
-        <input type="checkbox" checked={isBulky} onChange={(e) => setIsBulky(e.target.checked)} />
-        Sperrig (nur Abholung möglich)
-      </label>
+      <p className="text-xs text-ink-muted">{logisticsSummary(logistics)}</p>
 
       {error && <p className="text-xs text-danger">{error}</p>}
 
@@ -177,7 +203,7 @@ export function DispositionPanel({ itemId }: { itemId: string }) {
                   className="flex items-center justify-between bg-surface-hover rounded-lg p-2 text-xs"
                 >
                   <div>
-                    <span className="font-bold text-ink">{p.key}</span>
+                    <span className="font-bold text-ink">{PLATFORM_LABELS[p.key] ?? p.key}</span>
                     <p className="text-ink-faint">{p.reasoning}</p>
                   </div>
                   <span className="font-bold text-accent">
@@ -194,4 +220,15 @@ export function DispositionPanel({ itemId }: { itemId: string }) {
       )}
     </div>
   );
+}
+
+function logisticsSummary(profile: LogisticsProfile): string {
+  if (!profile.captured) {
+    return 'Logistikprofil fehlt. Versandportale bleiben zu, keine Versandpauschale.';
+  }
+  if (shippingPortalsAllowed(profile)) {
+    return `Versand möglich. Paketkosten ${shippingCostEur(profile).toFixed(2)} € aus Gewicht und Maßen.`;
+  }
+  const postalCode = profile.postalCode ? ` PLZ ${profile.postalCode}.` : '';
+  return `Nur Abholung.${postalCode} Keine Versandportale.`;
 }

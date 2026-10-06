@@ -131,6 +131,58 @@ export class ItemEntity {
   @Column({ name: 'sold_at', type: 'timestamptz', nullable: true })
   soldAt: Date | null;
 
+  // Logistikprofil (Feature-Plan 3.5). Liegt neben der Produktwahrheit:
+  // Gewicht und Maße sind Angaben zum Versand, kein bestätigtes Attribut.
+  // `logisticsCaptured` trennt „Formular noch nicht gespeichert“ von
+  // einem echten Nein bei Sperrig, Abholung und Versand.
+  @Column({ name: 'weight_grams', type: 'int', nullable: true })
+  weightGrams: number | null;
+
+  @Column({
+    name: 'length_cm',
+    type: 'numeric',
+    precision: 6,
+    scale: 1,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  lengthCm: number | null;
+
+  @Column({
+    name: 'width_cm',
+    type: 'numeric',
+    precision: 6,
+    scale: 1,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  widthCm: number | null;
+
+  @Column({
+    name: 'height_cm',
+    type: 'numeric',
+    precision: 6,
+    scale: 1,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  heightCm: number | null;
+
+  @Column({ name: 'logistics_bulky', type: 'boolean', default: false })
+  logisticsBulky: boolean;
+
+  @Column({ name: 'pickup_only', type: 'boolean', default: false })
+  pickupOnly: boolean;
+
+  @Column({ name: 'shipping_possible', type: 'boolean', default: false })
+  shippingPossible: boolean;
+
+  @Column({ name: 'postal_code', type: 'text', nullable: true })
+  postalCode: string | null;
+
+  @Column({ name: 'logistics_captured', type: 'boolean', default: false })
+  logisticsCaptured: boolean;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
