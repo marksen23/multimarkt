@@ -302,8 +302,8 @@ function WorklistCard({ entry }: { entry: WorklistEntry }) {
 function nextStepFor(entry: WorklistEntry): string {
   if (entry.kind === 'bundle') return bundleNextStep(entry.itemCount);
   if (entry.reason === 'STALE_ONLINE' && entry.staleDays != null) {
-    const days = entry.staleDays === 1 ? '1 Tag' : `${entry.staleDays} Tage`;
-    return `Online seit ${days}. ${REASON_NEXT_STEP.STALE_ONLINE}`;
+    const since = entry.staleDays === 1 ? '1 Tag' : `${entry.staleDays} Tagen`;
+    return `Online seit ${since}. ${REASON_NEXT_STEP.STALE_ONLINE}`;
   }
   return REASON_NEXT_STEP[entry.reason];
 }
