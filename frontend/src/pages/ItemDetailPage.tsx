@@ -22,6 +22,7 @@ export function ItemDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [schnellmodus, setSchnellmodus] = useState(false);
+  const [readyMedian, setReadyMedian] = useState<number | null>(null);
 
   const reload = useCallback(async () => {
     if (!id) return;
@@ -122,7 +123,7 @@ export function ItemDetailPage() {
       {item.status === 'READY' && (
         <div className="space-y-4">
           <div className="px-4 pt-4">
-            <DispositionPanel itemId={id} />
+            <DispositionPanel itemId={id} initialMedian={readyMedian} />
           </div>
           <div className="px-4">
             <button
@@ -141,13 +142,25 @@ export function ItemDetailPage() {
             onPrepare={(price, description) =>
               run(() => itemsApi.prepareListing(id, price, description))
             }
+            onMedianAvailable={setReadyMedian}
           />
         </div>
       )}
 
       {item.status === 'LISTED' && (
         <div className="p-4 space-y-4">
-          <h1 className="text-lg font-bold text-ink">Listings</h1>
+          <div className="space-y-0.5">
+            <h1 className="text-base font-bold text-ink">{item.title ?? `Artikel ${id.slice(0, 8)}`}</h1>
+            {item.condition && <p className="text-xs text-ink-muted">{item.condition}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate(`/items/${id}/angebotspaket`)}
+            className="w-full p-2.5 rounded-xl border border-line text-sm font-bold text-ink-muted hover:bg-surface-hover hover:border-accent/40 transition-colors text-left flex items-center gap-2"
+          >
+            <span className="text-base">↻</span>
+            Angebotpaket neu generieren
+          </button>
           <ListingsManager
             listings={detail.listings}
             busy={busy}
@@ -366,12 +379,14 @@ function PrepareListingStep({
   busy,
   onUpdateTitle,
   onPrepare,
+  onMedianAvailable,
 }: {
   itemId: string;
   currentTitle: string | null;
   busy: boolean;
   onUpdateTitle: (title: string) => Promise<void>;
   onPrepare: (price: number, description?: string) => Promise<void>;
+  onMedianAvailable?: (median: number) => void;
 }) {
   const [price, setPrice] = useState('');
   const [marketMedian, setMarketMedian] = useState<number | null>(null);
@@ -404,7 +419,7 @@ function PrepareListingStep({
       <PriceResearchPanel
         itemId={itemId}
         onSuggestPrice={(p) => setPrice(String(p))}
-        onMedianAvailable={(m) => setMarketMedian(m)}
+        onMedianAvailable={(m) => { setMarketMedian(m); onMedianAvailable?.(m); }}
       />
       <input
         type="number"

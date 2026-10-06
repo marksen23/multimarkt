@@ -102,14 +102,6 @@ export function NewItemPage() {
           {stage === 'idle' && 'Weiter'}
         </button>
 
-        <div className="flex justify-center gap-4">
-          <a href="/demo/confidence-center" className="text-xs text-ink-faint hover:text-ink-muted">
-            Confidence-Center-Demo
-          </a>
-          <a href="/demo/negotiation" className="text-xs text-ink-faint hover:text-ink-muted">
-            Chat-Assistent-Demo
-          </a>
-        </div>
       </div>
     </div>
   );

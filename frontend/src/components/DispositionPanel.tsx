@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { dispositionApi } from '../api/disposition';
 import type { DispositionRecommendation, DispositionUserGoal } from '../api/disposition';
 import { ApiRequestError } from '../api/client';
@@ -33,11 +33,21 @@ const ACTION_COLORS: Record<string, string> = {
  * Schema). Diese Komponente ist deshalb ein Rechner, kein Formular mit
  * Speicherzustand.
  */
-export function DispositionPanel({ itemId }: { itemId: string }) {
+export function DispositionPanel({ itemId, initialMedian }: { itemId: string; initialMedian?: number | null }) {
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState('household');
-  const [marketMedianPrice, setMarketMedianPrice] = useState('');
+  const [marketMedianPrice, setMarketMedianPrice] = useState(
+    initialMedian != null ? initialMedian.toFixed(2) : '',
+  );
   const [isBulky, setIsBulky] = useState(false);
+
+  useEffect(() => {
+    if (initialMedian != null && !marketMedianPrice) {
+      setMarketMedianPrice(initialMedian.toFixed(2));
+    }
+    // Only pre-fill once when the median arrives — don't overwrite manual edits
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMedian]);
   const [userGoal, setUserGoal] = useState<DispositionUserGoal>('BALANCED');
   const [result, setResult] = useState<DispositionRecommendation | null>(null);
   const [error, setError] = useState<string | null>(null);
