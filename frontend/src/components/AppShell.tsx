@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { clearAccessToken } from './TokenGate';
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Dashboard', end: true },
+  { to: '/', label: 'Arbeit', end: true },
   { to: '/ankauf', label: 'Ankauf', end: false },
   { to: '/bundles', label: 'Bundles', end: false },
   { to: '/account', label: 'Konto', end: false },

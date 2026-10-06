@@ -1,0 +1,16 @@
+export const STATUS_LABELS: Record<string, string> = {
+  NEW: 'Neu',
+  ANALYZING: 'Wird analysiert',
+  REVIEW_REQUIRED: 'Prüfung nötig',
+  READY: 'Bereit',
+  BUNDLED: 'Gebündelt',
+  LISTED: 'Gelistet',
+  SOLD: 'Verkauft',
+  ARCHIVED: 'Archiviert',
+  SALE_CONFLICT: 'Verkaufskonflikt',
+  CANCELLED: 'Storniert',
+  DRAFT: 'Entwurf',
+  PUBLISHING: 'Wird veröffentlicht',
+  ONLINE: 'Online',
+  CANCEL_PENDING: 'Storno ausstehend',
+};

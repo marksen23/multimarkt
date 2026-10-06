@@ -82,6 +82,52 @@ export interface ItemListEntry {
   thumbnailUrl: string | null;
 }
 
+export type WorklistGroupId =
+  | 'AWAITING_CONFIRMATION'
+  | 'PRICE_MISSING'
+  | 'STALE_ONLINE'
+  | 'SALE_CONFLICT'
+  | 'INCOMPLETE_BUNDLE';
+
+export type WorklistReason =
+  | 'CONFIRM_CONDITION'
+  | 'CONFIRM_ONLINE'
+  | 'PUBLISH_LISTING'
+  | 'SET_PRICE'
+  | 'STALE_ONLINE'
+  | 'RESOLVE_CONFLICT'
+  | 'ADD_BUNDLE_ITEMS';
+
+export interface WorklistItemEntry {
+  kind: 'item';
+  reason: WorklistReason;
+  onlineSince: string | null;
+  staleDays: number | null;
+  item: Item;
+  listings: ListingSummary[];
+  thumbnailUrl: string | null;
+}
+
+export interface WorklistBundleEntry {
+  kind: 'bundle';
+  reason: 'ADD_BUNDLE_ITEMS';
+  itemCount: number;
+  bundle: Bundle;
+}
+
+export type WorklistEntry = WorklistItemEntry | WorklistBundleEntry;
+
+export interface WorklistGroup {
+  id: WorklistGroupId;
+  entries: WorklistEntry[];
+}
+
+export interface Worklist {
+  staleOnlineDays: number;
+  groups: WorklistGroup[];
+  otherItems: ItemListEntry[];
+}
+
 export interface Bundle {
   id: string;
   userId: string;
