@@ -1,166 +1,214 @@
 import { useState } from 'react';
+import {
+  negotiationApi,
+  type NegotiationPlatform,
+  type NegotiationReply,
+  type NegotiationSuggestion,
+} from '../api/negotiation';
+import { ApiRequestError } from '../api/client';
+import { formatEur } from '../margin/sale-closeout';
 
-interface SuggestedAction {
-  id: string;
-  label: string;
-  variant: 'primary' | 'secondary' | 'danger';
-  text: string;
-}
-
-const variantStyles: Record<SuggestedAction['variant'], { idle: string; selected: string }> = {
-  primary: {
-    idle: 'border-line bg-surface text-ink-muted hover:bg-surface-hover',
-    selected: 'border-accent bg-accent-soft text-accent shadow-sm',
-  },
-  secondary: {
-    idle: 'border-line bg-surface text-ink-muted hover:bg-surface-hover',
-    selected: 'border-ink-faint bg-surface-hover text-ink shadow-sm',
-  },
-  danger: {
-    idle: 'border-red-500/20 bg-surface text-red-600 dark:text-red-400 hover:bg-red-500/5',
-    selected: 'border-red-500 bg-red-500/5 text-red-700 dark:text-red-400 shadow-sm',
-  },
-};
-
-interface Props {
-  itemTitle: string;
-  targetPrice: number;
-  minAcceptablePrice: number;
-  buyerName: string;
-  platform: string;
-  incomingMessage: string;
-  offeredPrice: number;
-  suggestedActions: SuggestedAction[];
-}
+const PLATFORMS: { id: NegotiationPlatform; label: string }[] = [
+  { id: 'KLEINANZEIGEN', label: 'Kleinanzeigen' },
+  { id: 'VINTED', label: 'Vinted' },
+  { id: 'EBAY', label: 'eBay' },
+];
 
 /**
- * Verhandlungs-Assistent (Zusammenfassung §3-V). Adaptiert aus
- * `docs/verhandlungs_assistent_ui_react.js`.
- *
- * SCOPE-HINWEIS: Doc 04 definiert KEINEN Endpunkt für Käufer-Nachrichten
- * oder KI-gestützte Verhandlungsvorschläge — das ist kein Teil des
- * eingefrorenen API-Vertrags. Diese Komponente bleibt daher bewusst
- * UI-only/Demo mit den vom Aufrufer übergebenen Daten, bis ein
- * entsprechender Backend-Endpunkt bewusst spezifiziert wird (siehe
- * Abschlussbericht) — sie erfindet keine Live-Anbindung vor.
+ * Verhandlung an der Schmerzgrenze (Feature-Plan 3.7).
+ * Die Nachricht wird eingefügt. Die Antworten werden kopiert.
+ * Es wird nichts gesendet.
  */
 export function NegotiationAssistant({
-  itemTitle,
+  itemId,
+  title,
   targetPrice,
-  minAcceptablePrice,
-  buyerName,
-  platform,
-  incomingMessage,
-  offeredPrice,
-  suggestedActions,
-}: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [reply, setReply] = useState('');
+  minPrice,
+}: {
+  itemId: string;
+  title: string | null;
+  targetPrice: number;
+  minPrice: number;
+}) {
+  const [platform, setPlatform] = useState<NegotiationPlatform>('KLEINANZEIGEN');
+  const [message, setMessage] = useState('');
+  const [result, setResult] = useState<NegotiationSuggestion | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const platformLabel = PLATFORMS.find((entry) => entry.id === platform)?.label ?? 'dem Portal';
 
-  const select = (action: SuggestedAction) => {
-    setSelectedId(action.id);
-    setReply(action.text);
-  };
-
-  const copyToClipboard = async () => {
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
     try {
-      await navigator.clipboard.writeText(reply);
-      window.alert(`Antwort kopiert! Füge sie bei ${platform} ein.`);
-    } catch {
-      // Clipboard-API kann aus vielen Gründen scheitern (fehlende
-      // Berechtigung, kein sicherer Kontext, iframe-Policy) — ohne diesen
-      // Fallback wäre der einzige Button der Seite lautlos wirkungslos.
-      window.alert('Kopieren nicht möglich — markiere den Text oben und kopiere ihn manuell.');
+      setResult(await negotiationApi.suggest(itemId, { message, platform }));
+    } catch (e) {
+      setResult(null);
+      setError(e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler');
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto bg-bg min-h-screen flex flex-col">
-      <header className="bg-surface/90 backdrop-blur p-4 border-b border-line flex items-center justify-between z-10">
-        <div>
-          <h1 className="font-bold text-ink text-lg">Chat Assistent</h1>
-          <p className="text-xs text-ink-muted line-clamp-1">{itemTitle}</p>
-        </div>
-        <div className="text-right">
-          <span className="block text-xs text-ink-faint uppercase font-bold">Dein Ziel</span>
-          <span className="font-bold text-accent">{targetPrice} €</span>
-        </div>
+    <div className="space-y-4">
+      <header className="space-y-1">
+        <h1 className="text-xl font-extrabold text-ink tracking-tight">Verhandlung</h1>
+        <p className="text-sm text-ink-muted">{title?.trim() || 'Artikel'}</p>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        <div className="flex flex-col items-start">
-          <span className="text-xs text-ink-muted ml-1 mb-1 font-medium">
-            {buyerName} (via {platform})
-          </span>
-          <div className="bg-surface p-4 rounded-2xl rounded-tl-sm shadow-sm border border-line max-w-[90%]">
-            <p className="text-ink text-sm">{incomingMessage}</p>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 gap-2">
+        <PriceFigure label="Zielpreis" value={targetPrice} />
+        <PriceFigure label="Schmerzgrenze" value={minPrice} />
+      </div>
+      <p className="text-xs text-ink-muted">
+        Preise aus der Preisrecherche dieses Artikels. Die Nachricht bleibt hier, nichts wird
+        gesendet.
+      </p>
 
-        <div className="bg-accent-soft border border-accent/20 rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-accent">✨</span>
-            <h3 className="font-bold text-accent text-sm">KI-Einschätzung</h3>
-          </div>
-          <div className="flex justify-between items-end mb-3">
-            <div>
-              <span className="block text-[10px] uppercase font-bold text-accent/70">Gebot</span>
-              <span className="font-bold text-xl text-red-600 dark:text-red-400">{offeredPrice} €</span>
-            </div>
-            <div className="text-right">
-              <span className="block text-[10px] uppercase font-bold text-accent/70">
-                Deine Schmerzgrenze
-              </span>
-              <span className="font-medium text-sm text-ink-muted">{minAcceptablePrice} €</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold text-ink-muted uppercase ml-1">Antwort-Strategie wählen</h4>
-          <div className="flex flex-col gap-2">
-            {suggestedActions.map((action) => (
-              <button
-                key={action.id}
-                type="button"
-                onClick={() => select(action)}
-                className={`p-3 text-sm font-semibold rounded-xl border transition-all text-left flex justify-between items-center ${
-                  selectedId === action.id
-                    ? variantStyles[action.variant].selected
-                    : variantStyles[action.variant].idle
-                }`}
-              >
-                {action.label}
-                {selectedId === action.id && <span>✓</span>}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {selectedId && (
-          <div className="mt-4">
-            <h4 className="text-xs font-bold text-ink-muted uppercase ml-1 mb-2">
-              Antwort anpassen & senden
-            </h4>
-            <textarea
-              className="w-full bg-surface p-4 rounded-xl border border-line text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft resize-none shadow-sm transition"
-              rows={4}
-              value={reply}
-              onChange={(e) => setReply(e.target.value)}
-            />
+      <div className="space-y-2">
+        <span className="block text-[10px] font-bold text-ink-faint uppercase">Einfügen bei</span>
+        <div className="flex gap-2">
+          {PLATFORMS.map((entry) => (
             <button
+              key={entry.id}
               type="button"
-              onClick={copyToClipboard}
-              className="w-full mt-3 bg-accent text-accent-ink font-bold p-4 rounded-xl shadow-lg hover:bg-accent-hover transition active:scale-95"
+              onClick={() => setPlatform(entry.id)}
+              className={`flex-1 px-2 py-2 rounded-xl text-xs font-bold border transition-colors ${
+                platform === entry.id
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-line bg-surface text-ink-muted hover:bg-surface-hover'
+              }`}
             >
-              Antwort kopieren
+              {entry.label}
             </button>
-            <p className="text-[10px] text-ink-faint text-center mt-2">
-              Für {platform} muss die Antwort manuell eingefügt werden.
-            </p>
+          ))}
+        </div>
+      </div>
+
+      <label className="block space-y-1">
+        <span className="block text-[10px] font-bold text-ink-faint uppercase">
+          Käufernachricht einfügen
+        </span>
+        <textarea
+          value={message}
+          onChange={(event) => setMessage(event.target.value)}
+          rows={5}
+          placeholder="Nachricht aus Kleinanzeigen, Vinted oder eBay hier einfügen"
+          className="w-full bg-surface p-3 rounded-xl border border-line text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft resize-none"
+        />
+      </label>
+
+      {error && <p className="text-xs text-danger">{error}</p>}
+
+      <button
+        type="button"
+        disabled={busy || message.trim().length === 0}
+        onClick={() => void submit()}
+        className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
+      >
+        {busy ? 'Liest das Gebot…' : 'Antworten vorschlagen'}
+      </button>
+
+      {result && (
+        <SuggestionResult
+          key={`${result.platform}-${result.offer ?? 'none'}-${result.assessment}`}
+          result={result}
+          platformLabel={PLATFORMS.find((entry) => entry.id === result.platform)?.label ?? platformLabel}
+        />
+      )}
+    </div>
+  );
+}
+
+function PriceFigure({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="bg-surface border border-line rounded-xl p-3">
+      <span className="block text-[10px] font-bold text-ink-faint uppercase">{label}</span>
+      <span className="font-bold text-ink">{formatEur(value)}</span>
+    </div>
+  );
+}
+
+function SuggestionResult({
+  result,
+  platformLabel,
+}: {
+  result: NegotiationSuggestion;
+  platformLabel: string;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="bg-surface border border-line rounded-xl p-3 space-y-2">
+        <div className="flex justify-between gap-3">
+          <div>
+            <span className="block text-[10px] font-bold text-ink-faint uppercase">Gebot</span>
+            <span className="font-bold text-ink">
+              {result.offer == null ? 'kein Betrag' : formatEur(result.offer)}
+            </span>
           </div>
+          <div className="text-right">
+            <span className="block text-[10px] font-bold text-ink-faint uppercase">Schmerzgrenze</span>
+            <span className="font-medium text-ink-muted">{formatEur(result.minPrice)}</span>
+          </div>
+        </div>
+        <p className="text-sm text-ink">{result.assessment}</p>
+      </div>
+
+      <h2 className="text-xs font-bold text-ink-muted uppercase">Drei Antworten</h2>
+      {result.replies.map((reply) => (
+        <ReplyCard key={reply.id} reply={reply} platformLabel={platformLabel} />
+      ))}
+    </div>
+  );
+}
+
+function ReplyCard({ reply, platformLabel }: { reply: NegotiationReply; platformLabel: string }) {
+  const [text, setText] = useState(reply.text);
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyState('copied');
+    } catch {
+      setCopyState('error');
+    }
+    window.setTimeout(() => setCopyState('idle'), 1800);
+  };
+
+  return (
+    <div
+      className={`bg-surface border rounded-xl p-3 space-y-2 ${
+        reply.recommended ? 'border-accent' : 'border-line'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-bold text-ink">{reply.label}</h3>
+        {reply.recommended && (
+          <span className="text-[10px] font-bold uppercase text-accent">Vorschlag</span>
         )}
       </div>
+      <textarea
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        rows={4}
+        className="w-full bg-bg p-3 rounded-lg border border-line text-sm text-ink outline-none focus:border-accent resize-none"
+      />
+      <button
+        type="button"
+        onClick={() => void copy()}
+        className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover transition-colors"
+      >
+        {copyState === 'copied'
+          ? 'Antwort kopiert'
+          : copyState === 'error'
+            ? 'Kopieren nicht möglich — Text markieren'
+            : 'Antwort kopieren'}
+      </button>
+      <p className="text-[10px] text-ink-faint text-center">
+        Zum Einfügen bei {platformLabel}. Es wird nichts gesendet.
+      </p>
     </div>
   );
 }
