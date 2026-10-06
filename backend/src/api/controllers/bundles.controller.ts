@@ -60,13 +60,30 @@ export class BundlesController {
   @Get()
   async list(
     @CurrentActor() actor: ActorContext,
-  ): Promise<{ bundle: BundleEntity; listings: ListingSummary[] }[]> {
+  ): Promise<{ bundle: BundleEntity; listings: ListingSummary[]; itemCount: number }[]> {
     const bundles = await this.dataSource.manager.find(BundleEntity, {
       where: { userId: actor.userId! },
       order: { createdAt: 'DESC' },
     });
-    const listingsByBundle = await this.listingSummary.forBundleIds(bundles.map((b) => b.id));
-    return bundles.map((bundle) => ({ bundle, listings: listingsByBundle.get(bundle.id) ?? [] }));
+    const bundleIds = bundles.map((b) => b.id);
+    const [listingsByBundle, rawCounts] = await Promise.all([
+      this.listingSummary.forBundleIds(bundleIds),
+      bundleIds.length
+        ? this.dataSource.manager
+            .createQueryBuilder(BundleItemEntity, 'bi')
+            .select('bi.bundleId', 'bundleId')
+            .addSelect('COUNT(*)', 'count')
+            .where('bi.bundleId IN (:...ids)', { ids: bundleIds })
+            .groupBy('bi.bundleId')
+            .getRawMany<{ bundleId: string; count: string }>()
+        : Promise.resolve([]),
+    ]);
+    const itemCountMap = new Map(rawCounts.map((r) => [r.bundleId, Number(r.count)]));
+    return bundles.map((bundle) => ({
+      bundle,
+      listings: listingsByBundle.get(bundle.id) ?? [],
+      itemCount: itemCountMap.get(bundle.id) ?? 0,
+    }));
   }
 
   @Get(':id')

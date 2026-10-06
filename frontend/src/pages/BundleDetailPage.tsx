@@ -76,9 +76,17 @@ export function BundleDetailPage() {
             <Link
               key={item.id}
               to={`/items/${item.id}`}
-              className="block bg-surface border border-line rounded-xl p-2 text-sm text-ink hover:border-accent/40 transition"
+              className="flex items-center justify-between bg-surface border border-line rounded-xl px-3 py-2 hover:border-accent/40 transition"
             >
-              {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
+              <div className="min-w-0">
+                <p className="text-sm text-ink font-medium truncate">
+                  {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
+                </p>
+                {item.condition && (
+                  <p className="text-[11px] text-ink-faint">{item.condition}</p>
+                )}
+              </div>
+              <StatusBadge status={item.status} />
             </Link>
           ))}
         </div>

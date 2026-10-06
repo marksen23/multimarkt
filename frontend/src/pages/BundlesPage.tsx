@@ -49,23 +49,41 @@ export function BundlesPage() {
       )}
 
       <div className="space-y-2">
-        {entries?.map(({ bundle }) => (
-          <Link
-            key={bundle.id}
-            to={`/bundles/${bundle.id}`}
-            className="block bg-surface border border-line rounded-2xl p-4 hover:border-accent/40 hover:shadow-md transition"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-bold text-ink text-sm">{bundle.title}</p>
-                {bundle.description && (
-                  <p className="text-xs text-ink-faint">{bundle.description}</p>
-                )}
+        {entries?.map(({ bundle, listings, itemCount }) => {
+          const activeListing = listings.find((l) =>
+            l.projections.some((p) => p.status === 'ONLINE' || p.status === 'PUBLISHING'),
+          );
+          const anyListing = listings[0];
+          return (
+            <Link
+              key={bundle.id}
+              to={`/bundles/${bundle.id}`}
+              className="block bg-surface border border-line rounded-2xl p-4 hover:border-accent/40 hover:shadow-md transition"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-bold text-ink text-sm truncate">{bundle.title}</p>
+                  {bundle.description && (
+                    <p className="text-xs text-ink-faint truncate">{bundle.description}</p>
+                  )}
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className="text-[11px] text-ink-faint">
+                      {itemCount} {itemCount === 1 ? 'Artikel' : 'Artikel'}
+                    </span>
+                    {(activeListing ?? anyListing) ? (
+                      <span className="text-[11px] font-semibold text-accent">
+                        {(activeListing ?? anyListing)!.sellingPrice.toFixed(2)} €
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-ink-faint">Kein Listing</span>
+                    )}
+                  </div>
+                </div>
+                <StatusBadge status={bundle.status} />
               </div>
-              <StatusBadge status={bundle.status} />
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

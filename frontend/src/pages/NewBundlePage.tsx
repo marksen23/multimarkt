@@ -71,14 +71,26 @@ export function NewBundlePage() {
           {readyItems?.map(({ item }) => (
             <label
               key={item.id}
-              className="flex items-center gap-2 bg-surface border border-line rounded-xl p-2 text-sm text-ink cursor-pointer hover:border-accent/40 transition"
+              className={`flex items-center gap-3 bg-surface border rounded-xl px-3 py-2.5 text-sm text-ink cursor-pointer transition ${
+                selected.has(item.id)
+                  ? 'border-accent/60 bg-accent-soft/30'
+                  : 'border-line hover:border-accent/40'
+              }`}
             >
               <input
                 type="checkbox"
                 checked={selected.has(item.id)}
                 onChange={() => toggle(item.id)}
+                className="accent-accent"
               />
-              {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
+              <div className="min-w-0">
+                <p className="font-medium truncate">
+                  {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
+                </p>
+                {item.condition && (
+                  <p className="text-[11px] text-ink-faint">{item.condition}</p>
+                )}
+              </div>
             </label>
           ))}
         </div>

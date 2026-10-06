@@ -94,6 +94,7 @@ export interface Bundle {
 export interface BundleListEntry {
   bundle: Bundle;
   listings: ListingSummary[];
+  itemCount: number;
 }
 
 export interface BundleDetail {

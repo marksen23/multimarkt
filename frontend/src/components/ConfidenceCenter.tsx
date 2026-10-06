@@ -94,20 +94,26 @@ export function ConfidenceCenter({
           >
             <label className="block text-sm font-bold text-ink mb-2">Wie ist der Zustand?</label>
             <div className="grid grid-cols-3 gap-2">
-              {CONDITION_OPTIONS.map((cond) => (
-                <button
-                  key={cond}
-                  type="button"
-                  onClick={() => setSelectedCondition(cond)}
-                  className={`py-2 px-1 text-xs rounded-lg border font-bold transition ${
-                    selectedCondition === cond
-                      ? 'bg-red-600 border-red-600 text-white shadow-md'
-                      : 'bg-surface border-line text-ink-muted hover:bg-surface-hover'
-                  }`}
-                >
-                  {cond}
-                </button>
-              ))}
+              {CONDITION_OPTIONS.map((cond) => {
+                const isSelected = selectedCondition === cond;
+                const isConfirmed = isSelected && cond === detail.item.condition;
+                return (
+                  <button
+                    key={cond}
+                    type="button"
+                    onClick={() => setSelectedCondition(cond)}
+                    className={`py-2 px-1 text-xs rounded-lg border font-bold transition ${
+                      isConfirmed
+                        ? 'bg-accent border-accent text-accent-ink shadow-md'
+                        : isSelected
+                          ? 'bg-red-600 border-red-600 text-white shadow-md'
+                          : 'bg-surface border-line text-ink-muted hover:bg-surface-hover'
+                    }`}
+                  >
+                    {cond}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
