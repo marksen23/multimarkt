@@ -6,6 +6,7 @@ import { ActorContextGuard } from '../auth/actor-context.guard';
 import { ResponseEnvelopeInterceptor } from '../interceptors/response-envelope.interceptor';
 import { UpdateMarginAssumptionsDto } from '../dto/margin-assumptions.dto';
 import { ActorContext } from '../../domain/actor-context';
+import { ChannelFeeAssumptions } from '../../domain/pricing/channel-fees';
 import { roundMoney } from '../../domain/pricing/expected-margin';
 import { AccountDeletionService } from '../../application/deletion/account-deletion.service';
 import { DeletionAuditLogEntity, UserEntity } from '../../infrastructure/database/entities';
@@ -14,6 +15,7 @@ export interface MarginAssumptionsView {
   feePercent: number;
   shippingEur: number;
   singleSaleThresholdEur: number | null;
+  channels: ChannelFeeAssumptions;
 }
 
 /** Doc 04 §16 — Hard-Delete-Lifecycle (Doc 01 §15). */
@@ -42,6 +44,12 @@ export class AccountController {
     user.shippingEur = roundMoney(dto.shippingEur);
     user.singleSaleThresholdEur =
       dto.singleSaleThresholdEur == null ? null : roundMoney(dto.singleSaleThresholdEur);
+    user.kleinanzeigenFeePercent = roundMoney(dto.channels.KLEINANZEIGEN.percent);
+    user.kleinanzeigenFeeFixedEur = roundMoney(dto.channels.KLEINANZEIGEN.fixedEur);
+    user.ebayFeePercent = roundMoney(dto.channels.EBAY.percent);
+    user.ebayFeeFixedEur = roundMoney(dto.channels.EBAY.fixedEur);
+    user.vintedFeePercent = roundMoney(dto.channels.VINTED.percent);
+    user.vintedFeeFixedEur = roundMoney(dto.channels.VINTED.fixedEur);
     await this.dataSource.manager.save(user);
     return this.toAssumptions(user);
   }
@@ -57,6 +65,20 @@ export class AccountController {
       feePercent: user.feePercent,
       shippingEur: user.shippingEur,
       singleSaleThresholdEur: user.singleSaleThresholdEur,
+      channels: {
+        KLEINANZEIGEN: {
+          percent: user.kleinanzeigenFeePercent,
+          fixedEur: user.kleinanzeigenFeeFixedEur,
+        },
+        EBAY: {
+          percent: user.ebayFeePercent,
+          fixedEur: user.ebayFeeFixedEur,
+        },
+        VINTED: {
+          percent: user.vintedFeePercent,
+          fixedEur: user.vintedFeeFixedEur,
+        },
+      },
     };
   }
 

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { itemsApi } from '../api/items';
 import type { PriceRecommendation, PriceResearchResult, PriceResearchSourceResult, SalesGoal } from '../api/types';
+import type { LogisticsProfile } from '../logistics/profile';
+import { ChannelNetComparison } from './ChannelNetComparison';
 import { ExpectedMarginFields } from './ExpectedMarginFields';
 
 /**
@@ -26,10 +28,12 @@ const CONFIDENCE_LABELS: Record<string, string> = {
 export function PriceResearchPanel({
   itemId,
   purchasePriceEur,
+  logistics,
   onSuggestPrice,
 }: {
   itemId: string;
   purchasePriceEur: number | null;
+  logistics?: LogisticsProfile | null;
   onSuggestPrice: (price: number) => void;
 }) {
   const [result, setResult] = useState<PriceResearchResult | null>(null);
@@ -115,6 +119,11 @@ export function PriceResearchPanel({
             salePriceEur={result.recommendation.targetPrice}
             purchasePriceEur={purchasePriceEur}
             salePriceLabel="Zielpreis"
+          />
+          <ChannelNetComparison
+            salePriceEur={result.recommendation.targetPrice}
+            salePriceLabel="Zielpreis"
+            logistics={logistics}
           />
         </>
       )}

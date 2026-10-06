@@ -5,6 +5,7 @@ import { ApiRequestError } from '../api/client';
 import { shippingCostEur, shippingPortalsAllowed, type LogisticsProfile } from '../logistics/profile';
 import { RESALE_CATEGORIES, resolveCategory } from '../category/taxonomy';
 import { flushMarginAssumptions } from '../margin/use-margin-assumptions';
+import { ChannelNetComparison } from './ChannelNetComparison';
 
 const USER_GOALS: { value: DispositionUserGoal; label: string }[] = [
   { value: 'BALANCED', label: 'Ausgewogen' },
@@ -27,6 +28,8 @@ const PLATFORM_LABELS: Record<string, string> = {
   VINTED: 'Vinted',
   BUYBACK_SERVICE: 'Ankauf',
 };
+
+const SELLING_CHANNEL_KEYS = new Set(['KLEINANZEIGEN', 'EBAY', 'VINTED']);
 
 const ACTION_COLORS: Record<string, string> = {
   SELL_ONLINE: 'bg-accent-soft text-accent',
@@ -151,6 +154,7 @@ export function DispositionPanel({
         className="w-full p-2 border border-line rounded-lg text-xs outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
       />
       <p className="text-xs text-ink-muted">{logisticsSummary(logistics)}</p>
+      <ChannelNetComparison salePriceEur={null} salePriceLabel="Marktpreis" logistics={logistics} />
 
       {error && <p className="text-xs text-danger">{error}</p>}
 
@@ -198,18 +202,32 @@ export function DispositionPanel({
           )}
           {result.recommendedPlatforms.length > 0 && (
             <div className="space-y-1">
+              <p className="text-[11px] text-ink-faint">
+                Annahmen. Gebühren ändern sich. Reihenfolge nach dem Netto, nicht nach dem Angebotsmedian.
+              </p>
               {result.recommendedPlatforms.map((p) => (
-                <div
-                  key={p.key}
-                  className="flex items-center justify-between bg-surface-hover rounded-lg p-2 text-xs"
-                >
-                  <div>
+                <div key={p.key} className="bg-surface-hover rounded-lg p-2 text-xs space-y-0.5">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="font-bold text-ink">{PLATFORM_LABELS[p.key] ?? p.key}</span>
-                    <p className="text-ink-faint">{p.reasoning}</p>
+                    {!SELLING_CHANNEL_KEYS.has(p.key) && (
+                      <span className="font-bold text-accent">~{p.netExpectedValue.toFixed(2)} €</span>
+                    )}
                   </div>
-                  <span className="font-bold text-accent">
-                    ~{p.netExpectedValue.toFixed(2)} €
-                  </span>
+                  {SELLING_CHANNEL_KEYS.has(p.key) && (
+                    <p className="text-ink">
+                      bei Verkauf zu diesem Preis bleiben{' '}
+                      <span className="font-bold">{p.netExpectedValue.toFixed(2)} €</span>
+                    </p>
+                  )}
+                  {p.feePercent != null && p.feeFixedEur != null && (
+                    <p className="text-ink-faint">
+                      Annahme {p.feePercent.toFixed(2)} % + {p.feeFixedEur.toFixed(2)} €
+                      {p.shippingEur > 0
+                        ? `, Versand ${p.shippingEur.toFixed(2)} €`
+                        : ', ohne Versandabzug'}
+                    </p>
+                  )}
+                  <p className="text-ink-faint">{p.reasoning}</p>
                 </div>
               ))}
             </div>

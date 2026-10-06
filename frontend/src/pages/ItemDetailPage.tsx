@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { followUpsApi, type ItemFollowUp } from "../api/follow-ups";
 import { itemsApi } from "../api/items";
-import { toLogisticsProfile } from "../logistics/profile";
+import { toLogisticsProfile, type LogisticsProfile } from "../logistics/profile";
 import { ApiRequestError } from "../api/client";
 import type { ItemDetail, ListingChannel, SaleEvent } from "../api/types";
 import { ConfidenceCenter } from "../components/ConfidenceCenter";
@@ -188,6 +188,7 @@ export function ItemDetailPage() {
           <PrepareListingStep
             itemId={id}
             purchasePriceEur={item.purchasePriceEur}
+            logistics={toLogisticsProfile(item)}
             currentTitle={item.title}
             busy={busy}
             onUpdateTitle={(title) =>
@@ -415,6 +416,7 @@ function AnalyzeStep({
 function PrepareListingStep({
   itemId,
   purchasePriceEur,
+  logistics,
   currentTitle,
   busy,
   onUpdateTitle,
@@ -422,6 +424,7 @@ function PrepareListingStep({
 }: {
   itemId: string;
   purchasePriceEur: number | null;
+  logistics: LogisticsProfile;
   currentTitle: string | null;
   busy: boolean;
   onUpdateTitle: (title: string) => Promise<void>;
@@ -466,6 +469,7 @@ function PrepareListingStep({
       <PriceResearchPanel
         itemId={itemId}
         purchasePriceEur={purchasePriceEur}
+        logistics={logistics}
         onSuggestPrice={(p) => setPrice(String(p))}
       />
       <input

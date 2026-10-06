@@ -1,4 +1,5 @@
 import { EMPTY_LOGISTICS } from '../../domain/logistics/logistics-profile';
+import { DEFAULT_CHANNEL_FEE_ASSUMPTIONS } from '../../domain/pricing/channel-fees';
 import { DispositionEngineService, ProductProfile } from './disposition-engine.service';
 import type { LogisticsProfile } from '../../domain/logistics/logistics-profile';
 
@@ -117,6 +118,68 @@ describe('DispositionEngineService', () => {
     for (const platform of result.recommendedPlatforms) {
       expect(platform.netExpectedValue).toBe(38.05);
     }
+  });
+
+  it('ranks channels by net after fee assumptions, not by the shared offer median', () => {
+    const result = service.evaluate({
+      ...baseProfile,
+      marketMedianPrice: 40,
+      logistics: smallParcel,
+      channelFees: DEFAULT_CHANNEL_FEE_ASSUMPTIONS,
+    });
+    expect(result.recommendedPlatforms.map((p) => p.key)).toEqual([
+      'KLEINANZEIGEN',
+      'VINTED',
+      'EBAY',
+    ]);
+    expect(result.recommendedPlatforms.map((p) => p.netExpectedValue)).toEqual([
+      38.05, 35.35, 33.65,
+    ]);
+    expect(result.recommendedPlatforms.map((p) => p.feePercent)).toEqual([0, 5, 11]);
+    expect(result.rationale).toContain('nicht dem Angebotsmedian');
+  });
+
+  it('puts the channel with the lower fee assumption ahead when medians match', () => {
+    const result = service.evaluate({
+      ...baseProfile,
+      marketMedianPrice: 40,
+      logistics: smallParcel,
+      channelFees: {
+        KLEINANZEIGEN: { percent: 20, fixedEur: 0 },
+        EBAY: { percent: 0, fixedEur: 0 },
+        VINTED: { percent: 0, fixedEur: 1 },
+      },
+    });
+    expect(result.recommendedPlatforms.map((p) => p.key)).toEqual([
+      'EBAY',
+      'VINTED',
+      'KLEINANZEIGEN',
+    ]);
+    expect(result.recommendedPlatforms.map((p) => p.netExpectedValue)).toEqual([
+      38.05, 37.05, 30.05,
+    ]);
+  });
+
+  it('uses the shipping flat rate in the net when it is set', () => {
+    const result = service.evaluate({
+      ...baseProfile,
+      marketMedianPrice: 40,
+      logistics: smallParcel,
+      channelFees: {
+        KLEINANZEIGEN: { percent: 0, fixedEur: 0 },
+        EBAY: { percent: 0, fixedEur: 0 },
+        VINTED: { percent: 10, fixedEur: 0 },
+      },
+      shippingFlatEur: 6,
+    });
+    expect(result.recommendedPlatforms.map((p) => p.key)).toEqual([
+      'KLEINANZEIGEN',
+      'EBAY',
+      'VINTED',
+    ]);
+    expect(result.recommendedPlatforms.map((p) => p.netExpectedValue)).toEqual([34, 34, 30]);
+    expect(result.recommendedPlatforms[0].shippingEur).toBe(6);
+    expect(result.shippingCostEur).toBe(1.95);
   });
 
   it('without a logistics profile recommends only Kleinanzeigen and does not subtract 1.50 €', () => {

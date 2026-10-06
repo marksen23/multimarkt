@@ -13,6 +13,9 @@ export interface PlatformRecommendation {
   key: string;
   netExpectedValue: number;
   reasoning: string;
+  feePercent: number | null;
+  feeFixedEur: number | null;
+  shippingEur: number;
 }
 
 export interface DispositionRecommendation {
