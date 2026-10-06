@@ -170,13 +170,7 @@ export function ItemDetailPage() {
       )}
 
       {(item.status === 'SOLD' || item.status === 'CANCELLED' || item.status === 'ARCHIVED') && (
-        <div className="p-4">
-          <Centered
-            title={item.title ?? 'Artikel'}
-            message={`Status: ${item.status}. Für diesen Zustand sind in der aktuellen Frontend-Version keine weiteren Aktionen vorgesehen.`}
-            showDashboardLink
-          />
-        </div>
+        <FinishedScreen detail={detail} />
       )}
     </div>
   );
@@ -650,6 +644,87 @@ function ConflictResolutionPanel({
           auflösen. Falls nicht, lade die Seite neu.
         </p>
       )}
+    </div>
+  );
+}
+
+function FinishedScreen({ detail }: { detail: ItemDetail }) {
+  const { item, photos, listings } = detail;
+  const navigate = useNavigate();
+  const [saleEvents, setSaleEvents] = useState<SaleEvent[] | null>(null);
+
+  useEffect(() => {
+    if (item.status === 'SOLD') {
+      itemsApi.saleEvents(item.id).then(setSaleEvents).catch(() => setSaleEvents([]));
+    }
+  }, [item.id, item.status]);
+
+  const thumbnail = photos[0]?.url ?? null;
+  const soldListing = listings[0] ?? null;
+  const winnerEvent = saleEvents?.find((e) => e.isWinner === true) ?? null;
+  const soldPrice = winnerEvent?.reportedPrice ?? soldListing?.sellingPrice ?? null;
+
+  const statusConfig = {
+    SOLD: { icon: '✓', label: 'Verkauft', bg: 'bg-accent-soft border-accent/20', text: 'text-accent' },
+    CANCELLED: { icon: '✕', label: 'Abgebrochen', bg: 'bg-surface border-line', text: 'text-ink-muted' },
+    ARCHIVED: { icon: '◻', label: 'Archiviert', bg: 'bg-surface border-line', text: 'text-ink-muted' },
+  } as const;
+
+  const cfg = statusConfig[item.status as 'SOLD' | 'CANCELLED' | 'ARCHIVED'];
+
+  const soldAt = winnerEvent?.reportedAt ?? item.updatedAt;
+
+  return (
+    <div className="p-4 space-y-4">
+      {/* Status banner */}
+      <div className={`flex items-center gap-3 rounded-2xl border p-4 ${cfg.bg}`}>
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${cfg.text} bg-white/40 dark:bg-black/20`}>
+          {cfg.icon}
+        </div>
+        <div>
+          <p className={`font-bold text-sm ${cfg.text}`}>{cfg.label}</p>
+          <p className="text-xs text-ink-faint">
+            {new Date(soldAt).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+        {soldPrice !== null && item.status === 'SOLD' && (
+          <div className="ml-auto text-right">
+            <p className="text-[11px] text-ink-faint">Erlös</p>
+            <p className={`text-xl font-extrabold ${cfg.text}`}>{soldPrice.toFixed(2)} €</p>
+          </div>
+        )}
+      </div>
+
+      {/* Item summary */}
+      <div className="bg-surface border border-line rounded-2xl overflow-hidden">
+        {thumbnail && (
+          <img src={thumbnail} alt="" className="w-full h-40 object-cover" />
+        )}
+        <div className="p-4 space-y-1">
+          <p className="font-bold text-ink">{item.title ?? `Artikel ${item.id.slice(0, 8)}`}</p>
+          {item.condition && <p className="text-xs text-ink-muted">{item.condition}</p>}
+          {soldListing && (
+            <p className="text-xs text-ink-faint">Listingpreis: {soldListing.sellingPrice.toFixed(2)} €</p>
+          )}
+        </div>
+      </div>
+
+      {/* CTAs */}
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => navigate('/new')}
+          className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover transition-colors"
+        >
+          + Nächsten Artikel anlegen
+        </button>
+        <Link
+          to="/"
+          className="block w-full p-3 rounded-xl font-bold border border-line text-ink-muted text-center hover:bg-surface-hover transition-colors"
+        >
+          ← Dashboard
+        </Link>
+      </div>
     </div>
   );
 }

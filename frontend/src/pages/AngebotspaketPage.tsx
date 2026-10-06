@@ -336,12 +336,22 @@ function PortalCard({
 
   const titleOver = draft.title.length > portal.titleMax;
 
-  const copyAll = () => {
+  const buildText = () => {
     const parts = [draft.title];
     if (price !== null) parts.push(`Preis: ${price.toFixed(2)} €`);
     parts.push('', draft.description);
-    const text = parts.join('\n').trim();
-    void allCopy.copy(text);
+    return parts.join('\n').trim();
+  };
+
+  const copyAll = () => void allCopy.copy(buildText());
+
+  const canShare = typeof navigator !== 'undefined' && 'share' in navigator;
+  const share = async () => {
+    try {
+      await navigator.share({ text: buildText() });
+    } catch {
+      // user cancelled or share failed — ignore
+    }
   };
 
   return (
@@ -356,14 +366,24 @@ function PortalCard({
           <span className="text-sm font-bold text-ink">{portal.label}</span>
         </div>
         <div className="flex items-center gap-2">
-          <CopyButton state={allCopy.state} onClick={copyAll} label="Alles kopieren" />
+          <CopyButton state={allCopy.state} onClick={copyAll} label="Kopieren" />
+          {canShare && (
+            <button
+              type="button"
+              onClick={() => void share()}
+              className="text-[11px] font-bold text-ink-faint hover:text-accent transition-colors"
+              title="Teilen"
+            >
+              Teilen ↑
+            </button>
+          )}
           <a
             href={portal.url}
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs font-bold text-ink-muted hover:text-accent transition-colors"
           >
-            Portal öffnen ↗
+            Portal ↗
           </a>
         </div>
       </div>
