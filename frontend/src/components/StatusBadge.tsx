@@ -1,3 +1,5 @@
+import { STATUS_LABELS } from './status-labels';
+
 const COLORS: Record<string, string> = {
   // Item / Bundle
   NEW: 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400',
@@ -17,23 +19,6 @@ const COLORS: Record<string, string> = {
   CANCEL_PENDING: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
 };
 
-const LABELS: Record<string, string> = {
-  NEW: 'Neu',
-  ANALYZING: 'Wird analysiert',
-  REVIEW_REQUIRED: 'Prüfung nötig',
-  READY: 'Bereit',
-  BUNDLED: 'Gebündelt',
-  LISTED: 'Gelistet',
-  SOLD: 'Verkauft',
-  ARCHIVED: 'Archiviert',
-  SALE_CONFLICT: 'Verkaufskonflikt',
-  CANCELLED: 'Storniert',
-  DRAFT: 'Entwurf',
-  PUBLISHING: 'Wird veröffentlicht',
-  ONLINE: 'Online',
-  CANCEL_PENDING: 'Storno ausstehend',
-};
-
 export function StatusBadge({ status }: { status: string }) {
   return (
     <span
@@ -41,7 +26,7 @@ export function StatusBadge({ status }: { status: string }) {
         COLORS[status] ?? 'bg-zinc-500/10 text-zinc-500'
       }`}
     >
-      {LABELS[status] ?? status}
+      {STATUS_LABELS[status] ?? status}
     </span>
   );
 }

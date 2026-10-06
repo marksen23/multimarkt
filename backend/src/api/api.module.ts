@@ -23,12 +23,14 @@ import { TitleGenerationModule } from '../application/title-generation/title-gen
 import { StorageModule } from '../infrastructure/storage/storage.module';
 import { SaleIngestionModule } from '../application/sale-conflict/sale-ingestion.module';
 import { StateGuardModule } from '../application/state-guard/state-guard.module';
+import { WorklistModule } from '../application/worklist/worklist.module';
 import { AccountController } from './controllers/account.controller';
 import { AnkaufController } from './controllers/ankauf.controller';
 import { BundlesController } from './controllers/bundles.controller';
 import { ItemsController } from './controllers/items.controller';
 import { ListingsController } from './controllers/listings.controller';
 import { SaleEventsController } from './controllers/sale-events.controller';
+import { WorklistController } from './controllers/worklist.controller';
 import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
@@ -57,6 +59,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     AccountDeletionModule,
     WebhooksModule,
     StorageModule,
+    WorklistModule,
   ],
   controllers: [
     ItemsController,
@@ -65,6 +68,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     SaleEventsController,
     AccountController,
     AnkaufController,
+    WorklistController,
   ],
 })
 export class ApiModule {}

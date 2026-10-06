@@ -59,7 +59,7 @@ export function ItemDetailPage() {
     <div className="max-w-md mx-auto">
       <div className="p-4 flex items-center justify-between">
         <Link to="/" className="text-xs text-ink-faint hover:text-ink-muted">
-          ← Dashboard
+          ← Arbeitsliste
         </Link>
         <div className="flex items-center gap-3">
           {(item.status === 'NEW' ||
@@ -231,7 +231,7 @@ function Centered({
             to="/"
             className="inline-block text-sm font-bold text-accent hover:text-accent-hover"
           >
-            ← Zurück zum Dashboard
+            ← Zurück zur Arbeitsliste
           </Link>
         )}
       </div>
