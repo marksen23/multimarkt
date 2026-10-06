@@ -95,6 +95,23 @@ describe('CanonicalListingService.generateDescription', () => {
     expect(result.vaguePhrases).toEqual([]);
   });
 
+  it('keeps channel descriptions different even when the provider returns the same paragraph', async () => {
+    const provider = makeProvider('Gleicher Absatz ohne Portalbezug.');
+    const facts = makeDataSource(item, [
+      { attributeKey: 'brand', attributeValue: 'Nike' },
+      { attributeKey: 'color', attributeValue: 'Schwarz' },
+      { attributeKey: 'size', attributeValue: '42' },
+    ]);
+
+    const klein = await makeService(facts, provider).generateDescription('item-1', null, 'KLEINANZEIGEN');
+    const vinted = await makeService(facts, provider).generateDescription('item-1', null, 'VINTED');
+
+    expect(klein.descriptionText).toMatch(/abhol/i);
+    expect(klein.descriptionText).toContain('PLZ');
+    expect(vinted.descriptionText).toContain('Maße');
+    expect(klein.descriptionText).not.toBe(vinted.descriptionText);
+  });
+
   it('falls back to the plain template (and still returns a valid analysis) when the provider yields nothing', async () => {
     const service = makeService(makeDataSource(), makeProvider(null));
 

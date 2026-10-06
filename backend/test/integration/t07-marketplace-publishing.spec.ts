@@ -41,7 +41,7 @@ import {
   SaleEventEntity,
   UserEntity,
 } from '../../src/infrastructure/database/entities';
-import { InitialSchema1789894285515 } from '../../migrations/1789894285515-InitialSchema';
+import { applyTestSchema } from '../apply-test-schema';
 
 /**
  * T07 Marketplace Publishing (Doc 02 §5, Doc 03 §3.5/§6, Doc 01 §9).
@@ -82,7 +82,7 @@ describe('T07 Marketplace Publishing', () => {
     });
     await dataSource.initialize();
     const queryRunner = dataSource.createQueryRunner();
-    await new InitialSchema1789894285515().up(queryRunner);
+    await applyTestSchema(queryRunner);
     await queryRunner.release();
 
     stateGuard = new StateGuardService(dataSource);

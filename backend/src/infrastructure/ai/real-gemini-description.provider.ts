@@ -6,8 +6,18 @@ import {
   DescriptionGenerationProvider,
   SalesGoal,
 } from '../../domain/ai/description-generation-provider.interface';
+import { ListingChannel } from '../../domain/ai/title-generation-provider.interface';
 
 const MODEL_ID = 'gemini-flash-latest';
+
+const CHANNEL_INSTRUCTIONS: Record<ListingChannel, string> = {
+  KLEINANZEIGEN:
+    'Schreibe einen sachlichen Kleinanzeigen-Text in Du-Form. Abholung nennen. Wenn keine PLZ bekannt ist, die Zeile "PLZ: (bitte eintragen)" setzen — erfinde keine PLZ. Keine Werbefloskeln.',
+  EBAY:
+    'Schreibe einen eBay-Text. Ganz vorne suchbare Merkmale (Marke, Kategorie, Farbe, Größe, Material — nur was bekannt ist). Danach Zustand und Lieferumfang explizit in eigenen Sätzen. Keine Werbefloskeln.',
+  VINTED:
+    'Schreibe einen kurzen Vinted-Text, höchstens drei kurze Sätze: Marke, Größe, Farbe, Maße. Fehlende Maße als "Maße: (bitte eintragen)". Keine Abholgeschichte, keine Werbefloskeln.',
+};
 
 const GOAL_INSTRUCTIONS: Record<SalesGoal, string> = {
   FAST_SALE:
@@ -56,13 +66,21 @@ export class RealGeminiDescriptionProvider implements DescriptionGenerationProvi
         : '';
 
     const goalInstruction = GOAL_INSTRUCTIONS[input.salesGoal ?? 'BALANCED'];
+    const gapBlock =
+      input.missingTokens && input.missingTokens.length > 0
+        ? `\nSuchbegriffe, die in Vergleichstiteln vorkommen und im eigenen Text fehlen: ${input.missingTokens.join(', ')}. Baue nur diejenigen ein, die zu den bekannten Fakten dieses Produkts passen. Erfinde keinen davon.`
+        : '';
+    const channelLead = input.channel
+      ? CHANNEL_INSTRUCTIONS[input.channel]
+      : 'Schreibe einen kurzen Verkaufstext (3-5 Sätze, Deutsch) für ein Kleinanzeigen-Inserat.';
 
-    const prompt = `Schreibe einen kurzen Verkaufstext (3-5 Sätze, Deutsch) für ein Kleinanzeigen-Inserat.
+    const prompt = `${channelLead}
 Titel: ${input.title ?? 'unbekannt'}
 Zustand: ${input.condition ?? 'unbekannt'}
 Bekannte Merkmale: ${knownFacts || 'keine weiteren Angaben'}
 ${goalInstruction}
 ${comparablesBlock}
+${gapBlock}
 
 WICHTIG: Verwende für die FAKTEN AUSSCHLIESSLICH die oben genannten Angaben zu diesem Produkt. Erfinde KEINE zusätzlichen Details (keine Marke, kein Material, keine Maße), die dort nicht stehen — auch nicht aus den Vergleichsangeboten übernommen, die sind nur Stil-Vorbild, nicht Faktenquelle. Wenn wenig bekannt ist, bleib entsprechend allgemein, statt Lücken mit Vermutungen zu füllen. Antworte NUR mit dem Beschreibungstext, ohne Anrede, ohne Überschrift, ohne Anführungszeichen.`;
 

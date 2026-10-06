@@ -18,4 +18,8 @@ export const listingsApi = {
     api.post<MarketplaceProjectionSummary>(`/listings/${projectionId}/confirm-cancellation`),
   markSold: (projectionId: string, reportedPrice: number) =>
     api.post<{ outcome: string }>(`/listings/${projectionId}/mark-sold`, { reportedPrice }),
+  markCopied: (projectionId: string) =>
+    api.post<MarketplaceProjectionSummary>(`/listings/${projectionId}/mark-copied`),
+  confirmOnline: (projectionId: string) =>
+    api.post<MarketplaceProjectionSummary>(`/listings/${projectionId}/confirm-online`),
 };

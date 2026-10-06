@@ -11,7 +11,7 @@ import {
   SaleEventEntity,
   UserEntity,
 } from '../../src/infrastructure/database/entities';
-import { InitialSchema1789894285515 } from '../../migrations/1789894285515-InitialSchema';
+import { applyTestSchema } from '../apply-test-schema';
 
 /**
  * T06 Bundle & Locking (Doc 01 §11, Doc 02 §12 Postcondition — Doc 05 §7).
@@ -45,7 +45,7 @@ describe('T06 Bundle Lock Integrity', () => {
     });
     await dataSource.initialize();
     const queryRunner = dataSource.createQueryRunner();
-    await new InitialSchema1789894285515().up(queryRunner);
+    await applyTestSchema(queryRunner);
     await queryRunner.release();
 
     stateGuard = new StateGuardService(dataSource);

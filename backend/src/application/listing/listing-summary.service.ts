@@ -12,6 +12,9 @@ export interface ListingSummary {
     marketplaceId: string;
     status: string;
     externalPlatformId: string | null;
+    title: string | null;
+    descriptionText: string | null;
+    suggestedPrice: number | null;
   }[];
 }
 
@@ -73,6 +76,9 @@ export class ListingSummaryService {
             marketplaceId: p.marketplaceId,
             status: p.status,
             externalPlatformId: p.externalPlatformId,
+            title: p.title,
+            descriptionText: p.descriptionText,
+            suggestedPrice: p.suggestedPrice,
           })),
       };
       result.set(ownerId, [...(result.get(ownerId) ?? []), summary]);

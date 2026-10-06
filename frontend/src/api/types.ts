@@ -20,6 +20,7 @@ export type BundleLifecycleState = 'NEW' | 'READY' | 'LISTED' | 'SOLD' | 'CANCEL
 export type ProjectionLifecycleState =
   | 'DRAFT'
   | 'READY'
+  | 'COPIED'
   | 'PUBLISHING'
   | 'ONLINE'
   | 'CANCEL_PENDING'
@@ -53,6 +54,9 @@ export interface MarketplaceProjectionSummary {
   marketplaceId: string;
   status: ProjectionLifecycleState;
   externalPlatformId: string | null;
+  title?: string | null;
+  descriptionText?: string | null;
+  suggestedPrice?: number | null;
 }
 
 export interface ListingSummary {
@@ -184,6 +188,24 @@ export interface TitleSuggestion {
 export interface VaguePhraseMatch {
   phrase: string;
   suggestion: string;
+}
+
+export interface ChannelCard {
+  id: string | null;
+  marketplaceId: ListingChannel;
+  title: string;
+  descriptionText: string;
+  suggestedPrice: number | null;
+  status: ProjectionLifecycleState | null;
+  gapAnalysis: TitleGapAnalysis;
+  vaguePhrases: VaguePhraseMatch[];
+}
+
+export interface ChannelPackage {
+  itemId: string;
+  listingId: string | null;
+  persisted: boolean;
+  cards: ChannelCard[];
 }
 
 export interface DescriptionSuggestion {

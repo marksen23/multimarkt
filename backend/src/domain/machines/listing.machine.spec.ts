@@ -50,6 +50,28 @@ describe('listingMachine', () => {
     );
   });
 
+  it('walks the channel-card path DRAFT -> COPIED -> ONLINE without an adapter publish', () => {
+    expect(transition('DRAFT', { type: 'MARK_COPIED', actor: user })).toBe('COPIED');
+    expect(transition('COPIED', { type: 'CONFIRM_ONLINE', actor: user })).toBe('ONLINE');
+  });
+
+  it('blocks MARK_COPIED and CONFIRM_ONLINE for a non-USER actor', () => {
+    expect(transition('DRAFT', { type: 'MARK_COPIED', actor: system })).toBe('DRAFT');
+    expect(transition('COPIED', { type: 'CONFIRM_ONLINE', actor: system })).toBe('COPIED');
+  });
+
+  it('moves draft, copied and online cards to CANCEL_PENDING when another card is sold', () => {
+    expect(transition('DRAFT', { type: 'CANCEL_PENDING_TRIGGERED', actor: system })).toBe(
+      'CANCEL_PENDING',
+    );
+    expect(transition('COPIED', { type: 'CANCEL_PENDING_TRIGGERED', actor: system })).toBe(
+      'CANCEL_PENDING',
+    );
+    expect(transition('ONLINE', { type: 'CANCEL_PENDING_TRIGGERED', actor: system })).toBe(
+      'CANCEL_PENDING',
+    );
+  });
+
   it('CONFIRM_CANCELLATION accepts USER or SYSTEM but never a raw WEBHOOK actor', () => {
     expect(transition('CANCEL_PENDING', { type: 'CONFIRM_CANCELLATION', actor: webhook })).toBe(
       'CANCEL_PENDING',

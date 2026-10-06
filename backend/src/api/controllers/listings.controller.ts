@@ -16,11 +16,15 @@ import { ActorContextGuard } from '../auth/actor-context.guard';
 import { ResponseEnvelopeInterceptor } from '../interceptors/response-envelope.interceptor';
 import { CreateListingDto, MarkSoldDto } from '../dto/listings.dto';
 import { ActorContext } from '../../domain/actor-context';
-import { HumanGateBypassException } from '../../domain/errors/state-transition.errors';
+import {
+  HumanGateBypassException,
+  InvalidStateTransitionException,
+} from '../../domain/errors/state-transition.errors';
 import {
   CapabilityCheckResult,
   CapabilityCheckService,
 } from '../../application/capability-check/capability-check.service';
+import { ChannelPackageService } from '../../application/listing/channel-package.service';
 import { MarketplacePublishingService } from '../../application/listing/marketplace-publishing.service';
 import {
   EvaluateSaleOutcome,
@@ -39,6 +43,7 @@ export class ListingsController {
     private readonly stateGuard: StateGuardService,
     private readonly capabilityCheck: CapabilityCheckService,
     private readonly publishing: MarketplacePublishingService,
+    private readonly channelPackage: ChannelPackageService,
     private readonly saleIngestion: SaleIngestionService,
   ) {}
 
@@ -107,6 +112,27 @@ export class ListingsController {
    * ein Human-Gate (nur USER, nicht SYSTEM/WEBHOOK) — eine Verkaufsmeldung
    * ist eine bewusste menschliche Aussage, kein automatisiertes Ereignis.
    */
+  /**
+   * Kanal-Karte: Entwurf → kopiert. Kopiert nur den Status, ruft keinen
+   * Marktplatz auf. Der Mock-eBay-Adapter bleibt außen vor.
+   */
+  @Post(':id/mark-copied')
+  async markCopied(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<MarketplaceProjectionEntity> {
+    return this.channelPackage.markCopied(id, actor);
+  }
+
+  /** kopiert → online. Der Mensch hat die Anzeige selbst eingestellt. */
+  @Post(':id/confirm-online')
+  async confirmOnline(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<MarketplaceProjectionEntity> {
+    return this.channelPackage.confirmOnline(id, actor);
+  }
+
   @Post(':id/mark-sold')
   async markSold(
     @Param('id', ParseUUIDPipe) id: string,
@@ -115,6 +141,14 @@ export class ListingsController {
   ): Promise<{ outcome: EvaluateSaleOutcome }> {
     if (actor.type !== 'USER') {
       throw new HumanGateBypassException('Only a USER actor may manually report a sale');
+    }
+    const projection = await this.dataSource.manager.findOneBy(MarketplaceProjectionEntity, { id });
+    if (!projection) throw new NotFoundException(`Listing ${id} not found`);
+    if (projection.status !== 'ONLINE') {
+      throw new InvalidStateTransitionException(
+        'Nur eine online geschaltete Karte kann als verkauft gemeldet werden.',
+        { projectionId: id, currentState: projection.status },
+      );
     }
     const outcome = await this.saleIngestion.reportAndEvaluate(id, dto.reportedPrice);
     return { outcome };
