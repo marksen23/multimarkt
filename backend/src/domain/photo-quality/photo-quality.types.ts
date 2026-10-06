@@ -1,9 +1,8 @@
-// Rein technische Bildmetriken (Schärfe, Belichtung, Auflösung, Duplikate)
-// über die EIGENEN hochgeladenen Fotos — keine KI, keine Konkurrenzdaten,
-// keine Aussage über das Produkt selbst. Deshalb kein swappable Provider
-// (nichts zu mocken, es ist reine, deterministische Pixel-Mathematik) und
-// keine Kategorie-Pflichtwinkel-Prüfung (dafür gibt es noch kein
-// Kategorie-Schema im Projekt — siehe docs §9c, bislang nicht gebaut).
+// Bildmetriken (Schärfe, Belichtung, Auflösung, Duplikate) über die
+// eigenen Fotos — keine KI, keine Konkurrenzdaten. Das Foto-Briefing
+// (fehlende Aufnahmen je Kategorie) hängt daran, blockiert aber nichts.
+import { MissingPhotoShot, PhotoShotNeed } from './photo-briefing';
+
 export type PhotoQualityIssueType =
   | 'BLURRY'
   | 'TOO_DARK'
@@ -17,7 +16,14 @@ export interface PhotoQualityIssue {
   message: string;
 }
 
-export interface PhotoQualityReport {
+/** Nur die Pixel-Prüfung. Das Briefing kommt getrennt dazu. */
+export interface PixelPhotoCheck {
   photoCount: number;
   issues: PhotoQualityIssue[];
+}
+
+export interface PhotoQualityReport extends PixelPhotoCheck {
+  category: string | null;
+  requiredShots: PhotoShotNeed[];
+  missingShots: MissingPhotoShot[];
 }

@@ -5,6 +5,7 @@ import { itemsApi } from "../api/items";
 import { toLogisticsProfile, type LogisticsProfile } from "../logistics/profile";
 import { ApiRequestError } from "../api/client";
 import type { ItemDetail, ListingChannel, SaleEvent } from "../api/types";
+import { buildPhotoBriefing } from "../category/photo-briefing";
 import { ConfidenceCenter } from "../components/ConfidenceCenter";
 import { DispositionPanel } from "../components/DispositionPanel";
 import { FollowUpPanel } from "../components/FollowUpPanel";
@@ -71,6 +72,10 @@ export function ItemDetailPage() {
   }
 
   const { item } = detail;
+  const briefing = buildPhotoBriefing(
+    detail.attributes,
+    detail.photos.map((photo) => photo.shot),
+  );
 
   return (
     <div className="max-w-md mx-auto">
@@ -113,10 +118,23 @@ export function ItemDetailPage() {
         />
       </div>
 
-      {detail.photos.length > 0 && (
+      {(detail.photos.length > 0 || briefing.category) && (
         <div className="px-4 mb-4 space-y-3">
-          <PhotoGallery photos={detail.photos} />
-          <PhotoQualityPanel itemId={id} photoCount={detail.photos.length} />
+          <PhotoGallery
+            photos={detail.photos}
+            requiredShots={briefing.requiredShots}
+            missingShots={briefing.missingShots}
+            busy={busy}
+            onShotChange={(photoId, shot) =>
+              run(() => itemsApi.assignPhotoShot(id, photoId, shot))
+            }
+            onAdd={(file, shot) => run(() => itemsApi.addPhoto(id, file, shot))}
+          />
+          <PhotoQualityPanel
+            itemId={id}
+            photoCount={detail.photos.length}
+            briefing={briefing}
+          />
         </div>
       )}
 

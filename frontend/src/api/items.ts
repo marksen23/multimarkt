@@ -8,6 +8,7 @@ import type {
   ItemAttribute,
   ItemDetail,
   ItemListEntry,
+  ItemPhoto,
   ItemLifecycleState,
   ListingChannel,
   PhotoQualityReport,
@@ -55,6 +56,14 @@ export const itemsApi = {
     return api.get<PriceResearchResult>(`/items/${id}/price-research${query ? `?${query}` : ''}`);
   },
   photoQuality: (id: string) => api.get<PhotoQualityReport>(`/items/${id}/photo-quality`),
+  addPhoto: (id: string, file: File, shot: string | null) => {
+    const form = new FormData();
+    form.append('files', file);
+    if (shot) form.append('shot', shot);
+    return api.postForm<ItemPhoto[]>(`/items/${id}/photos`, form);
+  },
+  assignPhotoShot: (id: string, photoId: string, shot: string | null) =>
+    api.patch<ItemPhoto>(`/items/${id}/photos/${photoId}`, { shot }),
   generateTitle: (id: string, channel: ListingChannel) =>
     api.get<TitleSuggestion>(`/items/${id}/generate-title?channel=${channel}`),
   updateTitle: (id: string, title: string) => api.patch<Item>(`/items/${id}/title`, { title }),
