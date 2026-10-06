@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import sharp from 'sharp';
-import { PhotoQualityIssue, PhotoQualityReport } from '../../domain/photo-quality/photo-quality.types';
+import { PhotoQualityIssue, PixelPhotoCheck } from '../../domain/photo-quality/photo-quality.types';
 
 // Heuristische Schwellwerte, keine Norm — Ziel ist ein grober Hinweis vor
 // dem Veröffentlichen, keine exakte Wissenschaft. Bewusst konservativ
@@ -26,6 +26,8 @@ interface PhotoMetrics {
  * Belichtung, Auflösung, Duplikate) — deterministische Pixel-Mathematik,
  * keine KI, keine Konkurrenzdaten. Ergebnis ist immer nur ein Hinweis,
  * blockiert nie das Anlegen des Listings (siehe items.controller.ts).
+ * Fehlende Aufnahmen je Kategorie hängen im Foto-Briefing daran und
+ * sind ebenfalls nur ein Hinweis.
  */
 @Injectable()
 export class PhotoQualityService {
@@ -36,12 +38,22 @@ export class PhotoQualityService {
     this.publicBaseUrl = config.get<string>('PUBLIC_BASE_URL') ?? 'http://localhost:3000';
   }
 
-  async analyzeUrls(photoUrls: string[]): Promise<PhotoQualityReport> {
+  async analyzeUrls(photoUrls: string[]): Promise<PixelPhotoCheck> {
     const buffers = await Promise.all(photoUrls.map((url) => this.fetchBytes(url)));
     return this.analyze(buffers);
   }
 
-  async analyze(photoBuffers: Buffer[]): Promise<PhotoQualityReport> {
+  /** Pixel-Check. Schlägt der Abruf fehl, bleibt der Hinweis leer — das Briefing hängt nicht daran. */
+  async check(photoUrls: string[]): Promise<PixelPhotoCheck> {
+    try {
+      return await this.analyzeUrls(photoUrls);
+    } catch (error) {
+      this.logger.warn(`Photo quality check skipped: ${(error as Error).message}`);
+      return { photoCount: photoUrls.length, issues: [] };
+    }
+  }
+
+  async analyze(photoBuffers: Buffer[]): Promise<PixelPhotoCheck> {
     const issues: PhotoQualityIssue[] = [];
     const metrics: PhotoMetrics[] = [];
 

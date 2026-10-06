@@ -31,6 +31,11 @@ export class ItemPhotoEntity {
   @Column({ name: 'storage_key', type: 'text' })
   storageKey: string;
 
+  // Foto-Briefing: welche Aufnahme das ist. Null, solange nicht zugeordnet.
+  // Kein Pflichtfeld — fehlende Aufnahmen blockieren das Speichern nicht.
+  @Column({ type: 'text', nullable: true })
+  shot: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }
