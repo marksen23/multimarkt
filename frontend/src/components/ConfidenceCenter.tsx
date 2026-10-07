@@ -93,7 +93,7 @@ export function ConfidenceCenter({
             }`}
           >
             <label className="block text-sm font-bold text-ink mb-2">Wie ist der Zustand?</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
               {CONDITION_OPTIONS.map((cond) => {
                 const isSelected = selectedCondition === cond;
                 const isConfirmed = isSelected && cond === detail.item.condition;

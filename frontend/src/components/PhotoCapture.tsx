@@ -118,7 +118,9 @@ export function PhotoCapture({
         className="w-full p-6 rounded-2xl border-2 border-dashed border-line text-ink-muted text-sm font-semibold hover:border-accent hover:bg-accent-soft/40 hover:text-accent transition-colors flex flex-col items-center gap-1"
       >
         <span className="text-2xl">📷</span>
-        {files.length === 0 ? 'Foto aufnehmen / auswählen' : 'Weiteres Foto hinzufügen'}
+        {files.length === 0
+          ? 'Foto aufnehmen / auswählen'
+          : `${files.length} Foto${files.length > 1 ? 's' : ''} · Weiteres hinzufügen`}
       </button>
       <input
         ref={inputRef}

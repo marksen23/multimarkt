@@ -88,6 +88,19 @@ export function AccountPage() {
       <h1 className="text-xl font-extrabold text-ink tracking-tight">Konto</h1>
 
       {/* Stats */}
+      {!stats && (
+        <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
+          <div className="h-3 w-24 rounded-full bg-surface-hover animate-pulse" />
+          <div className="grid grid-cols-2 gap-2">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-surface-hover rounded-xl p-3 space-y-1 animate-pulse">
+                <div className="h-2.5 w-16 rounded-full bg-line" />
+                <div className="h-5 w-8 rounded-full bg-line" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {stats && (
         <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
           <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">Übersicht</p>

@@ -33,7 +33,7 @@ const LABELS: Record<string, string> = {
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const isPulsing = status === 'ANALYZING' || status === 'PUBLISHING';
+  const isPulsing = status === 'ANALYZING' || status === 'PUBLISHING' || status === 'CANCEL_PENDING';
   const isReady = status === 'READY';
 
   return (

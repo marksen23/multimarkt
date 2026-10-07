@@ -16,18 +16,17 @@ const STORAGE_KEY = 'resale_os_access_token';
  * erst bei Erfolg.
  */
 export function TokenGate({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(STORAGE_KEY));
+  const storedToken = localStorage.getItem(STORAGE_KEY);
+  const [token, setToken] = useState<string | null>(storedToken);
+  const [validating, setValidating] = useState(!!storedToken);
   const [checking, setChecking] = useState(false);
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
-    // Ein gespeicherter, aber ungültig gewordener Token (z.B. nach einem
-    // Redeploy mit neu generiertem Secret) soll nicht in einer Dauerschleife
-    // aus kryptischen Fehlermeldungen enden — einmal beim Laden prüfen.
     let cancelled = false;
-    setChecking(true);
+    setValidating(true);
     itemsApi
       .list()
       .catch((e) => {
@@ -38,12 +37,13 @@ export function TokenGate({ children }: { children: ReactNode }) {
         }
       })
       .finally(() => {
-        if (!cancelled) setChecking(false);
+        if (!cancelled) setValidating(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [token]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const submit = async () => {
     if (!input.trim()) return;
@@ -64,6 +64,17 @@ export function TokenGate({ children }: { children: ReactNode }) {
       setChecking(false);
     }
   };
+
+  if (token && validating) {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-ink-muted">
+          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm">Verbindung wird geprüft…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (token) return <>{children}</>;
 
