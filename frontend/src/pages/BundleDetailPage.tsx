@@ -71,25 +71,37 @@ export function BundleDetailPage() {
         <p className="text-xs font-bold text-ink-muted uppercase mb-2">
           Enthaltene Artikel ({items.length})
         </p>
-        <div className="space-y-1">
-          {items.map((item) => (
+        {items.length === 0 ? (
+          <div className="bg-surface border border-dashed border-line rounded-xl px-4 py-6 text-center">
+            <p className="text-sm text-ink-muted">Noch keine Artikel in diesem Bundle.</p>
             <Link
-              key={item.id}
-              to={`/items/${item.id}`}
-              className="flex items-center justify-between bg-surface border border-line rounded-xl px-3 py-2 hover:border-accent/40 transition"
+              to="/bundles/new"
+              className="mt-2 inline-block text-xs font-bold text-accent hover:text-accent-hover"
             >
-              <div className="min-w-0">
-                <p className="text-sm text-ink font-medium truncate">
-                  {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
-                </p>
-                {item.condition && (
-                  <p className="text-[11px] text-ink-faint">{item.condition}</p>
-                )}
-              </div>
-              <StatusBadge status={item.status} />
+              + Artikel hinzufügen
             </Link>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {items.map((item) => (
+              <Link
+                key={item.id}
+                to={`/items/${item.id}`}
+                className="flex items-center justify-between bg-surface border border-line rounded-xl px-3 py-2 hover:border-accent/40 transition"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm text-ink font-medium truncate">
+                    {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
+                  </p>
+                  {item.condition && (
+                    <p className="text-[11px] text-ink-faint">{item.condition}</p>
+                  )}
+                </div>
+                <StatusBadge status={item.status} />
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {listings.length > 0 && (

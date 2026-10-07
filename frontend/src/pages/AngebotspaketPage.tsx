@@ -190,11 +190,19 @@ export function AngebotspaketPage() {
       )}
 
       {listing && !loading && (
-        <div className="mx-4 mb-5 bg-accent-soft border border-accent/20 rounded-xl px-4 py-3">
-          <p className="text-xs font-bold text-accent mb-1">Listing angelegt ✓</p>
-          <p className="text-[11px] text-ink-muted">
-            Verkaufspreis: <span className="font-bold text-ink">{listing.sellingPrice.toFixed(2)} €</span>
-          </p>
+        <div className="mx-4 mb-5 bg-accent-soft border border-accent/20 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold text-accent mb-0.5">Listing angelegt ✓</p>
+            <p className="text-[11px] text-ink-muted">
+              Verkaufspreis: <span className="font-bold text-ink">{listing.sellingPrice.toFixed(2)} €</span>
+            </p>
+          </div>
+          <Link
+            to={`/items/${id}`}
+            className="flex-shrink-0 text-[11px] font-bold text-accent hover:text-accent-hover transition-colors"
+          >
+            Verwalten →
+          </Link>
         </div>
       )}
 

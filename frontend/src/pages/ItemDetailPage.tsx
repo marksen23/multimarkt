@@ -181,11 +181,26 @@ export function ItemDetailPage() {
       )}
 
       {item.status === 'BUNDLED' && (
-        <Centered
-          title="Teil eines Bundles"
-          message="Dieser Artikel ist einem Bundle zugeordnet und gesperrt, solange das Bundle besteht."
-          showDashboardLink
-        />
+        <div className="p-4 space-y-4">
+          <div className="bg-surface border border-line rounded-2xl p-6 text-center space-y-3">
+            <p className="text-3xl select-none">📦</p>
+            <div>
+              <h1 className="text-base font-bold text-ink">Teil eines Bundles</h1>
+              <p className="text-xs text-ink-muted mt-1">
+                Gesperrt bis das Bundle verkauft oder aufgelöst wird.
+              </p>
+            </div>
+            <Link
+              to="/bundles"
+              className="inline-block px-4 py-2 rounded-full bg-accent text-accent-ink text-xs font-bold hover:bg-accent-hover transition-colors"
+            >
+              Bundles verwalten →
+            </Link>
+          </div>
+          <Link to="/" className="block text-center text-xs text-ink-faint hover:text-ink-muted">
+            ← Dashboard
+          </Link>
+        </div>
       )}
 
       {(item.status === 'SOLD' || item.status === 'CANCELLED' || item.status === 'ARCHIVED') && (

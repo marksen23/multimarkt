@@ -19,13 +19,13 @@ const MP_LABELS: Record<string, string> = {
 const FILTER_LABELS: Record<FilterKey, string> = {
   alle: 'Alle',
   handlung: 'Handlung nötig',
-  aktiv: 'Aktiv gelistet',
+  aktiv: 'Aktiv',
   abgeschlossen: 'Abgeschlossen',
 };
 
 const HANDLUNG_STATES: ItemLifecycleState[] = ['NEW', 'ANALYZING', 'REVIEW_REQUIRED', 'READY'];
-const AKTIV_STATES: ItemLifecycleState[] = ['LISTED', 'SALE_CONFLICT'];
-const ABGESCHLOSSEN_STATES: ItemLifecycleState[] = ['SOLD', 'CANCELLED', 'ARCHIVED', 'BUNDLED'];
+const AKTIV_STATES: ItemLifecycleState[] = ['LISTED', 'SALE_CONFLICT', 'BUNDLED'];
+const ABGESCHLOSSEN_STATES: ItemLifecycleState[] = ['SOLD', 'CANCELLED', 'ARCHIVED'];
 
 function matchesFilter(entry: ItemListEntry, filter: FilterKey): boolean {
   const s = entry.item.status;
@@ -123,7 +123,7 @@ export function DashboardPage() {
             onClick={() => setFilter('handlung')}
           />
           <StatCard
-            label="Aktiv gelistet"
+            label="Aktiv"
             value={stats.aktiv}
             onClick={() => setFilter('aktiv')}
           />

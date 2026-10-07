@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ankaufApi } from '../api/ankauf';
 import type { AnkaufListing, AnkaufResearchResult, DealScore } from '../api/types';
 
@@ -128,6 +128,12 @@ export function AnkaufPage() {
   const [showMargen, setShowMargen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { bookmarks, isBookmarked, toggle, remove } = useAnkaufMerkliste();
+
+  useEffect(() => {
+    if (pageTab === 'suche') {
+      inputRef.current?.focus();
+    }
+  }, [pageTab]);
   const { recent, add: addRecent } = useRecentSearches();
 
   const search = async (kw: string) => {
