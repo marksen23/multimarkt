@@ -3,10 +3,14 @@ import { listingsApi } from '../api/listings';
 import type { ListingSummary } from '../api/types';
 import { StatusBadge } from './StatusBadge';
 
-// Vertriebskanal-Entscheidung (docs/README.md §4e-Ergänzung, September
-// 2026): Kleinanzeigen ist der einzige Verkaufskanal — eBay dient nur noch
-// als Recherche-Quelle (Preis-/Beschreibungsvergleich), nicht als Publish-Ziel.
 const MARKETPLACE = 'KLEINANZEIGEN';
+
+const MP_LABELS: Record<string, string> = {
+  KLEINANZEIGEN: 'Kleinanzeigen',
+  EBAY: 'eBay',
+  VINTED: 'Vinted',
+  FACEBOOK: 'Facebook',
+};
 
 /**
  * Verwaltet Marketplace Projections eines Canonical Listings — geteilt
@@ -66,20 +70,24 @@ function ListingCard({
     <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
       <div>
         <p className="font-bold text-ink">{listing.sellingPrice.toFixed(2)} €</p>
-        <p className="text-xs text-ink-muted">{listing.descriptionText}</p>
+        {listing.descriptionText && (
+          <p className="text-xs text-ink-muted line-clamp-2">{listing.descriptionText}</p>
+        )}
       </div>
       <div className="space-y-2">
         {listing.projections.map((p) => (
           <div key={p.id} className="bg-surface-hover rounded-xl p-2 border border-line space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-ink-muted">{p.marketplaceId}</span>
+                <span className="text-xs font-bold text-ink-muted">
+                  {MP_LABELS[p.marketplaceId] ?? p.marketplaceId}
+                </span>
                 <StatusBadge status={p.status} />
               </div>
               <div className="flex gap-1">
                 {(p.status === 'DRAFT' || p.status === 'READY') && (
                   <ActionButton
-                    label="Publish"
+                    label="Veröffentlichen"
                     onClick={() => run(() => listingsApi.publish(p.id))}
                     disabled={busy}
                   />

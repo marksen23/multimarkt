@@ -130,13 +130,20 @@ export function BundleDetailPage() {
             autoFocus
             className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
           />
-          <textarea
-            rows={3}
-            placeholder="Beschreibung"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
-          />
+          <div className="space-y-1">
+            <textarea
+              rows={3}
+              placeholder="Beschreibung"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
+            />
+            <div className="flex justify-end">
+              <span className={`text-[11px] tabular-nums ${description.length > 1500 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-ink-faint'}`}>
+                {description.length}
+              </span>
+            </div>
+          </div>
           <button
             type="button"
             disabled={busy || !price || !description}

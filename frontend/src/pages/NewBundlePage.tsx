@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { bundlesApi } from '../api/bundles';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
@@ -48,6 +48,9 @@ export function NewBundlePage() {
 
   return (
     <div className="max-w-md mx-auto p-6 space-y-4">
+      <Link to="/bundles" className="block text-xs text-ink-faint hover:text-ink-muted">
+        ← Bundles
+      </Link>
       <h1 className="text-xl font-extrabold text-ink tracking-tight">Neues Bundle</h1>
       <input
         type="text"
@@ -64,7 +67,7 @@ export function NewBundlePage() {
         </p>
         {readyItems?.length === 0 && (
           <p className="text-xs text-ink-faint">
-            Keine Artikel im Status READY — Bundle kann trotzdem leer angelegt werden.
+            Noch keine bereiten Artikel vorhanden — Bundle kann trotzdem leer angelegt werden.
           </p>
         )}
         <div className="space-y-1">
