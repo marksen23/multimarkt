@@ -69,9 +69,12 @@ function ListingCard({
   return (
     <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
       <div>
-        <p className="font-bold text-ink">{listing.sellingPrice.toFixed(2)} €</p>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[11px] text-ink-faint uppercase font-bold tracking-wide">Preis</span>
+          <span className="font-bold text-ink">{listing.sellingPrice.toFixed(2)} €</span>
+        </div>
         {listing.descriptionText && (
-          <p className="text-xs text-ink-muted line-clamp-2">{listing.descriptionText}</p>
+          <p className="text-xs text-ink-muted line-clamp-2 mt-0.5">{listing.descriptionText}</p>
         )}
       </div>
       <div className="space-y-2">

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { itemsApi } from '../api/items';
 import type { PriceRecommendation, PriceResearchResult, PriceResearchSourceResult, SalesGoal } from '../api/types';
+import { SkeletonBlock } from './Skeleton';
 
 /**
  * §9d/§9e: Preisvorschläge sind rein beratend, nie automatisch übernommen —
@@ -76,7 +77,13 @@ export function PriceResearchPanel({
       .finally(() => setRefreshing(false));
   };
 
-  if (loading) return <p className="text-xs text-ink-faint">Preisrecherche lädt…</p>;
+  if (loading) return (
+    <div className="space-y-2">
+      <SkeletonBlock className="h-3 w-40" />
+      <SkeletonBlock className="h-20 rounded-xl" />
+      <SkeletonBlock className="h-14 rounded-xl" />
+    </div>
+  );
   // Rein beratend — ein Fehlschlag blockiert nie die manuelle Preiseingabe.
   if (failed || !result || result.sources.length === 0) return null;
 

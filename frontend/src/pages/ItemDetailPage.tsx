@@ -752,7 +752,7 @@ function FinishedScreen({ detail }: { detail: ItemDetail }) {
           onClick={() => navigate('/new')}
           className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover transition-colors"
         >
-          + Nächsten Artikel anlegen
+          {item.status === 'SOLD' ? '+ Nächsten Artikel anlegen' : '+ Neuen Artikel anlegen'}
         </button>
         <Link
           to="/"

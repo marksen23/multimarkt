@@ -69,7 +69,7 @@ export function ConfidenceCenter({
 
   return (
     <div className="max-w-md mx-auto bg-bg min-h-screen pb-24">
-      <header className="bg-surface/90 backdrop-blur p-4 border-b border-line sticky top-0 z-10 flex justify-between items-center">
+      <header className="bg-surface/90 backdrop-blur p-4 border-b border-line sticky top-14 z-10 flex justify-between items-center">
         <h1 className="font-bold text-ink text-lg">Entwurf prüfen</h1>
         <span className="bg-accent-soft text-accent text-xs px-2 py-1 rounded-full font-semibold uppercase tracking-wide">
           Confidence Center
@@ -237,7 +237,7 @@ export function ConfidenceCenter({
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-bg via-bg to-transparent">
+      <div className="fixed bottom-16 sm:bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-bg via-bg to-transparent">
         <button
           type="button"
           disabled={!canSave || anyActionInProgress}
