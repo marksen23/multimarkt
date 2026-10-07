@@ -169,12 +169,21 @@ export function DashboardPage() {
       {entries && entries.length === 0 && <EmptyState />}
 
       {visible && visible.length === 0 && entries && entries.length > 0 && (
-        <div className="bg-surface border border-line rounded-2xl p-6 text-center">
+        <div className="bg-surface border border-line rounded-2xl p-6 text-center space-y-2">
           <p className="text-sm text-ink-muted">
             {search.trim()
               ? `Keine Ergebnisse für „${search.trim()}"`
               : 'Keine Artikel in dieser Kategorie.'}
           </p>
+          {(filter !== 'alle' || search.trim()) && (
+            <button
+              type="button"
+              onClick={() => { setFilter('alle'); setSearch(''); }}
+              className="text-xs font-bold text-accent hover:text-accent-hover"
+            >
+              Filter zurücksetzen
+            </button>
+          )}
         </div>
       )}
 
@@ -193,12 +202,16 @@ export function DashboardPage() {
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                {thumbnailUrl && (
+                {thumbnailUrl ? (
                   <img
                     src={thumbnailUrl}
                     alt=""
                     className="w-12 h-12 rounded-xl object-cover border border-line shrink-0"
                   />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-surface-hover border border-line shrink-0 flex items-center justify-center text-xl select-none">
+                    📷
+                  </div>
                 )}
                 <div className="min-w-0">
                   <p className="font-bold text-ink text-sm truncate">
@@ -211,7 +224,8 @@ export function DashboardPage() {
               </div>
               <div className="flex flex-col items-end gap-1 shrink-0">
                 <StatusBadge status={item.status} />
-                {listings.length > 0 && (item.status === 'LISTED' || item.status === 'SOLD') && (
+                {listings.length > 0 &&
+                  (item.status === 'LISTED' || item.status === 'SOLD' || item.status === 'SALE_CONFLICT') && (
                   <span className="text-[11px] font-semibold text-ink-muted">
                     {listings[0].sellingPrice.toFixed(2)} €
                   </span>

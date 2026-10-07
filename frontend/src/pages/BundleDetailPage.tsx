@@ -140,7 +140,7 @@ export function BundleDetailPage() {
             />
             <div className="flex justify-end">
               <span className={`text-[11px] tabular-nums ${description.length > 1500 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-ink-faint'}`}>
-                {description.length}
+                {description.length} / 1500
               </span>
             </div>
           </div>

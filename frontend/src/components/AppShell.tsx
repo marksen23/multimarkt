@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { clearAccessToken } from './TokenGate';
 import { usePendingActions } from '../contexts/PendingActionsContext';
@@ -12,6 +12,17 @@ const NAV_ITEMS = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pendingCount } = usePendingActions();
+  const [confirmLogout, setConfirmLogout] = useState(false);
+
+  const handleLogout = () => {
+    if (confirmLogout) {
+      clearAccessToken();
+    } else {
+      setConfirmLogout(true);
+      setTimeout(() => setConfirmLogout(false), 3000);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-bg">
       <header className="bg-surface/90 backdrop-blur border-b border-line sticky top-0 z-20">
@@ -41,11 +52,15 @@ export function AppShell({ children }: { children: ReactNode }) {
             ))}
             <button
               type="button"
-              onClick={clearAccessToken}
-              className="px-3 py-1.5 rounded-full text-xs font-semibold text-ink-faint hover:bg-surface-hover hover:text-ink-muted transition-colors"
+              onClick={handleLogout}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                confirmLogout
+                  ? 'bg-danger-soft text-danger font-bold'
+                  : 'text-ink-faint hover:bg-surface-hover hover:text-ink-muted'
+              }`}
               title="Zugriffstoken entfernen"
             >
-              Abmelden
+              {confirmLogout ? 'Wirklich abmelden?' : 'Abmelden'}
             </button>
           </nav>
         </div>
