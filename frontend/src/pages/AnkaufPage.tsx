@@ -376,9 +376,18 @@ export function AnkaufPage() {
               {/* Listings */}
               <div className="px-4 space-y-3">
                 {visibleListings.length === 0 && (
-                  <p className="text-sm text-ink-muted text-center py-8">
-                    Keine Angebote für diesen Filter gefunden.
-                  </p>
+                  <div className="text-center py-8 space-y-2">
+                    <p className="text-sm text-ink-muted">Keine Angebote für diesen Filter.</p>
+                    {activeCondition !== 'alle' && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveCondition('alle')}
+                        className="text-xs font-bold text-accent hover:text-accent-hover"
+                      >
+                        Filter zurücksetzen
+                      </button>
+                    )}
+                  </div>
                 )}
                 {visibleListings.map((listing, i) => (
                   <ListingCard

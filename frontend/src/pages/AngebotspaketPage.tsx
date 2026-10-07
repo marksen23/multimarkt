@@ -160,8 +160,15 @@ export function AngebotspaketPage() {
       </div>
 
       {error && (
-        <div className="mx-4 mb-4 bg-danger-soft border border-danger/20 rounded-xl p-3 text-xs text-danger">
-          {error}
+        <div className="mx-4 mb-4 bg-danger-soft border border-danger/20 rounded-xl p-4 space-y-2">
+          <p className="text-xs text-danger">{error}</p>
+          <button
+            type="button"
+            onClick={() => generate(salesGoal)}
+            className="text-xs font-bold text-danger underline hover:no-underline"
+          >
+            ↺ Erneut versuchen
+          </button>
         </div>
       )}
 

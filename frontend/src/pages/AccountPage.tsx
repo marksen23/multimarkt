@@ -74,9 +74,8 @@ export function AccountPage() {
           </div>
           {!result.mediaHardDeleted && (
             <p className="text-[11px] text-orange-600 dark:text-orange-400">
-              Medien-Löschung läuft noch nicht automatisch mit: der S3-Adapter existiert (siehe
-              S3StorageProvider), aber der Job, der pro gelöschtem Foto tatsächlich
-              `storage.delete()` aufruft, ist noch nicht an diesen Lösch-Flow angebunden.
+              Hinweis: Hochgeladene Fotos werden separat im Medienspeicher verwaltet und müssen
+              ggf. manuell gelöscht werden.
             </p>
           )}
         </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import { PhotoCapture } from '../components/PhotoCapture';
@@ -55,6 +55,9 @@ export function NewItemPage() {
 
   return (
     <div className="max-w-sm mx-auto p-6">
+      <Link to="/" className="block mb-3 text-xs text-ink-faint hover:text-ink-muted">
+        ← Dashboard
+      </Link>
       <div className="bg-surface rounded-2xl shadow-sm border border-line p-6 space-y-4">
         <div>
           <h1 className="text-xl font-extrabold text-ink tracking-tight">Neuer Artikel</h1>
@@ -99,7 +102,7 @@ export function NewItemPage() {
           {stage === 'creating' && 'Artikel wird angelegt…'}
           {stage === 'uploading' && `Fotos werden hochgeladen… ${Math.round(uploadProgress * 100)}%`}
           {stage === 'analyzing' && 'KI analysiert die Fotos…'}
-          {stage === 'idle' && 'Weiter'}
+          {stage === 'idle' && 'Analysieren'}
         </button>
 
       </div>

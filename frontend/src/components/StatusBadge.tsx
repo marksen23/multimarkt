@@ -33,7 +33,7 @@ const LABELS: Record<string, string> = {
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const isAnalyzing = status === 'ANALYZING';
+  const isPulsing = status === 'ANALYZING' || status === 'PUBLISHING';
   const isReady = status === 'READY';
 
   return (
@@ -42,7 +42,7 @@ export function StatusBadge({ status }: { status: string }) {
         COLORS[status] ?? 'bg-zinc-500/10 text-zinc-500'
       }`}
     >
-      {isAnalyzing && <PulseDot color="currentColor" />}
+      {isPulsing && <PulseDot color="currentColor" />}
       {isReady && <SolidDot />}
       {LABELS[status] ?? status}
     </span>
