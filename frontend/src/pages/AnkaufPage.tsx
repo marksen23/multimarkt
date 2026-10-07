@@ -323,6 +323,14 @@ export function AnkaufPage() {
                 </div>
               )}
 
+              {/* Search context label */}
+              <div className="px-4 mb-2">
+                <p className="text-xs text-ink-faint">
+                  Ergebnisse für{' '}
+                  <span className="font-bold text-ink-muted">„{query.trim()}"</span>
+                </p>
+              </div>
+
               {/* Condition filter tabs */}
               <div className="px-4 mb-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                 {(Object.keys(CONDITION_LABELS) as ConditionKey[]).map((key) => {

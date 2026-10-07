@@ -218,7 +218,14 @@ export function DashboardPage() {
                 )}
               </div>
             </div>
-            {listings.length > 0 && (
+            {item.status === 'BUNDLED' && (
+              <div className="mt-3">
+                <span className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-surface-hover border border-line text-ink-muted">
+                  📦 <span className="font-medium">Bundle</span>
+                </span>
+              </div>
+            )}
+            {listings.length > 0 && item.status !== 'BUNDLED' && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {listings.flatMap((listing) =>
                   listing.projections.map((p) => (

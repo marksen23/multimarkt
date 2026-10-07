@@ -6,7 +6,7 @@ import { clearAccessToken } from '../components/TokenGate';
 import { useTheme } from '../hooks/useTheme';
 import type { DeletionAuditLog, ItemListEntry, ItemLifecycleState } from '../api/types';
 
-const AKTIV_STATES: ItemLifecycleState[] = ['LISTED', 'SALE_CONFLICT'];
+const AKTIV_STATES: ItemLifecycleState[] = ['LISTED', 'SALE_CONFLICT', 'BUNDLED'];
 const SOLD_STATES: ItemLifecycleState[] = ['SOLD'];
 const PENDING_STATES: ItemLifecycleState[] = ['READY', 'REVIEW_REQUIRED'];
 
@@ -16,6 +16,7 @@ interface AccountStats {
   aktiv: number;
   sold: number;
   erloes: number;
+  realizedErloes: number;
 }
 
 function computeStats(entries: ItemListEntry[]): AccountStats {
@@ -26,6 +27,9 @@ function computeStats(entries: ItemListEntry[]): AccountStats {
     sold: entries.filter((e) => (SOLD_STATES as ItemLifecycleState[]).includes(e.item.status)).length,
     erloes: entries
       .filter((e) => e.item.status === 'LISTED' && e.listings.length > 0)
+      .reduce((sum, e) => sum + e.listings[0].sellingPrice, 0),
+    realizedErloes: entries
+      .filter((e) => e.item.status === 'SOLD' && e.listings.length > 0)
       .reduce((sum, e) => sum + e.listings[0].sellingPrice, 0),
   };
 }
@@ -91,14 +95,24 @@ export function AccountPage() {
           <div className="grid grid-cols-2 gap-2">
             <MiniStat label="Artikel gesamt" value={stats.total} />
             <MiniStat label="Handlung nötig" value={stats.pending} highlight={stats.pending > 0} />
-            <MiniStat label="Aktiv gelistet" value={stats.aktiv} />
+            <MiniStat label="Aktiv" value={stats.aktiv} />
             <MiniStat label="Verkauft" value={stats.sold} />
           </div>
-          {stats.erloes > 0 && (
-            <p className="text-xs text-ink-muted pt-1 border-t border-line">
-              Erwarteter Erlös aus aktiven Listings:{' '}
-              <span className="font-bold text-ink">{stats.erloes.toFixed(2)} €</span>
-            </p>
+          {(stats.erloes > 0 || stats.realizedErloes > 0) && (
+            <div className="pt-2 border-t border-line space-y-1">
+              {stats.realizedErloes > 0 && (
+                <p className="text-xs text-ink-muted">
+                  Tatsächlich erlöst:{' '}
+                  <span className="font-bold text-accent">{stats.realizedErloes.toFixed(2)} €</span>
+                </p>
+              )}
+              {stats.erloes > 0 && (
+                <p className="text-xs text-ink-muted">
+                  Erwartet (aktive Listings):{' '}
+                  <span className="font-bold text-ink">{stats.erloes.toFixed(2)} €</span>
+                </p>
+              )}
+            </div>
           )}
         </div>
       )}

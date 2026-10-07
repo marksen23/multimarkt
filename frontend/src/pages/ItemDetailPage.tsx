@@ -165,7 +165,7 @@ export function ItemDetailPage() {
             className="w-full p-2.5 rounded-xl border border-line text-sm font-bold text-ink-muted hover:bg-surface-hover hover:border-accent/40 transition-colors text-left flex items-center gap-2"
           >
             <span className="text-base">↻</span>
-            Angebotpaket neu generieren
+            Angebotspaket neu generieren
           </button>
           <ListingsManager
             listings={detail.listings}

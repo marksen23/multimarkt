@@ -67,8 +67,8 @@ export function BundlesPage() {
                     <p className="text-xs text-ink-faint truncate">{bundle.description}</p>
                   )}
                   <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-[11px] text-ink-faint">
-                      {itemCount} {itemCount === 1 ? 'Artikel' : 'Artikel'}
+                    <span className={`text-[11px] ${itemCount === 0 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-ink-faint'}`}>
+                      {itemCount === 0 ? 'Leer' : `${itemCount} Artikel`}
                     </span>
                     {(activeListing ?? anyListing) ? (
                       <span className="text-[11px] font-semibold text-accent">
