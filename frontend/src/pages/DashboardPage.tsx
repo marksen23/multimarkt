@@ -9,6 +9,13 @@ import { usePendingActions } from '../contexts/PendingActionsContext';
 
 type FilterKey = 'alle' | 'handlung' | 'aktiv' | 'abgeschlossen';
 
+const MP_LABELS: Record<string, string> = {
+  KLEINANZEIGEN: 'Kleinanzeigen',
+  EBAY: 'eBay',
+  VINTED: 'Vinted',
+  FACEBOOK: 'Facebook',
+};
+
 const FILTER_LABELS: Record<FilterKey, string> = {
   alle: 'Alle',
   handlung: 'Handlung nötig',
@@ -217,9 +224,9 @@ export function DashboardPage() {
                   listing.projections.map((p) => (
                     <span
                       key={p.id}
-                      className="text-[11px] px-2 py-1 rounded-lg bg-surface-hover border border-line text-ink-muted flex items-center gap-1"
+                      className="text-[11px] px-2 py-1 rounded-lg bg-surface-hover border border-line text-ink-muted flex items-center gap-1.5"
                     >
-                      {p.marketplaceId}
+                      <span className="font-medium">{MP_LABELS[p.marketplaceId] ?? p.marketplaceId}</span>
                       <StatusBadge status={p.status} />
                     </span>
                   )),

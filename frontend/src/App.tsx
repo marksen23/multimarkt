@@ -14,6 +14,7 @@ import { NegotiationDemoPage } from './pages/NegotiationDemoPage';
 import { ConfidenceCenterDemoPage } from './pages/ConfidenceCenterDemoPage';
 import { AngebotspaketPage } from './pages/AngebotspaketPage';
 import { AnkaufPage } from './pages/AnkaufPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
           <Route path="/account" element={<AccountPage />} />
           <Route path="/demo/negotiation" element={<NegotiationDemoPage />} />
           <Route path="/demo/confidence-center" element={<ConfidenceCenterDemoPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </AppShell>
     </TokenGate>

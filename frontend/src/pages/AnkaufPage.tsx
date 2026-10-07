@@ -99,6 +99,23 @@ function matchesCondition(listing: AnkaufListing, condition: ConditionKey): bool
   return keywords.some((kw) => text.includes(kw));
 }
 
+// ---------- Suchverlauf ----------
+
+function useRecentSearches(max = 5) {
+  const KEY = 'ankauf-recent-searches';
+  const [recent, setRecent] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(KEY) ?? '[]') as string[]; } catch { return []; }
+  });
+
+  const add = (q: string) => {
+    const next = [q, ...recent.filter((r) => r !== q)].slice(0, max);
+    setRecent(next);
+    try { localStorage.setItem(KEY, JSON.stringify(next)); } catch {}
+  };
+
+  return { recent, add };
+}
+
 // ---------- Page ----------
 
 export function AnkaufPage() {
@@ -111,6 +128,7 @@ export function AnkaufPage() {
   const [showMargen, setShowMargen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { bookmarks, isBookmarked, toggle, remove } = useAnkaufMerkliste();
+  const { recent, add: addRecent } = useRecentSearches();
 
   const search = async (kw: string) => {
     if (!kw.trim()) return;
@@ -119,6 +137,7 @@ export function AnkaufPage() {
     setResult(null);
     setActiveCondition('alle');
     setShowMargen(false);
+    addRecent(kw.trim());
     try {
       setResult(await ankaufApi.search(kw.trim()));
     } catch {
@@ -182,6 +201,22 @@ export function AnkaufPage() {
               {loading ? '…' : 'Suchen'}
             </button>
           </form>
+        )}
+
+        {/* Recent searches */}
+        {pageTab === 'suche' && recent.length > 0 && !loading && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {recent.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => { setQuery(r); void search(r); }}
+                className="px-3 py-1 rounded-full text-[11px] font-medium bg-surface border border-line text-ink-muted hover:border-accent hover:text-accent transition-colors"
+              >
+                {r}
+              </button>
+            ))}
+          </div>
         )}
 
         {error && pageTab === 'suche' && (

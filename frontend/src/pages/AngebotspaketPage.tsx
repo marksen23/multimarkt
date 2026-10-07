@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useToast } from '../components/Toast';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import type { CanonicalListing, Item, ListingChannel, SalesGoal } from '../api/types';
@@ -62,6 +63,7 @@ function useCopy() {
 export function AngebotspaketPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
   const [salesGoal, setSalesGoal] = useState<SalesGoal>('BALANCED');
   const [activePortal, setActivePortal] = useState<ListingChannel>('KLEINANZEIGEN');
   const [loading, setLoading] = useState(true);
@@ -180,6 +182,7 @@ export function AngebotspaketPage() {
             onSuccess={(result) => {
               setListing(result);
               setItemStatus('LISTED');
+              toast(`Listing für ${result.sellingPrice.toFixed(2)} € angelegt`, 'success');
             }}
             onNavigate={() => navigate(`/items/${id}`)}
           />
@@ -421,10 +424,15 @@ function PortalCard({
         <div className="space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wide">Beschreibung</span>
-            <CopyButton
-              state={descCopy.state}
-              onClick={() => void descCopy.copy(draft.description)}
-            />
+            <div className="flex items-center gap-2">
+              <span className={`text-[11px] tabular-nums ${draft.description.length > 1500 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-ink-faint'}`}>
+                {draft.description.length}
+              </span>
+              <CopyButton
+                state={descCopy.state}
+                onClick={() => void descCopy.copy(draft.description)}
+              />
+            </div>
           </div>
           {loading ? (
             <SkeletonLine className="h-24 rounded-lg" />

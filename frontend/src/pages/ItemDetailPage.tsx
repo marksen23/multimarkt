@@ -21,7 +21,9 @@ export function ItemDetailPage() {
   const [detail, setDetail] = useState<ItemDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [schnellmodus, setSchnellmodus] = useState(false);
+  const [schnellmodus, setSchnellmodus] = useState(() => {
+    try { return localStorage.getItem(`schnellmodus_${id}`) === 'true'; } catch { return false; }
+  });
   const [readyMedian, setReadyMedian] = useState<number | null>(null);
 
   const reload = useCallback(async () => {
@@ -39,6 +41,7 @@ export function ItemDetailPage() {
 
   useEffect(() => {
     if (schnellmodus && detail?.item.status === 'READY' && id) {
+      try { localStorage.removeItem(`schnellmodus_${id}`); } catch {}
       navigate(`/items/${id}/angebotspaket`);
     }
   }, [schnellmodus, detail?.item.status, navigate, id]);
@@ -106,7 +109,10 @@ export function ItemDetailPage() {
         <AnalyzeStep
           itemId={id}
           busy={busy || item.status === 'ANALYZING'}
-          onAnalyzeStart={() => setSchnellmodus(true)}
+          onAnalyzeStart={() => {
+            try { localStorage.setItem(`schnellmodus_${id}`, 'true'); } catch {}
+            setSchnellmodus(true);
+          }}
           onAnalyze={(files, onProgress) => run(() => itemsApi.analyze(id, files, onProgress))}
         />
       )}
