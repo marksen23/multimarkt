@@ -67,6 +67,7 @@ export function AngebotspaketPage() {
   const [loadingRecs, setLoadingRecs] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [price, setPrice] = useState<number | null>(null);
+  const priceCopy = useCopy();
   const [recommendations, setRecommendations] = useState<MarketplaceRecommendation[]>([]);
   const [detectedCategory, setDetectedCategory] = useState<string>('');
   const [drafts, setDrafts] = useState<Partial<Record<SecondhandMarketplace, PortalDraft>>>({});
@@ -225,7 +226,13 @@ export function AngebotspaketPage() {
                 </span>
               )}
             </div>
-            <span className="text-xl font-bold text-accent">{price.toFixed(2)} €</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-bold text-accent">{price.toFixed(2)} €</span>
+              <CopyButton
+                state={priceCopy.state}
+                onClick={() => void priceCopy.copy(price.toFixed(2))}
+              />
+            </div>
           </div>
 
           {worstAlignment && worstAlignment.alignmentScore < 75 && worstAlignment.issues.length > 0 && (
@@ -410,8 +417,10 @@ function PortalCard({
 }) {
   const titleCopy = useCopy();
   const descCopy = useCopy();
+  const priceCopy = useCopy();
   const allCopy = useCopy();
   const [showQuality, setShowQuality] = useState(false);
+  const [localPrice, setLocalPrice] = useState<string>(price !== null ? price.toFixed(2) : '');
 
   const loading = draft.loadState === 'loading';
   const isError = draft.loadState === 'error';
@@ -421,9 +430,11 @@ function PortalCard({
     (draft.quality?.issues.length ?? 0) > 0 ||
     (draft.quality?.attributeCoverage.some((a) => !a.mentioned) ?? false);
 
+  const effectivePrice = localPrice !== '' ? localPrice : (price !== null ? price.toFixed(2) : null);
+
   const copyAll = () => {
     const parts = [draft.title];
-    if (price !== null) parts.push(`Preis: ${price.toFixed(2)} €`);
+    if (effectivePrice) parts.push(`Preis: ${effectivePrice} €`);
     parts.push('', draft.description);
     void allCopy.copy(parts.join('\n').trim());
   };
@@ -541,10 +552,24 @@ function PortalCard({
             )}
           </div>
 
-          {price !== null && !loading && (
-            <div className="flex items-center justify-between text-xs text-ink-faint border-t border-line pt-3">
-              <span>Startpreis</span>
-              <span className="font-bold text-ink">{price.toFixed(2)} €</span>
+          {!loading && (
+            <div className="border-t border-line pt-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wide">Preis (€)</span>
+                <CopyButton
+                  state={priceCopy.state}
+                  onClick={() => void priceCopy.copy(localPrice || (price?.toFixed(2) ?? ''))}
+                />
+              </div>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={localPrice}
+                onChange={(e) => setLocalPrice(e.target.value)}
+                placeholder={price !== null ? price.toFixed(2) : '0.00'}
+                className="w-full px-3 py-2 text-sm border border-line rounded-lg outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition bg-transparent text-ink"
+              />
             </div>
           )}
         </div>
