@@ -6,6 +6,7 @@ import {
   type MissingPhotoShot,
   type PhotoShotNeed,
 } from '../category/photo-briefing';
+import { VolatilePhotoStorageNotice } from './VolatilePhotoStorageNotice';
 
 /**
  * Fotogalerie pro Artikel. Sobald die Kategorie feststeht, trägt jedes
@@ -47,6 +48,7 @@ export function PhotoGallery({
 
   return (
     <div className="space-y-3">
+      <VolatilePhotoStorageNotice />
       {photos.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
           {photos.map((photo, index) => {
