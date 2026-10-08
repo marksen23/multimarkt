@@ -189,7 +189,7 @@ function DiscardItemAction({
           type="button"
           disabled={busy}
           onClick={() => onDiscard()}
-          className="text-xs font-bold text-danger underline"
+          className="text-xs font-bold text-danger underline py-1.5 px-1"
         >
           Ja
         </button>
@@ -197,7 +197,7 @@ function DiscardItemAction({
           type="button"
           disabled={busy}
           onClick={() => setConfirming(false)}
-          className="text-xs font-bold text-ink-muted underline"
+          className="text-xs font-bold text-ink-muted underline py-1.5 px-1"
         >
           Abbrechen
         </button>
