@@ -51,6 +51,9 @@ export function SmartReviewPanel({
 }: Props) {
   const [reanalyzing, setReanalyzing] = useState(false);
   const [reanalyzeError, setReanalyzeError] = useState<string | null>(null);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [newPhotos, setNewPhotos] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const reanalyze = async () => {
     setReanalyzing(true);
@@ -62,6 +65,23 @@ export function SmartReviewPanel({
       setReanalyzeError('Re-Analyse fehlgeschlagen — bitte erneut versuchen');
     } finally {
       setReanalyzing(false);
+    }
+  };
+
+  const uploadAndReanalyze = async () => {
+    if (!newPhotos.length) return;
+    setUploadingPhotos(true);
+    setUploadProgress(0);
+    setReanalyzeError(null);
+    try {
+      await itemsApi.uploadMorePhotos(detail.item.id, newPhotos, (f) => setUploadProgress(f));
+      setNewPhotos([]);
+      onReload();
+    } catch {
+      setReanalyzeError('Foto-Upload fehlgeschlagen — bitte erneut versuchen');
+    } finally {
+      setUploadingPhotos(false);
+      setUploadProgress(0);
     }
   };
   // Pre-select the AI's condition guess if available
@@ -332,6 +352,50 @@ export function SmartReviewPanel({
             </div>
           </details>
         )}
+        {/* Add more photos + re-analyze */}
+        <div className="space-y-2">
+          <label className="flex items-center justify-center gap-2 w-full py-2 border border-dashed border-line rounded-xl text-xs font-bold text-ink-muted hover:bg-surface-hover cursor-pointer transition-colors">
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic"
+              multiple
+              className="sr-only"
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? []);
+                setNewPhotos((prev) => [...prev, ...files]);
+                e.target.value = '';
+              }}
+            />
+            + Fotos hinzufügen
+          </label>
+          {newPhotos.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="flex-1 text-xs text-ink-muted truncate">
+                {newPhotos.length} Foto{newPhotos.length !== 1 ? 's' : ''} ausgewählt
+              </span>
+              <button
+                type="button"
+                onClick={() => setNewPhotos([])}
+                className="text-xs text-ink-faint hover:text-danger transition-colors"
+              >
+                ✕
+              </button>
+              <button
+                type="button"
+                disabled={uploadingPhotos || anyActionInProgress}
+                onClick={() => void uploadAndReanalyze()}
+                className="px-3 py-1.5 bg-accent text-accent-ink rounded-lg text-xs font-bold disabled:opacity-50 transition-colors"
+              >
+                {uploadingPhotos
+                  ? uploadProgress > 0
+                    ? `${Math.round(uploadProgress * 100)}%`
+                    : 'Lädt hoch…'
+                  : 'Hochladen & neu analysieren'}
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Re-analyze button */}
         <button
           type="button"
