@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { accountApi } from '../api/account';
+import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
-import type { DeletionAuditLog } from '../api/types';
+import type { DeletionAuditLog, ItemListEntry } from '../api/types';
 
 /** Doc 04 §16 / Doc 01 §15 — Hard-Delete-Lifecycle (T08-1). */
 export function AccountPage() {
@@ -9,6 +10,11 @@ export function AccountPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DeletionAuditLog | null>(null);
+  const [entries, setEntries] = useState<ItemListEntry[] | null>(null);
+
+  useEffect(() => {
+    itemsApi.list().then(setEntries).catch(() => setEntries([]));
+  }, []);
 
   const requestDeletion = async () => {
     setBusy(true);
@@ -47,9 +53,66 @@ export function AccountPage() {
     );
   }
 
+  const total = entries?.length ?? 0;
+  const active =
+    entries?.filter((e) =>
+      ['NEW', 'ANALYZING', 'REVIEW_REQUIRED', 'READY', 'LISTED'].includes(e.item.status),
+    ).length ?? 0;
+  const sold = entries?.filter((e) => e.item.status === 'SOLD').length ?? 0;
+  const revenue =
+    entries
+      ?.filter((e) => e.item.status === 'SOLD')
+      .reduce((sum, e) => sum + (e.listings[0]?.sellingPrice ?? 0), 0) ?? 0;
+  const lagerwert =
+    entries
+      ?.filter((e) => e.item.status === 'READY' || e.item.status === 'LISTED')
+      .reduce((sum, e) => sum + (e.listings[0]?.sellingPrice ?? 0), 0) ?? 0;
+
   return (
     <div className="max-w-md mx-auto p-6 space-y-4">
       <h1 className="text-xl font-extrabold text-ink tracking-tight">Konto</h1>
+
+      {entries === null ? (
+        <div className="grid grid-cols-2 gap-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-surface border border-line rounded-xl p-4 h-16 animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <StatCard label="Artikel gesamt" value={String(total)} />
+            <StatCard label="Aktiv" value={String(active)} highlight={active > 0} />
+            <StatCard label="Verkauft" value={String(sold)} />
+            <StatCard
+              label="Erlös"
+              value={
+                revenue > 0
+                  ? revenue.toLocaleString('de-DE', {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    }) + ' €'
+                  : '—'
+              }
+              highlight={revenue > 0}
+            />
+          </div>
+          {lagerwert > 0 && (
+            <div className="bg-surface border border-line rounded-xl px-4 py-3 flex items-center justify-between">
+              <span className="text-xs font-bold text-ink-muted uppercase tracking-wide">
+                Lagerwert
+              </span>
+              <span className="text-base font-extrabold tabular-nums text-accent">
+                {lagerwert.toLocaleString('de-DE', {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}{' '}
+                €
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6 space-y-3">
         <h2 className="font-bold text-red-700 dark:text-red-400">Account löschen</h2>
@@ -90,6 +153,27 @@ export function AccountPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className="bg-surface border border-line rounded-xl p-4 space-y-1">
+      <p
+        className={`text-xl font-extrabold tabular-nums ${highlight ? 'text-accent' : 'text-ink'}`}
+      >
+        {value}
+      </p>
+      <p className="text-[10px] font-bold text-ink-muted uppercase tracking-wide">{label}</p>
     </div>
   );
 }

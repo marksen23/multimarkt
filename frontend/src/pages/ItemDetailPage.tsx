@@ -160,14 +160,73 @@ export function ItemDetailPage() {
       )}
 
       {(item.status === 'SOLD' || item.status === 'CANCELLED' || item.status === 'ARCHIVED') && (
-        <div className="p-4">
-          <Centered
-            title={item.title ?? 'Artikel'}
-            message={`Status: ${item.status}. Für diesen Zustand sind in der aktuellen Frontend-Version keine weiteren Aktionen vorgesehen.`}
-            showDashboardLink
-          />
-        </div>
+        <SoldItemView detail={detail} />
       )}
+    </div>
+  );
+}
+
+function SoldItemView({ detail }: { detail: ItemDetail }) {
+  const { item, listings, attributes } = detail;
+  const listing = listings[0];
+  const confirmedAttrs = attributes.filter(
+    (a) => a.truthState === 'USER_CONFIRMED' && a.attributeValue,
+  );
+
+  const statusLabel: Record<string, string> = {
+    SOLD: 'Verkauft',
+    CANCELLED: 'Storniert',
+    ARCHIVED: 'Archiviert',
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-ink leading-tight">
+              {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
+            </h1>
+            {item.condition && (
+              <p className="text-sm text-ink-muted mt-0.5">{item.condition}</p>
+            )}
+          </div>
+          <span className="shrink-0 text-xs font-bold text-ink-muted">
+            {statusLabel[item.status] ?? item.status}
+          </span>
+        </div>
+
+        {listing && (
+          <div className="flex items-center justify-between border-t border-line pt-3">
+            <span className="text-xs font-bold text-ink-muted uppercase tracking-wide">
+              Listingpreis
+            </span>
+            <span className="text-lg font-extrabold tabular-nums text-accent">
+              {listing.sellingPrice.toFixed(2)} €
+            </span>
+          </div>
+        )}
+
+        {confirmedAttrs.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 border-t border-line pt-3">
+            {confirmedAttrs.slice(0, 8).map((a) => (
+              <span
+                key={a.id}
+                className="text-[11px] bg-surface-hover border border-line rounded-full px-2 py-0.5 text-ink-muted"
+              >
+                {a.attributeKey}: {a.attributeValue}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <Link
+        to="/"
+        className="block text-center text-sm font-bold text-accent hover:text-accent-hover"
+      >
+        ← Zurück zum Dashboard
+      </Link>
     </div>
   );
 }
