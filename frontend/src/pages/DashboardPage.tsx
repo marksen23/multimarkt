@@ -65,6 +65,11 @@ export function DashboardPage() {
           (e.item.condition ?? '').toLowerCase().includes(searchLower)),
     ) ?? null;
 
+  const CLOSED_STATES = ['SOLD', 'ARCHIVED', 'CANCELLED'] as const;
+  type ClosedState = typeof CLOSED_STATES[number];
+  const activeEntries = visible?.filter((e) => !CLOSED_STATES.includes(e.item.status as ClosedState)) ?? [];
+  const closedEntries = entries?.filter((e) => CLOSED_STATES.includes(e.item.status as ClosedState)) ?? [];
+
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -188,7 +193,7 @@ export function DashboardPage() {
       )}
 
       <div className="space-y-2">
-        {visible?.map(({ item, listings, thumbnailUrl }) => (
+        {activeEntries.map(({ item, listings, thumbnailUrl }) => (
           <Link
             key={item.id}
             to={`/items/${item.id}`}
@@ -266,6 +271,8 @@ export function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {closedEntries.length > 0 && <ClosedSection entries={closedEntries} />}
     </div>
   );
 }
@@ -343,6 +350,96 @@ function CopyIcon() {
       <rect x="9" y="9" width="13" height="13" rx="2" />
       <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
     </svg>
+  );
+}
+
+function exportSoldCsv(entries: ItemListEntry[]) {
+  const sold = entries.filter((e) => e.item.status === 'SOLD');
+  if (sold.length === 0) return;
+  const rows: string[][] = [['Titel', 'Zustand', 'Listingpreis (€)', 'Erstellt', 'Aktualisiert']];
+  for (const { item, listings } of sold) {
+    rows.push([
+      item.title ?? item.id,
+      item.condition ?? '',
+      listings[0]?.sellingPrice?.toFixed(2) ?? '',
+      new Date(item.createdAt).toLocaleDateString('de-DE'),
+      new Date(item.updatedAt).toLocaleDateString('de-DE'),
+    ]);
+  }
+  const csv = rows
+    .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `verkaufshistorie-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function ClosedSection({ entries }: { entries: ItemListEntry[] }) {
+  const soldEntries = entries.filter((e) => e.item.status === 'SOLD');
+  const soldRevenue = soldEntries.reduce((sum, e) => sum + (e.listings[0]?.sellingPrice ?? 0), 0);
+  const revenueLabel =
+    soldRevenue > 0
+      ? `${soldRevenue.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €`
+      : null;
+
+  return (
+    <details className="group">
+      <summary className="flex items-center justify-between cursor-pointer list-none py-2 px-1 select-none">
+        <span className="text-xs font-bold text-ink-muted uppercase tracking-wide">
+          Abgeschlossen ({entries.length})
+        </span>
+        <div className="flex items-center gap-3">
+          {revenueLabel && (
+            <span className="text-xs text-ink-faint">Erlös: {revenueLabel}</span>
+          )}
+          {soldEntries.length > 0 && (
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); exportSoldCsv(entries); }}
+              className="text-[11px] font-bold text-ink-faint hover:text-accent transition-colors py-1 px-1"
+            >
+              CSV ↓
+            </button>
+          )}
+          <span className="text-ink-faint text-xs group-open:hidden">▼</span>
+          <span className="text-ink-faint text-xs hidden group-open:inline">▲</span>
+        </div>
+      </summary>
+      <div className="space-y-2 mt-2">
+        {entries.map(({ item, listings, thumbnailUrl }) => (
+          <Link
+            key={item.id}
+            to={`/items/${item.id}`}
+            className="flex items-center justify-between gap-3 bg-surface border border-line rounded-2xl px-4 py-3 hover:border-accent/30 transition opacity-60 hover:opacity-80"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              {thumbnailUrl && (
+                <img
+                  src={thumbnailUrl}
+                  alt=""
+                  className="w-10 h-10 rounded-xl object-cover border border-line shrink-0"
+                />
+              )}
+              <div className="min-w-0">
+                <p className="font-bold text-ink text-sm truncate">
+                  {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
+                </p>
+                {listings[0]?.sellingPrice != null && (
+                  <p className="text-xs text-ink-faint tabular-nums">
+                    {listings[0].sellingPrice.toFixed(2)} €
+                  </p>
+                )}
+              </div>
+            </div>
+            <StatusBadge status={item.status} />
+          </Link>
+        ))}
+      </div>
+    </details>
   );
 }
 

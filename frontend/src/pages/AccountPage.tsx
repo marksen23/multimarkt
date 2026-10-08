@@ -4,35 +4,7 @@ import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import { clearAccessToken } from '../components/TokenGate';
 import { useTheme } from '../hooks/useTheme';
-import type { DeletionAuditLog, ItemListEntry, ItemLifecycleState } from '../api/types';
-
-const AKTIV_STATES: ItemLifecycleState[] = ['LISTED', 'SALE_CONFLICT', 'BUNDLED'];
-const SOLD_STATES: ItemLifecycleState[] = ['SOLD'];
-const PENDING_STATES: ItemLifecycleState[] = ['READY', 'REVIEW_REQUIRED'];
-
-interface AccountStats {
-  total: number;
-  pending: number;
-  aktiv: number;
-  sold: number;
-  erloes: number;
-  realizedErloes: number;
-}
-
-function computeStats(entries: ItemListEntry[]): AccountStats {
-  return {
-    total: entries.length,
-    pending: entries.filter((e) => (PENDING_STATES as ItemLifecycleState[]).includes(e.item.status)).length,
-    aktiv: entries.filter((e) => (AKTIV_STATES as ItemLifecycleState[]).includes(e.item.status)).length,
-    sold: entries.filter((e) => (SOLD_STATES as ItemLifecycleState[]).includes(e.item.status)).length,
-    erloes: entries
-      .filter((e) => e.item.status === 'LISTED' && e.listings.length > 0)
-      .reduce((sum, e) => sum + e.listings[0].sellingPrice, 0),
-    realizedErloes: entries
-      .filter((e) => e.item.status === 'SOLD' && e.listings.length > 0)
-      .reduce((sum, e) => sum + e.listings[0].sellingPrice, 0),
-  };
-}
+import type { DeletionAuditLog, ItemListEntry } from '../api/types';
 
 /** Doc 04 §16 / Doc 01 §15 — Hard-Delete-Lifecycle (T08-1). */
 export function AccountPage() {
@@ -41,7 +13,7 @@ export function AccountPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DeletionAuditLog | null>(null);
-  const [stats, setStats] = useState<AccountStats | null>(null);
+  const [entries, setEntries] = useState<ItemListEntry[] | null>(null);
 
   const handleLogout = () => {
     if (confirmLogout) {
@@ -54,7 +26,7 @@ export function AccountPage() {
   const { pref: themePref, setPref: setThemePref } = useTheme();
 
   useEffect(() => {
-    itemsApi.list().then((entries) => setStats(computeStats(entries))).catch(() => {});
+    itemsApi.list().then(setEntries).catch(() => setEntries([]));
   }, []);
 
   const requestDeletion = async () => {
@@ -93,47 +65,62 @@ export function AccountPage() {
     );
   }
 
+  const total = entries?.length ?? 0;
+  const active =
+    entries?.filter((e) =>
+      ['NEW', 'ANALYZING', 'REVIEW_REQUIRED', 'READY', 'LISTED'].includes(e.item.status),
+    ).length ?? 0;
+  const sold = entries?.filter((e) => e.item.status === 'SOLD').length ?? 0;
+  const revenue =
+    entries
+      ?.filter((e) => e.item.status === 'SOLD')
+      .reduce((sum, e) => sum + (e.listings[0]?.sellingPrice ?? 0), 0) ?? 0;
+  const lagerwert =
+    entries
+      ?.filter((e) => e.item.status === 'READY' || e.item.status === 'LISTED')
+      .reduce((sum, e) => sum + (e.listings[0]?.sellingPrice ?? 0), 0) ?? 0;
+
   return (
     <div className="max-w-md mx-auto p-6 space-y-5">
       <h1 className="text-xl font-extrabold text-ink tracking-tight">Konto</h1>
 
-      {/* Stats */}
-      {!stats && (
-        <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
-          <div className="h-3 w-24 rounded-full bg-surface-hover animate-pulse" />
-          <div className="grid grid-cols-2 gap-2">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-surface-hover rounded-xl p-3 space-y-1 animate-pulse">
-                <div className="h-2.5 w-16 rounded-full bg-line" />
-                <div className="h-5 w-8 rounded-full bg-line" />
-              </div>
-            ))}
-          </div>
+      {entries === null ? (
+        <div className="grid grid-cols-2 gap-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-surface border border-line rounded-xl p-4 h-16 animate-pulse" />
+          ))}
         </div>
-      )}
-      {stats && (
-        <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
-          <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">Übersicht</p>
+      ) : (
+        <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
-            <MiniStat label="Artikel gesamt" value={stats.total} />
-            <MiniStat label="Handlung nötig" value={stats.pending} highlight={stats.pending > 0} />
-            <MiniStat label="Aktiv" value={stats.aktiv} />
-            <MiniStat label="Verkauft" value={stats.sold} />
+            <StatCard label="Artikel gesamt" value={String(total)} />
+            <StatCard label="Aktiv" value={String(active)} highlight={active > 0} />
+            <StatCard label="Verkauft" value={String(sold)} />
+            <StatCard
+              label="Erlös"
+              value={
+                revenue > 0
+                  ? revenue.toLocaleString('de-DE', {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    }) + ' €'
+                  : '—'
+              }
+              highlight={revenue > 0}
+            />
           </div>
-          {(stats.erloes > 0 || stats.realizedErloes > 0) && (
-            <div className="pt-2 border-t border-line space-y-1">
-              {stats.realizedErloes > 0 && (
-                <p className="text-xs text-ink-muted">
-                  Tatsächlich erlöst:{' '}
-                  <span className="font-bold text-accent">{stats.realizedErloes.toFixed(2)} €</span>
-                </p>
-              )}
-              {stats.erloes > 0 && (
-                <p className="text-xs text-ink-muted">
-                  Erwartet (aktive Listings):{' '}
-                  <span className="font-bold text-ink">{stats.erloes.toFixed(2)} €</span>
-                </p>
-              )}
+          {lagerwert > 0 && (
+            <div className="bg-surface border border-line rounded-xl px-4 py-3 flex items-center justify-between">
+              <span className="text-xs font-bold text-ink-muted uppercase tracking-wide">
+                Lagerwert
+              </span>
+              <span className="text-base font-extrabold tabular-nums text-accent">
+                {lagerwert.toLocaleString('de-DE', {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}{' '}
+                €
+              </span>
             </div>
           )}
         </div>
@@ -231,19 +218,23 @@ export function AccountPage() {
   );
 }
 
-function MiniStat({
+function StatCard({
   label,
   value,
   highlight,
 }: {
   label: string;
-  value: number;
+  value: string;
   highlight?: boolean;
 }) {
   return (
-    <div className="bg-surface-hover rounded-xl p-3">
-      <p className={`text-lg font-extrabold ${highlight ? 'text-accent' : 'text-ink'}`}>{value}</p>
-      <p className="text-[11px] text-ink-faint mt-0.5">{label}</p>
+    <div className="bg-surface border border-line rounded-xl p-4 space-y-1">
+      <p
+        className={`text-xl font-extrabold tabular-nums ${highlight ? 'text-accent' : 'text-ink'}`}
+      >
+        {value}
+      </p>
+      <p className="text-[10px] font-bold text-ink-muted uppercase tracking-wide">{label}</p>
     </div>
   );
 }

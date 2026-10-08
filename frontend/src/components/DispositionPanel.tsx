@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { dispositionApi } from '../api/disposition';
 import type { DispositionRecommendation, DispositionUserGoal } from '../api/disposition';
 import { ApiRequestError } from '../api/client';
+import { itemsApi } from '../api/items';
 
 const USER_GOALS: { value: DispositionUserGoal; label: string }[] = [
   { value: 'BALANCED', label: 'Ausgewogen' },
@@ -80,11 +81,28 @@ export function DispositionPanel({ itemId, initialMedian }: { itemId: string; in
     }
   };
 
+  const openPanel = async () => {
+    setOpen(true);
+    if (marketMedianPrice !== '') return;
+    try {
+      const research = await itemsApi.priceResearch(itemId);
+      const suggested =
+        research.recommendation?.listPrice ??
+        (() => {
+          const medians = research.sources.map((s) => s.median).filter((m): m is number => m !== null);
+          return medians.length ? Math.round(medians.reduce((a, b) => a + b, 0) / medians.length) : null;
+        })();
+      if (suggested !== null) setMarketMedianPrice(String(suggested));
+    } catch {
+      // silently ignore — user can type manually
+    }
+  };
+
   if (!open) {
     return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => void openPanel()}
         className="w-full p-3 rounded-xl border border-line text-sm font-bold text-ink-muted hover:bg-surface-hover transition-colors flex items-center justify-between gap-2"
       >
         <span>Lohnt sich der Verkauf? — Disposition-Check</span>

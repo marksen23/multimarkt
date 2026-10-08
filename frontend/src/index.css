@@ -70,3 +70,11 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
 }
+
+/* iOS Safari zoomt beim Fokussieren von Inputs mit font-size < 16px.
+   Auf Touch-Geräten erzwingen wir 16px, auf Desktop bleibt das Styling erhalten. */
+@media (hover: none) and (pointer: coarse) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
