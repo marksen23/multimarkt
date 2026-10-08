@@ -40,7 +40,21 @@ export class ProductAnalysisService {
 
     await this.dataSource.transaction(async (manager) => {
       for (const claim of result.attributes) {
-        const truthState: TruthState = claim.value ? 'INFERRED' : 'UNKNOWN';
+        // condition bleibt immer INFERRED — CONFIRM_TRUTH ist menschlich
+        // gegatet (Doc 02 §10). Alle anderen Attribute können bei
+        // ausreichend hoher Konfidenz (≥ 0.85) direkt als USER_CONFIRMED
+        // gespeichert werden, um den Review-Aufwand zu minimieren.
+        const autoConfirm =
+          claim.value !== null &&
+          claim.confidence >= 0.85 &&
+          claim.key !== 'condition';
+
+        const truthState: TruthState = !claim.value
+          ? 'UNKNOWN'
+          : autoConfirm
+            ? 'USER_CONFIRMED'
+            : 'INFERRED';
+
         await manager.upsert(
           ItemAttributeEntity,
           {
@@ -48,7 +62,8 @@ export class ProductAnalysisService {
             attributeKey: claim.key,
             attributeValue: truthState === 'UNKNOWN' ? null : claim.value,
             truthState,
-            source: result.modelId,
+            source: autoConfirm ? `${result.modelId}:auto` : result.modelId,
+            confidence: claim.confidence,
           },
           ['itemId', 'attributeKey'],
         );
