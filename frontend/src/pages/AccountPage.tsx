@@ -37,10 +37,20 @@ function computeStats(entries: ItemListEntry[]): AccountStats {
 /** Doc 04 §16 / Doc 01 §15 — Hard-Delete-Lifecycle (T08-1). */
 export function AccountPage() {
   const [confirming, setConfirming] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DeletionAuditLog | null>(null);
   const [stats, setStats] = useState<AccountStats | null>(null);
+
+  const handleLogout = () => {
+    if (confirmLogout) {
+      clearAccessToken();
+    } else {
+      setConfirmLogout(true);
+      setTimeout(() => setConfirmLogout(false), 3000);
+    }
+  };
   const { pref: themePref, setPref: setThemePref } = useTheme();
 
   useEffect(() => {
@@ -165,11 +175,15 @@ export function AccountPage() {
         </p>
         <button
           type="button"
-          onClick={clearAccessToken}
-          className="w-full mt-1 p-2.5 rounded-xl border border-line text-sm font-bold text-ink-muted hover:bg-surface-hover hover:text-ink transition-colors text-left flex items-center gap-2"
+          onClick={handleLogout}
+          className={`w-full mt-1 p-2.5 rounded-xl border text-sm font-bold transition-colors text-left flex items-center gap-2 ${
+            confirmLogout
+              ? 'bg-danger-soft border-danger/30 text-danger'
+              : 'border-line text-ink-muted hover:bg-surface-hover hover:text-ink'
+          }`}
         >
           <span className="text-base">↩</span>
-          Abmelden (Token entfernen)
+          {confirmLogout ? 'Wirklich abmelden?' : 'Abmelden (Token entfernen)'}
         </button>
       </div>
 

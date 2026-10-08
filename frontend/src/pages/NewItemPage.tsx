@@ -101,7 +101,12 @@ export function NewItemPage() {
         >
           {stage === 'creating' && 'Artikel wird angelegt…'}
           {stage === 'uploading' && `Fotos werden hochgeladen… ${Math.round(uploadProgress * 100)}%`}
-          {stage === 'analyzing' && 'KI analysiert die Fotos…'}
+          {stage === 'analyzing' && (
+            <span className="inline-flex items-center gap-2">
+              <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+              KI analysiert die Fotos…
+            </span>
+          )}
           {stage === 'idle' && 'Analysieren'}
         </button>
 

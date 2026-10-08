@@ -197,6 +197,8 @@ export function DashboardPage() {
                 ? 'border-accent/40 ring-1 ring-accent/20'
                 : item.status === 'REVIEW_REQUIRED'
                 ? 'border-amber-400/50'
+                : item.status === 'SALE_CONFLICT'
+                ? 'border-danger/40'
                 : 'border-line hover:border-accent/40'
             }`}
           >

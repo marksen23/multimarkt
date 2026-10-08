@@ -6,6 +6,7 @@ import { usePendingActions } from '../contexts/PendingActionsContext';
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', end: true, icon: IconHome, showBadge: true },
   { to: '/ankauf', label: 'Ankauf', end: false, icon: IconSearch, showBadge: false },
+  { to: '/new', label: 'Neu', end: false, icon: IconPlus, showBadge: false },
   { to: '/bundles', label: 'Bundles', end: false, icon: IconPackage, showBadge: false },
   { to: '/account', label: 'Konto', end: false, icon: IconUser, showBadge: false },
 ];
@@ -142,5 +143,18 @@ function IconUser({ active }: { active: boolean }) {
       <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
       <circle cx="12" cy="7" r="4" />
     </svg>
+  );
+}
+
+function IconPlus({ active }: { active: boolean }) {
+  return (
+    <span className={`flex items-center justify-center w-7 h-7 rounded-full border-2 transition-colors ${
+      active ? 'border-accent text-accent' : 'border-current'
+    }`} aria-hidden="true">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth={active ? 3 : 2.5} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 5v14M5 12h14" />
+      </svg>
+    </span>
   );
 }
