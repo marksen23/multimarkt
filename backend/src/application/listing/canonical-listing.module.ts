@@ -18,7 +18,9 @@ import { PriceTriangulationModule } from '../pricing/price-triangulation.module'
 import { StateGuardModule } from '../state-guard/state-guard.module';
 import { TitleGenerationModule } from '../title-generation/title-generation.module';
 import { CanonicalListingService } from './canonical-listing.service';
+import { DescriptionQualityService } from './description-quality.service';
 import { ListingSummaryService } from './listing-summary.service';
+import { PriceDescriptionAlignmentService } from './price-description-alignment.service';
 import { VaguePhraseDetectorService } from './vague-phrase-detector.service';
 
 // Muss mit dem Platzhalter in render.yaml übereinstimmen (siehe auch
@@ -43,6 +45,8 @@ const GEMINI_PLACEHOLDER_KEY = 'unused-mock-provider-active';
     CanonicalListingService,
     ListingSummaryService,
     VaguePhraseDetectorService,
+    DescriptionQualityService,
+    PriceDescriptionAlignmentService,
     {
       provide: DESCRIPTION_GENERATION_PROVIDER,
       inject: [ConfigService],

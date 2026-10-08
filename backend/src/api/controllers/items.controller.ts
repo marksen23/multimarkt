@@ -32,7 +32,7 @@ import {
 } from '../dto/items.dto';
 import { EvaluateDispositionDto } from '../dto/disposition.dto';
 import { ActorContext } from '../../domain/actor-context';
-import { SalesGoal } from '../../domain/ai/description-generation-provider.interface';
+import { DescriptionChannel, SalesGoal } from '../../domain/ai/description-generation-provider.interface';
 import { ItemLifecycleState } from '../../domain/state-vocabulary';
 import { BundleAssignmentService } from '../../application/bundle/bundle-assignment.service';
 import {
@@ -79,6 +79,7 @@ const MAX_PHOTOS_PER_UPLOAD = 10;
 const MAX_PHOTO_SIZE_BYTES = 15 * 1024 * 1024;
 const ALLOWED_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic']);
 const SALES_GOALS: SalesGoal[] = ['MAX_PROFIT', 'BALANCED', 'FAST_SALE', 'MINIMAL_EFFORT'];
+const DESCRIPTION_CHANNELS: DescriptionChannel[] = ['KLEINANZEIGEN', 'EBAY', 'VINTED', 'GENERIC'];
 const LISTING_CHANNELS: ListingChannel[] = ['KLEINANZEIGEN', 'EBAY', 'VINTED'];
 
 /** Doc 04 §7/§8/§12 — Item-Aggregat. */
@@ -305,9 +306,13 @@ export class ItemsController {
   async generateDescription(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('salesGoal') salesGoal?: string,
+    @Query('channel') channel?: string,
   ): Promise<DescriptionSuggestion> {
     const goal = SALES_GOALS.includes(salesGoal as SalesGoal) ? (salesGoal as SalesGoal) : null;
-    return this.canonicalListing.generateDescription(id, goal);
+    const resolvedChannel = DESCRIPTION_CHANNELS.includes(channel as DescriptionChannel)
+      ? (channel as DescriptionChannel)
+      : null;
+    return this.canonicalListing.generateDescription(id, goal, resolvedChannel);
   }
 
   // Rein technischer Hinweis (Schärfe/Belichtung/Auflösung/Duplikate) über

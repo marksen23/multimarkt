@@ -19,11 +19,14 @@ export class MockGeminiVisionProvider implements AiVisionProvider {
       promptVersion: '2026-09-20',
       attributes: hasImages
         ? [
-            { key: 'category', value: 'Bekleidung > Herren > Jacken', confidence: 0.91 },
+            { key: 'category', value: 'Bekleidung > Herren > Jacken & Mäntel', confidence: 0.91 },
             { key: 'color', value: 'Schwarz', confidence: 0.87 },
             { key: 'brand', value: null, confidence: 0.22 }, // zu unsicher -> UNKNOWN
             { key: 'material', value: 'Polyester', confidence: 0.58 },
             { key: 'condition', value: 'good', confidence: 0.64 }, // Vorschlag, kein Zusicherung
+            { key: 'size', value: 'L', confidence: 0.72 },
+            { key: 'notable_features', value: null, confidence: 0.1 },
+            { key: 'visible_defects', value: null, confidence: 0.8 },
           ]
         : [
             { key: 'category', value: null, confidence: 0 },
@@ -31,6 +34,9 @@ export class MockGeminiVisionProvider implements AiVisionProvider {
             { key: 'brand', value: null, confidence: 0 },
             { key: 'material', value: null, confidence: 0 },
             { key: 'condition', value: null, confidence: 0 },
+            { key: 'size', value: null, confidence: 0 },
+            { key: 'notable_features', value: null, confidence: 0 },
+            { key: 'visible_defects', value: null, confidence: 0 },
           ],
     };
   }

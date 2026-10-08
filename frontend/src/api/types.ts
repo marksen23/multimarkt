@@ -186,10 +186,56 @@ export interface VaguePhraseMatch {
   suggestion: string;
 }
 
+export type DescriptionQualityIssueType =
+  | 'CONDITION_LANGUAGE_MISMATCH'
+  | 'MISSING_ATTRIBUTES'
+  | 'TOO_SHORT'
+  | 'EXTERNAL_CONTACT'
+  | 'DEFECT_NOT_MENTIONED';
+
+export type IssueSeverity = 'ERROR' | 'WARNING' | 'INFO';
+
+export interface DescriptionQualityIssue {
+  type: DescriptionQualityIssueType;
+  severity: IssueSeverity;
+  message: string;
+}
+
+export interface AttributeCoverage {
+  key: string;
+  value: string;
+  mentioned: boolean;
+}
+
+export interface DescriptionQualityResult {
+  score: number;
+  issues: DescriptionQualityIssue[];
+  attributeCoverage: AttributeCoverage[];
+}
+
+export type PriceTier = 'BELOW_MARKET' | 'MARKET' | 'ABOVE_MARKET' | 'PREMIUM';
+
+export interface PriceAlignmentIssue {
+  type: string;
+  severity: 'WARNING' | 'INFO';
+  message: string;
+}
+
+export interface PriceDescriptionAlignment {
+  alignmentScore: number;
+  priceTier: PriceTier;
+  issues: PriceAlignmentIssue[];
+  missingValueSignals: string[];
+}
+
+export type DescriptionChannel = 'KLEINANZEIGEN' | 'EBAY' | 'VINTED' | 'GENERIC';
+
 export interface DescriptionSuggestion {
   descriptionText: string;
   gapAnalysis: TitleGapAnalysis;
   vaguePhrases: VaguePhraseMatch[];
+  quality: DescriptionQualityResult;
+  priceAlignment: PriceDescriptionAlignment | null;
 }
 
 export type PhotoQualityIssueType = 'BLURRY' | 'TOO_DARK' | 'TOO_BRIGHT' | 'LOW_RESOLUTION' | 'DUPLICATE';

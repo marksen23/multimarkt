@@ -1,6 +1,7 @@
 import { api } from './client';
 import type {
   CanonicalListing,
+  DescriptionChannel,
   DescriptionSuggestion,
   Item,
   ItemAttribute,
@@ -36,10 +37,15 @@ export const itemsApi = {
   generateTitle: (id: string, channel: ListingChannel) =>
     api.get<TitleSuggestion>(`/items/${id}/generate-title?channel=${channel}`),
   updateTitle: (id: string, title: string) => api.patch<Item>(`/items/${id}/title`, { title }),
-  generateDescription: (id: string, salesGoal?: string) =>
-    api.get<DescriptionSuggestion>(
-      `/items/${id}/generate-description${salesGoal ? `?salesGoal=${salesGoal}` : ''}`,
-    ),
+  generateDescription: (id: string, salesGoal?: string, channel?: DescriptionChannel) => {
+    const params = new URLSearchParams();
+    if (salesGoal) params.set('salesGoal', salesGoal);
+    if (channel) params.set('channel', channel);
+    const query = params.toString();
+    return api.get<DescriptionSuggestion>(
+      `/items/${id}/generate-description${query ? `?${query}` : ''}`,
+    );
+  },
   optimizePhoto: (id: string, file: File) => {
     const form = new FormData();
     form.append('file', file);
