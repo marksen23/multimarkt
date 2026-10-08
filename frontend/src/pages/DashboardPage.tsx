@@ -17,6 +17,11 @@ export function DashboardPage() {
       .catch((e) => setError(e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler'));
   }, []);
 
+  const CLOSED_STATES = ['SOLD', 'ARCHIVED', 'CANCELLED'] as const;
+  type ClosedState = typeof CLOSED_STATES[number];
+  const activeEntries = entries?.filter((e) => !CLOSED_STATES.includes(e.item.status as ClosedState)) ?? [];
+  const closedEntries = entries?.filter((e) => CLOSED_STATES.includes(e.item.status as ClosedState)) ?? [];
+
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -49,7 +54,7 @@ export function DashboardPage() {
       )}
 
       <div className="space-y-2">
-        {entries?.map(({ item, listings, thumbnailUrl }) => (
+        {activeEntries.map(({ item, listings, thumbnailUrl }) => (
           <Link
             key={item.id}
             to={`/items/${item.id}`}
@@ -93,6 +98,8 @@ export function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {closedEntries.length > 0 && <ClosedSection entries={closedEntries} />}
     </div>
   );
 }
@@ -119,6 +126,14 @@ function StatsBar({ entries }: { entries: ItemListEntry[] }) {
     lagerwert > 0
       ? lagerwert.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €'
       : '—';
+
+  const erlös = entries
+    .filter((e) => e.item.status === 'SOLD')
+    .reduce((sum, e) => sum + (e.listings[0]?.sellingPrice ?? 0), 0);
+  const erlösFormatted =
+    erlös > 0
+      ? erlös.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €'
+      : null;
 
   return (
     <div className="space-y-2">
@@ -164,7 +179,72 @@ function StatsBar({ entries }: { entries: ItemListEntry[] }) {
           </span>
         </div>
       </div>
+      {erlösFormatted && (
+        <div className="bg-surface border border-line rounded-xl px-4 py-3 flex items-center justify-between">
+          <span className="text-xs font-bold text-ink-muted uppercase tracking-wide">Erlös (Verkauft)</span>
+          <span className="text-lg font-extrabold tabular-nums text-ink">{erlösFormatted}</span>
+        </div>
+      )}
     </div>
+  );
+}
+
+// ─── Closed items section ─────────────────────────────────────────────────────
+
+function ClosedSection({ entries }: { entries: ItemListEntry[] }) {
+  const soldRevenue = entries
+    .filter((e) => e.item.status === 'SOLD')
+    .reduce((sum, e) => sum + (e.listings[0]?.sellingPrice ?? 0), 0);
+  const revenueLabel =
+    soldRevenue > 0
+      ? `${soldRevenue.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €`
+      : null;
+
+  return (
+    <details className="group">
+      <summary className="flex items-center justify-between cursor-pointer list-none py-2 px-1 select-none">
+        <span className="text-xs font-bold text-ink-muted uppercase tracking-wide">
+          Abgeschlossen ({entries.length})
+        </span>
+        <div className="flex items-center gap-3">
+          {revenueLabel && (
+            <span className="text-xs text-ink-faint">Erlös: {revenueLabel}</span>
+          )}
+          <span className="text-ink-faint text-xs group-open:hidden">▼</span>
+          <span className="text-ink-faint text-xs hidden group-open:inline">▲</span>
+        </div>
+      </summary>
+      <div className="space-y-2 mt-2">
+        {entries.map(({ item, listings, thumbnailUrl }) => (
+          <Link
+            key={item.id}
+            to={`/items/${item.id}`}
+            className="flex items-center justify-between gap-3 bg-surface border border-line rounded-2xl px-4 py-3 hover:border-accent/30 transition opacity-60 hover:opacity-80"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              {thumbnailUrl && (
+                <img
+                  src={thumbnailUrl}
+                  alt=""
+                  className="w-10 h-10 rounded-xl object-cover border border-line shrink-0"
+                />
+              )}
+              <div className="min-w-0">
+                <p className="font-bold text-ink text-sm truncate">
+                  {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
+                </p>
+                {listings[0]?.sellingPrice != null && (
+                  <p className="text-xs text-ink-faint tabular-nums">
+                    {listings[0].sellingPrice.toFixed(2)} €
+                  </p>
+                )}
+              </div>
+            </div>
+            <StatusBadge status={item.status} />
+          </Link>
+        ))}
+      </div>
+    </details>
   );
 }
 
