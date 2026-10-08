@@ -160,9 +160,16 @@ export function ItemDetailPage() {
 
       {item.status === 'LISTED' && (
         <div className="p-4 space-y-4">
-          <div className="space-y-0.5">
-            <h1 className="text-base font-bold text-ink">{item.title ?? `Artikel ${id.slice(0, 8)}`}</h1>
-            {item.condition && <p className="text-xs text-ink-muted">{item.condition}</p>}
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-0.5 min-w-0">
+              <h1 className="text-base font-bold text-ink truncate">{item.title ?? `Artikel ${id.slice(0, 8)}`}</h1>
+              {item.condition && <p className="text-xs text-ink-muted">{item.condition}</p>}
+            </div>
+            {detail.listings.length > 0 && (
+              <span className="text-lg font-extrabold text-accent shrink-0">
+                {detail.listings[0].sellingPrice.toFixed(2)} €
+              </span>
+            )}
           </div>
           <button
             type="button"

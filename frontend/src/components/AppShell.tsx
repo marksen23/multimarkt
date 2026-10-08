@@ -51,6 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 )}
               </NavLink>
             ))}
+            <span className="text-line select-none">|</span>
             <button
               type="button"
               onClick={handleLogout}

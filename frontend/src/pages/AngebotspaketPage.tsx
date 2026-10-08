@@ -441,7 +441,7 @@ function PortalCard({
             <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wide">Beschreibung</span>
             <div className="flex items-center gap-2">
               <span className={`text-[11px] tabular-nums ${draft.description.length > 1500 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-ink-faint'}`}>
-                {draft.description.length}
+                {draft.description.length} / 1500
               </span>
               <CopyButton
                 state={descCopy.state}

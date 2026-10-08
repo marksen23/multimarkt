@@ -241,6 +241,13 @@ export function DashboardPage() {
                 </span>
               </div>
             )}
+            {item.status === 'SALE_CONFLICT' && (
+              <div className="mt-3">
+                <span className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-danger-soft border border-danger/20 text-danger font-medium">
+                  ⚠ Konflikt lösen
+                </span>
+              </div>
+            )}
             {listings.length > 0 && item.status !== 'BUNDLED' && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {listings.flatMap((listing) =>

@@ -85,9 +85,14 @@ export function DispositionPanel({ itemId, initialMedian }: { itemId: string; in
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-full p-3 rounded-xl border border-line text-sm font-bold text-ink-muted hover:bg-surface-hover transition-colors"
+        className="w-full p-3 rounded-xl border border-line text-sm font-bold text-ink-muted hover:bg-surface-hover transition-colors flex items-center justify-between gap-2"
       >
-        Lohnt sich der Verkauf? — Disposition-Check
+        <span>Lohnt sich der Verkauf? — Disposition-Check</span>
+        {result && (
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${ACTION_COLORS[result.action] ?? 'bg-zinc-500/10 text-zinc-500'}`}>
+            {ACTION_LABELS[result.action] ?? result.action}
+          </span>
+        )}
       </button>
     );
   }
