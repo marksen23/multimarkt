@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { itemsApi } from '../api/items';
 import type { ItemDetail } from '../api/types';
 
 const CONDITION_OPTIONS = ['Neu', 'Wie neu', 'Gut', 'Gebraucht', 'Defekt'];
@@ -27,6 +28,7 @@ interface Props {
   detail: ItemDetail;
   onConfirmCondition: (condition: string) => Promise<void>;
   onConfirmAttribute: (key: string, value?: string) => Promise<void>;
+  onReload: () => void;
   saving: boolean;
 }
 
@@ -44,8 +46,24 @@ export function SmartReviewPanel({
   detail,
   onConfirmCondition,
   onConfirmAttribute,
+  onReload,
   saving,
 }: Props) {
+  const [reanalyzing, setReanalyzing] = useState(false);
+  const [reanalyzeError, setReanalyzeError] = useState<string | null>(null);
+
+  const reanalyze = async () => {
+    setReanalyzing(true);
+    setReanalyzeError(null);
+    try {
+      await itemsApi.reanalyze(detail.item.id);
+      onReload();
+    } catch {
+      setReanalyzeError('Re-Analyse fehlgeschlagen — bitte erneut versuchen');
+    } finally {
+      setReanalyzing(false);
+    }
+  };
   // Pre-select the AI's condition guess if available
   const aiConditionAttr = detail.attributes.find(
     (a) => a.attributeKey === 'condition' && a.attributeValue,
@@ -120,6 +138,9 @@ export function SmartReviewPanel({
             </span>
           )}
         </div>
+        {reanalyzeError && (
+          <p className="text-xs text-danger mt-1">{reanalyzeError}</p>
+        )}
         {/* Progress bar */}
         <div className="mt-3 h-1.5 bg-line rounded-full overflow-hidden">
           <div
@@ -311,6 +332,15 @@ export function SmartReviewPanel({
             </div>
           </details>
         )}
+        {/* Re-analyze button */}
+        <button
+          type="button"
+          disabled={reanalyzing || anyActionInProgress}
+          onClick={() => void reanalyze()}
+          className="w-full py-2 border border-line rounded-xl text-xs font-bold text-ink-muted hover:bg-surface-hover disabled:opacity-50 transition-colors"
+        >
+          {reanalyzing ? 'KI analysiert neu…' : '↺ KI-Analyse wiederholen'}
+        </button>
       </div>
 
       {/* Sticky CTA */}

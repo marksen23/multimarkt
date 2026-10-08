@@ -6,9 +6,19 @@ import type { ItemListEntry } from '../api/types';
 import { ListSkeleton } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
 
+const STATUS_FILTERS = [
+  { value: '', label: 'Alle' },
+  { value: 'REVIEW_REQUIRED', label: 'Prüfen' },
+  { value: 'READY', label: 'Bereit' },
+  { value: 'LISTED', label: 'Online' },
+  { value: 'SOLD', label: 'Verkauft' },
+] as const;
+
 export function DashboardPage() {
   const [entries, setEntries] = useState<ItemListEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   useEffect(() => {
     itemsApi
@@ -19,8 +29,27 @@ export function DashboardPage() {
 
   const CLOSED_STATES = ['SOLD', 'ARCHIVED', 'CANCELLED'] as const;
   type ClosedState = typeof CLOSED_STATES[number];
-  const activeEntries = entries?.filter((e) => !CLOSED_STATES.includes(e.item.status as ClosedState)) ?? [];
-  const closedEntries = entries?.filter((e) => CLOSED_STATES.includes(e.item.status as ClosedState)) ?? [];
+
+  const filtered = entries?.filter((e) => {
+    if (statusFilter && e.item.status !== statusFilter) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      return (
+        (e.item.title ?? '').toLowerCase().includes(q) ||
+        (e.item.condition ?? '').toLowerCase().includes(q) ||
+        e.item.id.startsWith(q)
+      );
+    }
+    return true;
+  });
+
+  const isFiltering = search.trim() !== '' || statusFilter !== '';
+  const activeEntries = isFiltering
+    ? (filtered ?? [])
+    : (entries?.filter((e) => !CLOSED_STATES.includes(e.item.status as ClosedState)) ?? []);
+  const closedEntries = isFiltering
+    ? []
+    : (entries?.filter((e) => CLOSED_STATES.includes(e.item.status as ClosedState)) ?? []);
 
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
@@ -42,6 +71,43 @@ export function DashboardPage() {
 
       {entries && entries.length > 0 && <StatsBar entries={entries} />}
 
+      {/* Search + filter — only show once we have data */}
+      {entries && entries.length > 0 && (
+        <div className="space-y-2">
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint text-sm select-none">🔍</span>
+            <input
+              type="search"
+              placeholder="Artikel suchen…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 bg-surface border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
+            />
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => setStatusFilter(f.value)}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                  statusFilter === f.value
+                    ? 'bg-accent text-accent-ink'
+                    : 'bg-surface border border-line text-ink-muted hover:bg-surface-hover'
+                }`}
+              >
+                {f.label}
+                {f.value && entries && (
+                  <span className="ml-1 opacity-60">
+                    ({entries.filter((e) => e.item.status === f.value).length})
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {!entries && !error && <ListSkeleton />}
 
       {entries && entries.length === 0 && (
@@ -50,6 +116,19 @@ export function DashboardPage() {
           <Link to="/new" className="text-sm font-bold text-accent hover:text-accent-hover">
             Ersten Artikel anlegen
           </Link>
+        </div>
+      )}
+
+      {isFiltering && activeEntries.length === 0 && entries && entries.length > 0 && (
+        <div className="bg-surface border border-line rounded-2xl p-6 text-center">
+          <p className="text-sm text-ink-muted">Keine Artikel für diese Suche gefunden.</p>
+          <button
+            type="button"
+            onClick={() => { setSearch(''); setStatusFilter(''); }}
+            className="mt-2 text-sm font-bold text-accent hover:text-accent-hover"
+          >
+            Filter zurücksetzen
+          </button>
         </div>
       )}
 

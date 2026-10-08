@@ -100,6 +100,7 @@ export function ItemDetailPage() {
         <SmartReviewPanel
           detail={detail}
           saving={busy}
+          onReload={() => void reload()}
           onConfirmCondition={(condition) => run(() => itemsApi.confirmTruth(id, condition))}
           onConfirmAttribute={(key, value) => run(() => itemsApi.confirmAttribute(id, key, value))}
         />
