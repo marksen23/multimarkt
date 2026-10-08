@@ -142,6 +142,7 @@ export function ItemDetailPage() {
         <AnalyzeStep
           itemId={id}
           busy={busy || item.status === "ANALYZING"}
+          storageNotice={!(detail.photos.length > 0 || briefing.category)}
           onAnalyze={(files, onProgress) =>
             run(() => itemsApi.analyze(id, files, onProgress))
           }
@@ -379,10 +380,12 @@ function Centered({
 function AnalyzeStep({
   itemId,
   busy,
+  storageNotice,
   onAnalyze,
 }: {
   itemId: string;
   busy: boolean;
+  storageNotice: boolean;
   onAnalyze: (
     files: File[],
     onProgress?: (fraction: number) => void,
@@ -404,7 +407,12 @@ function AnalyzeStep({
   return (
     <div className="p-4 space-y-4">
       <h1 className="text-lg font-bold text-ink">Fotos hinzufügen</h1>
-      <PhotoCapture files={photos} onChange={setPhotos} itemId={itemId} />
+      <PhotoCapture
+        files={photos}
+        onChange={setPhotos}
+        itemId={itemId}
+        storageNotice={storageNotice}
+      />
       {busy && uploadProgress > 0 && !analyzing && (
         <div className="w-full h-1.5 rounded-full bg-line overflow-hidden">
           <div
