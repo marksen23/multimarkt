@@ -5,6 +5,7 @@ import { ActorContext } from '../../domain/actor-context';
 import {
   ComparableListingRef,
   DESCRIPTION_GENERATION_PROVIDER,
+  DescriptionChannel,
   DescriptionGenerationProvider,
   SalesGoal,
 } from '../../domain/ai/description-generation-provider.interface';
@@ -19,18 +20,31 @@ import { PriceTriangulationService } from '../pricing/price-triangulation.servic
 import { StateGuardService } from '../state-guard/state-guard.service';
 import { TitleGapAnalysis, TitleTokenAnalysisService } from '../title-generation/title-token-analysis.service';
 import { VaguePhraseDetectorService, VaguePhraseMatch } from './vague-phrase-detector.service';
+import {
+  DescriptionQualityResult,
+  DescriptionQualityService,
+} from './description-quality.service';
+import {
+  PriceDescriptionAlignment,
+  PriceDescriptionAlignmentService,
+} from './price-description-alignment.service';
 
 export interface DescriptionSuggestion {
   descriptionText: string;
   /**
-   * §9e-Erweiterung (September 2026, "Konkurrenzanalyse vertiefen"):
-   * dieselbe deterministische Token-Lückenanalyse wie beim Titel
-   * (TitleTokenAnalysisService), hier auf den Beschreibungstext angewendet
-   * — echte Vergleichstitel, keine Erfindung.
+   * §9e-Erweiterung (September 2026): dieselbe deterministische Token-Lückenanalyse
+   * wie beim Titel (TitleTokenAnalysisService), hier auf den Beschreibungstext angewendet.
    */
   gapAnalysis: TitleGapAnalysis;
   /** Bekannte Floskeln im generierten Text, mit Vorschlag zur Konkretisierung. */
   vaguePhrases: VaguePhraseMatch[];
+  /** Oktober 2026: Qualitätsbewertung (Vollständigkeit, Konditions-Sprache, Kontaktdaten). */
+  quality: DescriptionQualityResult;
+  /**
+   * Oktober 2026: Preisbindungs-Alignment — passt die Beschreibungssprache zum Preispunkt?
+   * Null wenn keine Marktpreisdaten vorhanden.
+   */
+  priceAlignment: PriceDescriptionAlignment | null;
 }
 
 /**
@@ -51,23 +65,25 @@ export class CanonicalListingService {
     private readonly priceTriangulation: PriceTriangulationService,
     private readonly tokenAnalysis: TitleTokenAnalysisService,
     private readonly vaguePhraseDetector: VaguePhraseDetectorService,
+    private readonly descriptionQuality: DescriptionQualityService,
+    private readonly priceAlignment: PriceDescriptionAlignmentService,
   ) {}
 
   /**
    * §9b/§9e: Vorschau-Vorschlag, den das Frontend VOR dem Speichern in ein
-   * editierbares Feld füllt — kein automatischer Save. Getrennt von
-   * `prepareForItem`, damit der Nutzer den Text sehen/ändern kann, bevor er
-   * sich verbindlich zum Verkauf entscheidet (dieselbe START_LISTING-
-   * Transition unten).
+   * editierbares Feld füllt — kein automatischer Save.
    *
-   * `salesGoal` steuert nur den TON (siehe RealGeminiDescriptionProvider),
-   * nie die Fakten. Vergleichsangebote kommen aus derselben
-   * Gemini-Grounding-Preisrecherche, die für die Preisvorschläge ohnehin
-   * schon läuft (§9e) — keine zusätzliche Recherche nötig.
+   * `salesGoal` steuert den TON, `channel` steuert Länge/Struktur für die
+   * Zielplattform (Kleinanzeigen/eBay/Vinted). Vergleichsangebote kommen aus
+   * derselben Gemini-Grounding-Preisrecherche (§9e) — keine zusätzliche Recherche.
+   *
+   * Oktober 2026: Liefert zusätzlich `quality` (Beschreibungsqualitätsscore)
+   * und `priceAlignment` (Preisbindungs-Alignment) als Teil der Antwort.
    */
   async generateDescription(
     itemId: string,
     salesGoal: SalesGoal | null = null,
+    channel: DescriptionChannel | null = null,
   ): Promise<DescriptionSuggestion> {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id: itemId });
     if (!item) throw new NotFoundException(`Item ${itemId} not found`);
@@ -75,7 +91,8 @@ export class CanonicalListingService {
     const attributes = await this.dataSource.manager.find(ItemAttributeEntity, {
       where: { itemId },
     });
-    const comparableListings = await this.fetchComparableListings(itemId);
+
+    const { comparableListings, priceResearchResult } = await this.fetchPriceResearchData(itemId);
 
     const descriptionText = await this.suggestDescription(
       item.title,
@@ -83,12 +100,37 @@ export class CanonicalListingService {
       attributes,
       comparableListings,
       salesGoal,
+      channel,
     );
+
+    const quality = this.descriptionQuality.evaluate(descriptionText, item.condition, attributes);
+
+    const vaguePhrases = this.vaguePhraseDetector.detect(descriptionText);
+
+    // Vague phrases fließen als zusätzlicher Deduction in den Quality-Score ein
+    // (hier nicht noch mal als eigene Issue — vaguePhrases im Response reichen)
+    const adjustedQualityScore = Math.max(0, quality.score - vaguePhrases.length * 5);
+    const qualityWithVagueDeduction: DescriptionQualityResult = {
+      ...quality,
+      score: adjustedQualityScore,
+    };
+
+    const alignment =
+      priceResearchResult?.recommendation
+        ? this.priceAlignment.evaluate(
+            descriptionText,
+            priceResearchResult.recommendation,
+            priceResearchResult.sources,
+            item.condition,
+          )
+        : null;
 
     return {
       descriptionText,
       gapAnalysis: this.tokenAnalysis.analyze(descriptionText, comparableListings),
-      vaguePhrases: this.vaguePhraseDetector.detect(descriptionText),
+      vaguePhrases,
+      quality: qualityWithVagueDeduction,
+      priceAlignment: alignment,
     };
   }
 
@@ -116,7 +158,8 @@ export class CanonicalListingService {
           item.title,
           item.condition,
           await manager.find(ItemAttributeEntity, { where: { itemId } }),
-          await this.fetchComparableListings(itemId),
+          (await this.fetchPriceResearchData(itemId)).comparableListings,
+          null,
           null,
         ));
 
@@ -178,6 +221,7 @@ export class CanonicalListingService {
     attributes: ItemAttributeEntity[],
     comparableListings: ComparableListingRef[],
     salesGoal: SalesGoal | null,
+    channel: DescriptionChannel | null,
   ): Promise<string> {
     const suggestion = await this.descriptionProvider.generate({
       title,
@@ -185,27 +229,28 @@ export class CanonicalListingService {
       attributes: attributes.map((a) => ({ key: a.attributeKey, value: a.attributeValue })),
       comparableListings,
       salesGoal,
+      channel: channel ?? undefined,
     });
-    // Provider liefert `null`, wenn keine Generierung möglich war (z.B.
-    // Gemini-Antwort leer) — nie einen kaputten/leeren Text durchreichen.
     return suggestion ?? `${title ?? 'Artikel'} — Zustand: ${condition ?? 'unbekannt'}`;
   }
 
   /**
-   * Reine Bequemlichkeit, kein Pflichtdatensatz: schlägt fehl (fehlende
-   * Attribute, Preisrecherche-Fehler) niemals hart — die Beschreibung
-   * bleibt auch ohne Vergleichsangebote nutzbar, nur ohne den
-   * Formulierungs-Kontext aus §9e.
+   * Holt Preisrecherche-Daten inkl. Vergleichsangebote. Schlägt niemals hart
+   * fehl — die Beschreibung bleibt auch ohne Preisdaten nutzbar.
    */
-  private async fetchComparableListings(itemId: string): Promise<ComparableListingRef[]> {
+  private async fetchPriceResearchData(itemId: string): Promise<{
+    comparableListings: ComparableListingRef[];
+    priceResearchResult: Awaited<ReturnType<PriceTriangulationService['research']>> | null;
+  }> {
     try {
       const research = await this.priceTriangulation.research(itemId);
-      return research.sources.flatMap((source) => {
+      const comparableListings = research.sources.flatMap((source) => {
         const listings = source.detail?.comparableListings;
         return Array.isArray(listings) ? (listings as ComparableListingRef[]) : [];
       });
+      return { comparableListings, priceResearchResult: research };
     } catch {
-      return [];
+      return { comparableListings: [], priceResearchResult: null };
     }
   }
 }

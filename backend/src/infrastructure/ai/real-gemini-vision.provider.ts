@@ -4,15 +4,34 @@ import { GoogleGenAI } from '@google/genai';
 import { AiAnalysisResult, AiVisionProvider } from '../../domain/ai/ai-vision-provider.interface';
 
 const MODEL_ID = 'gemini-flash-latest';
-const PROMPT_VERSION = '2026-09-24';
+const PROMPT_VERSION = '2026-10-08';
 
-// Dieselben fünf Attribut-Keys wie MockGeminiVisionProvider — der
+// Dieselben Attribut-Keys wie MockGeminiVisionProvider — der
 // Aufrufer (ProductAnalysisService) kennt keine anderen.
-const ATTRIBUTE_KEYS = ['category', 'color', 'brand', 'material', 'condition'] as const;
+const ATTRIBUTE_KEYS = [
+  'category',
+  'color',
+  'brand',
+  'material',
+  'condition',
+  'size',
+  'notable_features',
+  'visible_defects',
+] as const;
 
-const PROMPT = `Analysiere die angehängten Fotos eines gebrauchten Gegenstands, der weiterverkauft werden soll.
-Schätze für jedes der folgenden Felder einen Wert: category (z.B. "Bekleidung > Herren > Jacken"), color, brand, material, condition (eine von: new, like_new, good, fair, defective).
-WICHTIG: Wenn du dir bei einem Feld nicht ausreichend sicher bist, gib für dieses Feld value=null zurück — rate NICHT. Ein falscher Wert ist schlimmer als kein Wert, weil ein Mensch diese Angabe später ungeprüft bestätigen könnte.`;
+const PROMPT = `Analysiere die angehängten Fotos eines gebrauchten Gegenstands, der auf deutschen Wiederverkaufsplattformen (Kleinanzeigen, eBay, Vinted) inseriert werden soll.
+
+Schätze für jedes der folgenden Felder einen Wert:
+- category: Spezifische Kategorie im Format "Hauptkategorie > Unterkategorie > Typ", z.B. "Elektronik > Smartphones > iPhone" oder "Bekleidung > Damen > Jacken & Mäntel". Orientiere dich an deutschen Plattform-Kategorien.
+- color: Hauptfarbe auf Deutsch (z.B. "Dunkelblau", "Beige", "Schwarz-Weiß gemustert")
+- brand: Marke/Hersteller — nur wenn eindeutig erkennbar (Logo, Aufschrift, typisches Design)
+- material: Hauptmaterial (z.B. "Baumwolle", "Leder", "Edelstahl", "Polyester")
+- condition: Zustandsklasse — EINE von: new (Originalverpackung, noch versiegelt), like_new (unbenutzt/kaum benutzt, keine Gebrauchsspuren), good (normale Gebrauchsspuren, voll funktionsfähig), fair (deutliche Gebrauchsspuren, kleine Mängel), defective (defekt oder grössere Mängel)
+- size: Größe/Maß falls erkennbar — z.B. Konfektionsgröße (M, 42, XL), Schuhgröße (42), Maße (30×40 cm), Füllmenge (500ml). Null wenn nicht erkennbar.
+- notable_features: Besonderheiten die den Verkaufswert erhöhen — z.B. "Mit Originalverpackung", "Rechnung vorhanden", "Limitierte Edition", "Selten / Auslaufmodell". Null wenn keine auffälligen Besonderheiten.
+- visible_defects: Sichtbare Mängel/Schäden kurz beschreiben — z.B. "Kleiner Kratzer oben links", "Ausgeblichene Farbe am Kragen", "Fehlende Taste". Null wenn keine sichtbaren Mängel.
+
+WICHTIG: Wenn du dir bei einem Feld nicht ausreichend sicher bist, gib für dieses Feld value=null zurück — rate NICHT. Ein falscher Wert ist schlimmer als kein Wert, weil ein Mensch diese Angabe später ungeprüft bestätigen könnte. "visible_defects: null" bedeutet explizit "keine erkennbaren Mängel auf den Fotos".`;
 
 const RESPONSE_SCHEMA = {
   type: 'object',

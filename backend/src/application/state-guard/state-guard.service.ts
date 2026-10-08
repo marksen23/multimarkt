@@ -31,6 +31,7 @@ const ITEM_HUMAN_GATED_EVENTS = new Set<ItemMachineEvent['type']>([
   'START_LISTING',
   'RESOLVE_CONFLICT_SOLD',
   'RESOLVE_CONFLICT_CANCEL',
+  'MARK_SOLD_MANUALLY',
   'DISCARD',
 ]);
 
