@@ -65,6 +65,12 @@ export function NewBundlePage() {
         <p className="text-xs font-bold text-ink-muted uppercase mb-2">
           Bereite Artikel auswählen (optional)
         </p>
+        {readyItems === null && (
+          <div className="flex items-center gap-2 text-xs text-ink-faint py-1">
+            <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+            Artikel werden geladen…
+          </div>
+        )}
         {readyItems?.length === 0 && (
           <p className="text-xs text-ink-faint">
             Noch keine bereiten Artikel vorhanden — Bundle kann trotzdem leer angelegt werden.

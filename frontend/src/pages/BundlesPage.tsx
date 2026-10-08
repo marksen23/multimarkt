@@ -38,12 +38,35 @@ export function BundlesPage() {
       {!entries && !error && <ListSkeleton />}
 
       {entries && entries.length === 0 && (
-        <div className="bg-surface border border-line rounded-2xl p-8 text-center space-y-2">
-          <p className="text-sm text-ink-muted">
-            Noch keine Bundles. Sinnvoll für Artikel, die einzeln kaum Erlös bringen.
-          </p>
-          <Link to="/bundles/new" className="text-sm font-bold text-accent hover:text-accent-hover">
-            Erstes Bundle anlegen
+        <div className="bg-surface border border-line rounded-2xl p-8 space-y-5">
+          <div className="text-center space-y-1">
+            <p className="text-base font-bold text-ink">Mehrere Artikel, ein Angebot</p>
+            <p className="text-sm text-ink-muted">
+              Sinnvoll für Artikel, die einzeln kaum Erlös bringen.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {[
+              { icon: '📦', label: 'Bundle anlegen', sub: 'Titel vergeben, bereite Artikel hinzufügen.' },
+              { icon: '💶', label: 'Preis festlegen', sub: 'Gemeinsamer Preis für alle Artikel.' },
+              { icon: '✓', label: 'Einmal verkaufen', sub: 'Alle Artikel werden als BUNDLED gesperrt.' },
+            ].map(({ icon, label, sub }) => (
+              <div key={label} className="flex items-center gap-3">
+                <div className="w-7 h-7 rounded-full bg-accent-soft flex items-center justify-center flex-shrink-0 text-sm select-none">
+                  {icon}
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-ink">{label}</p>
+                  <p className="text-xs text-ink-faint">{sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <Link
+            to="/bundles/new"
+            className="block w-full p-3 rounded-xl font-bold bg-accent text-accent-ink text-center hover:bg-accent-hover transition-colors"
+          >
+            + Erstes Bundle anlegen
           </Link>
         </div>
       )}

@@ -398,7 +398,12 @@ function AnalyzeStep({
         className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
       >
         {!busy && 'Analysieren'}
-        {busy && analyzing && 'KI analysiert die Fotos…'}
+        {busy && analyzing && (
+          <span className="inline-flex items-center gap-2">
+            <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+            KI analysiert die Fotos…
+          </span>
+        )}
         {busy && !analyzing && uploadProgress > 0 && `Fotos werden hochgeladen… ${Math.round(uploadProgress * 100)}%`}
         {busy && !analyzing && uploadProgress === 0 && 'Analysiert…'}
       </button>
@@ -496,6 +501,13 @@ function PrepareListingStep({
           onChange={(e) => setDescription(e.target.value)}
           className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
         />
+        {description.length > 0 && (
+          <div className="flex justify-end">
+            <span className={`text-[11px] tabular-nums ${description.length > 1500 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-ink-faint'}`}>
+              {description.length} / 1500
+            </span>
+          </div>
+        )}
         {generateError && <p className="text-xs text-danger">{generateError}</p>}
         {descriptionMissingTokens.length > 0 && (
           <p className="text-xs text-ink-faint">
@@ -661,7 +673,12 @@ function ConflictResolutionPanel({
         </p>
       </div>
 
-      {!events && <p className="text-sm text-ink-faint">Lädt…</p>}
+      {!events && (
+        <div className="flex items-center gap-2 text-sm text-ink-faint">
+          <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+          Verkaufsmeldungen werden geladen…
+        </div>
+      )}
 
       {openEvents.map((event) => (
         <div
