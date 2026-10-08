@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import type { ItemDetail, ListingChannel, SaleEvent } from '../api/types';
-import { ConfidenceCenter } from '../components/ConfidenceCenter';
+import { SmartReviewPanel } from '../components/SmartReviewPanel';
 import { DispositionPanel } from '../components/DispositionPanel';
 import { ListingsManager } from '../components/ListingsManager';
 import { PhotoCapture } from '../components/PhotoCapture';
@@ -97,9 +97,10 @@ export function ItemDetailPage() {
       )}
 
       {item.status === 'REVIEW_REQUIRED' && (
-        <ConfidenceCenter
+        <SmartReviewPanel
           detail={detail}
           saving={busy}
+          onReload={() => void reload()}
           onConfirmCondition={(condition) => run(() => itemsApi.confirmTruth(id, condition))}
           onConfirmAttribute={(key, value) => run(() => itemsApi.confirmAttribute(id, key, value))}
         />
