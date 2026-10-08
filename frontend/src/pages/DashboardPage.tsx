@@ -36,13 +36,6 @@ function matchesFilter(entry: ItemListEntry, filter: FilterKey): boolean {
   return true;
 }
 
-const STATUS_FILTERS = [
-  { value: '', label: 'Alle' },
-  { value: 'REVIEW_REQUIRED', label: 'Prüfen' },
-  { value: 'READY', label: 'Bereit' },
-  { value: 'LISTED', label: 'Online' },
-  { value: 'SOLD', label: 'Verkauft' },
-] as const;
 
 export function DashboardPage() {
   const [entries, setEntries] = useState<ItemListEntry[] | null>(null);
@@ -73,10 +66,13 @@ export function DashboardPage() {
           (e.item.condition ?? '').toLowerCase().includes(searchLower)),
     ) ?? null;
 
-  const CLOSED_STATES = ['SOLD', 'ARCHIVED', 'CANCELLED'] as const;
-  type ClosedState = typeof CLOSED_STATES[number];
-  const activeEntries = visible?.filter((e) => !CLOSED_STATES.includes(e.item.status as ClosedState)) ?? [];
-  const closedEntries = entries?.filter((e) => CLOSED_STATES.includes(e.item.status as ClosedState)) ?? [];
+  // 'abgeschlossen' filter: show closed items in main list; all others: exclude closed from main, show in ClosedSection
+  const activeEntries = filter === 'abgeschlossen'
+    ? (visible ?? [])
+    : (visible?.filter((e) => !ABGESCHLOSSEN_STATES.includes(e.item.status)) ?? []);
+  const closedEntries = filter === 'alle'
+    ? (entries?.filter((e) => ABGESCHLOSSEN_STATES.includes(e.item.status)) ?? [])
+    : [];
 
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
@@ -103,7 +99,7 @@ export function DashboardPage() {
             type="search"
             placeholder="Artikel suchen…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); if (e.target.value) setFilter('alle'); }}
             className="w-full pl-9 pr-4 py-2.5 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft bg-transparent text-ink placeholder:text-ink-faint"
           />
           <svg
@@ -177,48 +173,12 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* Search + filter — only show once we have data */}
-      {entries && entries.length > 0 && (
-        <div className="space-y-2">
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint text-sm select-none">🔍</span>
-            <input
-              type="search"
-              placeholder="Artikel suchen…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-surface border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
-            />
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {STATUS_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                type="button"
-                onClick={() => setStatusFilter(f.value)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                  statusFilter === f.value
-                    ? 'bg-accent text-accent-ink'
-                    : 'bg-surface border border-line text-ink-muted hover:bg-surface-hover'
-                }`}
-              >
-                {f.label}
-                {f.value && entries && (
-                  <span className="ml-1 opacity-60">
-                    ({entries.filter((e) => e.item.status === f.value).length})
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {!entries && !error && <ListSkeleton />}
 
       {entries && entries.length === 0 && <EmptyState />}
 
-      {visible && visible.length === 0 && entries && entries.length > 0 && (
+      {activeEntries.length === 0 && visible !== null && entries && entries.length > 0 && !(filter === 'alle' && closedEntries.length > 0) && (
         <div className="bg-surface border border-line rounded-2xl p-6 text-center space-y-2">
           <p className="text-sm text-ink-muted">
             {search.trim()
@@ -234,19 +194,6 @@ export function DashboardPage() {
               Filter zurücksetzen
             </button>
           )}
-        </div>
-      )}
-
-      {isFiltering && activeEntries.length === 0 && entries && entries.length > 0 && (
-        <div className="bg-surface border border-line rounded-2xl p-6 text-center">
-          <p className="text-sm text-ink-muted">Keine Artikel für diese Suche gefunden.</p>
-          <button
-            type="button"
-            onClick={() => { setSearch(''); setStatusFilter(''); }}
-            className="mt-2 text-sm font-bold text-accent hover:text-accent-hover"
-          >
-            Filter zurücksetzen
-          </button>
         </div>
       )}
 
@@ -330,7 +277,7 @@ export function DashboardPage() {
         ))}
       </div>
 
-      {closedEntries.length > 0 && <ClosedSection entries={closedEntries} />}
+      {filter === 'alle' && closedEntries.length > 0 && <ClosedSection entries={closedEntries} />}
     </div>
   );
 }

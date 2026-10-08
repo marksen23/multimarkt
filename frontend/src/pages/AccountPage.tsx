@@ -68,7 +68,7 @@ export function AccountPage() {
   const total = entries?.length ?? 0;
   const active =
     entries?.filter((e) =>
-      ['NEW', 'ANALYZING', 'REVIEW_REQUIRED', 'READY', 'LISTED'].includes(e.item.status),
+      ['LISTED', 'SALE_CONFLICT', 'BUNDLED'].includes(e.item.status),
     ).length ?? 0;
   const sold = entries?.filter((e) => e.item.status === 'SOLD').length ?? 0;
   const revenue =
