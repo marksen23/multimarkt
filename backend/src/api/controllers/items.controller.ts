@@ -32,13 +32,17 @@ import {
 } from '../dto/items.dto';
 import { EvaluateDispositionDto } from '../dto/disposition.dto';
 import { ActorContext } from '../../domain/actor-context';
-import { SalesGoal } from '../../domain/ai/description-generation-provider.interface';
+import { DescriptionChannel, SalesGoal } from '../../domain/ai/description-generation-provider.interface';
 import { ItemLifecycleState } from '../../domain/state-vocabulary';
 import { BundleAssignmentService } from '../../application/bundle/bundle-assignment.service';
 import {
   CanonicalListingService,
   DescriptionSuggestion,
 } from '../../application/listing/canonical-listing.service';
+import {
+  MarketplaceRecommendationResult,
+  MarketplaceRecommenderService,
+} from '../../application/listing/marketplace-recommender.service';
 import {
   ListingSummary,
   ListingSummaryService,
@@ -79,6 +83,7 @@ const MAX_PHOTOS_PER_UPLOAD = 10;
 const MAX_PHOTO_SIZE_BYTES = 15 * 1024 * 1024;
 const ALLOWED_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic']);
 const SALES_GOALS: SalesGoal[] = ['MAX_PROFIT', 'BALANCED', 'FAST_SALE', 'MINIMAL_EFFORT'];
+const DESCRIPTION_CHANNELS: DescriptionChannel[] = ['KLEINANZEIGEN', 'EBAY', 'VINTED', 'GENERIC'];
 const LISTING_CHANNELS: ListingChannel[] = ['KLEINANZEIGEN', 'EBAY', 'VINTED'];
 
 /** Doc 04 §7/§8/§12 — Item-Aggregat. */
@@ -101,6 +106,7 @@ export class ItemsController {
     private readonly listingSummary: ListingSummaryService,
     private readonly attributeConfirmation: ItemAttributeConfirmationService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
+    private readonly marketplaceRecommender: MarketplaceRecommenderService,
   ) {}
 
   @Post()
@@ -266,6 +272,14 @@ export class ItemsController {
     return this.stateGuard.transitionItem(id, { type: 'DISCARD', actor });
   }
 
+  @Post(':id/mark-sold')
+  async markSold(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<ItemEntity> {
+    return this.stateGuard.transitionItem(id, { type: 'MARK_SOLD_MANUALLY', actor });
+  }
+
   @Post(':id/confirm-truth')
   async confirmTruth(
     @Param('id', ParseUUIDPipe) id: string,
@@ -305,9 +319,13 @@ export class ItemsController {
   async generateDescription(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('salesGoal') salesGoal?: string,
+    @Query('channel') channel?: string,
   ): Promise<DescriptionSuggestion> {
     const goal = SALES_GOALS.includes(salesGoal as SalesGoal) ? (salesGoal as SalesGoal) : null;
-    return this.canonicalListing.generateDescription(id, goal);
+    const resolvedChannel = DESCRIPTION_CHANNELS.includes(channel as DescriptionChannel)
+      ? (channel as DescriptionChannel)
+      : null;
+    return this.canonicalListing.generateDescription(id, goal, resolvedChannel);
   }
 
   // Rein technischer Hinweis (Schärfe/Belichtung/Auflösung/Duplikate) über
@@ -337,6 +355,17 @@ export class ItemsController {
       ? (channel as ListingChannel)
       : 'KLEINANZEIGEN';
     return this.titleGeneration.generateTitle(id, resolvedChannel);
+  }
+
+  @Get(':id/marketplace-recommendations')
+  async marketplaceRecommendations(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('salesGoal') salesGoal?: string,
+  ): Promise<MarketplaceRecommendationResult> {
+    const goal = SALES_GOALS.includes(salesGoal as (typeof SALES_GOALS)[number])
+      ? (salesGoal as (typeof SALES_GOALS)[number])
+      : null;
+    return this.marketplaceRecommender.recommend(id, goal);
   }
 
   // Bislang gab es keinen Weg, den bei der Item-Anlage gesetzten Titel

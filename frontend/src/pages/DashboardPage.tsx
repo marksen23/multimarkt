@@ -6,12 +6,6 @@ import type { ItemListEntry } from '../api/types';
 import { ListSkeleton } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
 
-/**
- * Zentrales Dashboard (README §5: "Status pro Listing pro Plattform"). Nutzt
- * `GET /items` — eine bewusste, dokumentierte Erweiterung von Doc 04 (siehe
- * items.controller.ts), da der eingefrorene Vertrag dafür keinen
- * Listen-Endpoint vorsah.
- */
 export function DashboardPage() {
   const [entries, setEntries] = useState<ItemListEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +34,8 @@ export function DashboardPage() {
           {error}
         </div>
       )}
+
+      {entries && entries.length > 0 && <StatsBar entries={entries} />}
 
       {!entries && !error && <ListSkeleton />}
 
@@ -97,6 +93,105 @@ export function DashboardPage() {
           </Link>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ─── Stats ───────────────────────────────────────────────────────────────────
+
+function StatsBar({ entries }: { entries: ItemListEntry[] }) {
+  const pipeline = entries.filter(
+    (e) =>
+      e.item.status === 'NEW' ||
+      e.item.status === 'ANALYZING' ||
+      e.item.status === 'REVIEW_REQUIRED',
+  ).length;
+  const ready = entries.filter((e) => e.item.status === 'READY').length;
+  const listed = entries.filter((e) => e.item.status === 'LISTED').length;
+  const sold = entries.filter((e) => e.item.status === 'SOLD').length;
+  const conflict = entries.filter((e) => e.item.status === 'SALE_CONFLICT').length;
+
+  const lagerwert = entries
+    .filter((e) => e.item.status === 'READY' || e.item.status === 'LISTED')
+    .reduce((sum, e) => sum + (e.listings[0]?.sellingPrice ?? 0), 0);
+
+  const lagerwertFormatted =
+    lagerwert > 0
+      ? lagerwert.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €'
+      : '—';
+
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-4 gap-2">
+        <StatTile
+          label="Pipeline"
+          value={pipeline}
+          sub={pipeline === 1 ? 'Artikel' : 'Artikel'}
+          dim={pipeline === 0}
+        />
+        <StatTile
+          label="Bereit"
+          value={ready}
+          sub={ready === 1 ? 'Artikel' : 'Artikel'}
+          dim={ready === 0}
+        />
+        <StatTile
+          label="Online"
+          value={listed}
+          sub={listed === 1 ? 'Listing' : 'Listings'}
+          highlight={listed > 0}
+          dim={listed === 0}
+        />
+        <StatTile
+          label="Verkauft"
+          value={sold}
+          sub={sold === 1 ? 'Artikel' : 'Artikel'}
+          dim={sold === 0}
+        />
+      </div>
+      <div className="bg-surface border border-line rounded-xl px-4 py-3 flex items-center justify-between">
+        <span className="text-xs font-bold text-ink-muted uppercase tracking-wide">
+          Lagerwert (Bereit + Online)
+        </span>
+        <div className="flex items-center gap-3">
+          {conflict > 0 && (
+            <span className="text-xs font-bold text-danger">
+              ⚠ {conflict} Konflikt{conflict > 1 ? 'e' : ''}
+            </span>
+          )}
+          <span className={`text-lg font-extrabold tabular-nums ${lagerwert > 0 ? 'text-accent' : 'text-ink-faint'}`}>
+            {lagerwertFormatted}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatTile({
+  label,
+  value,
+  sub,
+  highlight,
+  dim,
+}: {
+  label: string;
+  value: number;
+  sub: string;
+  highlight?: boolean;
+  dim?: boolean;
+}) {
+  return (
+    <div className="bg-surface border border-line rounded-xl p-3 text-center">
+      <div
+        className={`text-2xl font-extrabold tabular-nums leading-none ${
+          highlight ? 'text-accent' : dim ? 'text-ink-faint' : 'text-ink'
+        }`}
+      >
+        {value}
+      </div>
+      <div className="text-[10px] font-bold text-ink-muted uppercase tracking-wide mt-1">{label}</div>
+      <div className="text-[10px] text-ink-faint">{sub}</div>
     </div>
   );
 }

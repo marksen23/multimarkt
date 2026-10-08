@@ -119,6 +119,9 @@ export function ItemDetailPage() {
               ✨ Angebotspaket erstellen
             </button>
           </div>
+          <div className="px-4">
+            <MarkSoldAction busy={busy} onMarkSold={() => run(() => itemsApi.markSold(id))} />
+          </div>
           <PrepareListingStep
             itemId={id}
             currentTitle={item.title}
@@ -134,6 +137,7 @@ export function ItemDetailPage() {
       {item.status === 'LISTED' && (
         <div className="p-4 space-y-4">
           <h1 className="text-lg font-bold text-ink">Listings</h1>
+          <MarkSoldAction busy={busy} onMarkSold={() => run(() => itemsApi.markSold(id))} />
           <ListingsManager
             listings={detail.listings}
             busy={busy}
@@ -208,6 +212,53 @@ function DiscardItemAction({
       className="text-xs text-ink-faint hover:text-danger transition-colors"
     >
       Artikel verwerfen
+    </button>
+  );
+}
+
+function MarkSoldAction({
+  busy,
+  onMarkSold,
+}: {
+  busy: boolean;
+  onMarkSold: () => Promise<void>;
+}) {
+  const [confirming, setConfirming] = useState(false);
+
+  if (confirming) {
+    return (
+      <div className="flex items-center justify-between bg-surface border border-line rounded-xl px-4 py-3">
+        <span className="text-sm font-bold text-ink">Wirklich als verkauft markieren?</span>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => { void onMarkSold(); setConfirming(false); }}
+            className="text-sm font-bold text-accent hover:text-accent-hover disabled:opacity-50 transition-colors"
+          >
+            Ja, verkauft
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setConfirming(false)}
+            className="text-sm text-ink-muted hover:text-ink transition-colors"
+          >
+            Abbrechen
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => setConfirming(true)}
+      className="w-full p-3 rounded-xl font-bold border border-accent text-accent hover:bg-accent hover:text-accent-ink disabled:opacity-50 transition-colors"
+    >
+      ✓ Als verkauft markieren
     </button>
   );
 }
