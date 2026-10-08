@@ -20,6 +20,7 @@ import { TitleGenerationModule } from '../title-generation/title-generation.modu
 import { CanonicalListingService } from './canonical-listing.service';
 import { DescriptionQualityService } from './description-quality.service';
 import { ListingSummaryService } from './listing-summary.service';
+import { MarketplaceRecommenderService } from './marketplace-recommender.service';
 import { PriceDescriptionAlignmentService } from './price-description-alignment.service';
 import { VaguePhraseDetectorService } from './vague-phrase-detector.service';
 
@@ -47,6 +48,7 @@ const GEMINI_PLACEHOLDER_KEY = 'unused-mock-provider-active';
     VaguePhraseDetectorService,
     DescriptionQualityService,
     PriceDescriptionAlignmentService,
+    MarketplaceRecommenderService,
     {
       provide: DESCRIPTION_GENERATION_PROVIDER,
       inject: [ConfigService],
@@ -58,6 +60,6 @@ const GEMINI_PLACEHOLDER_KEY = 'unused-mock-provider-active';
       },
     },
   ],
-  exports: [CanonicalListingService, ListingSummaryService],
+  exports: [CanonicalListingService, ListingSummaryService, MarketplaceRecommenderService],
 })
 export class CanonicalListingModule {}

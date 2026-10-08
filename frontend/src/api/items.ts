@@ -9,6 +9,7 @@ import type {
   ItemListEntry,
   ItemLifecycleState,
   ListingChannel,
+  MarketplaceRecommendationResult,
   PhotoQualityReport,
   PriceResearchResult,
   SaleEvent,
@@ -66,4 +67,8 @@ export const itemsApi = {
   saleEvents: (id: string) => api.get<SaleEvent[]>(`/items/${id}/sale-events`),
   resolveConflict: (id: string, winningSaleEventId: string) =>
     api.post<Item>(`/items/${id}/resolve-conflict`, { winningSaleEventId }),
+  marketplaceRecommendations: (id: string, salesGoal?: SalesGoal) => {
+    const query = salesGoal ? `?salesGoal=${salesGoal}` : '';
+    return api.get<MarketplaceRecommendationResult>(`/items/${id}/marketplace-recommendations${query}`);
+  },
 };

@@ -285,3 +285,38 @@ export interface ApiError {
   message: string;
   details: Record<string, unknown>;
 }
+
+// --- Marktplatz-Empfehlung ---
+
+export type SecondhandMarketplace =
+  | 'KLEINANZEIGEN'
+  | 'EBAY'
+  | 'VINTED'
+  | 'MARKT_DE'
+  | 'QUOKA'
+  | 'FACEBOOK'
+  | 'MOMOX'
+  | 'REBUY';
+
+export type MarketplaceType = 'CLASSIFIED' | 'AUCTION_PLATFORM' | 'FASHION_COMMUNITY' | 'BUYBACK';
+export type EstimatedTimeToSale = 'INSTANT' | 'FAST' | 'MEDIUM' | 'SLOW';
+
+export interface MarketplaceRecommendation {
+  marketplace: SecondhandMarketplace;
+  label: string;
+  type: MarketplaceType;
+  score: number;
+  rank: number;
+  reasons: string[];
+  cautions: string[];
+  estimatedTimeToSale: EstimatedTimeToSale;
+  feePercent: number;
+  listingUrl: string;
+}
+
+export interface MarketplaceRecommendationResult {
+  itemId: string;
+  salesGoal: SalesGoal;
+  detectedCategory: string;
+  recommendations: MarketplaceRecommendation[];
+}

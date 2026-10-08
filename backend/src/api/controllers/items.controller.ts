@@ -40,6 +40,10 @@ import {
   DescriptionSuggestion,
 } from '../../application/listing/canonical-listing.service';
 import {
+  MarketplaceRecommendationResult,
+  MarketplaceRecommenderService,
+} from '../../application/listing/marketplace-recommender.service';
+import {
   ListingSummary,
   ListingSummaryService,
 } from '../../application/listing/listing-summary.service';
@@ -102,6 +106,7 @@ export class ItemsController {
     private readonly listingSummary: ListingSummaryService,
     private readonly attributeConfirmation: ItemAttributeConfirmationService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
+    private readonly marketplaceRecommender: MarketplaceRecommenderService,
   ) {}
 
   @Post()
@@ -342,6 +347,17 @@ export class ItemsController {
       ? (channel as ListingChannel)
       : 'KLEINANZEIGEN';
     return this.titleGeneration.generateTitle(id, resolvedChannel);
+  }
+
+  @Get(':id/marketplace-recommendations')
+  async marketplaceRecommendations(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('salesGoal') salesGoal?: string,
+  ): Promise<MarketplaceRecommendationResult> {
+    const goal = SALES_GOALS.includes(salesGoal as (typeof SALES_GOALS)[number])
+      ? (salesGoal as (typeof SALES_GOALS)[number])
+      : null;
+    return this.marketplaceRecommender.recommend(id, goal);
   }
 
   // Bislang gab es keinen Weg, den bei der Item-Anlage gesetzten Titel
