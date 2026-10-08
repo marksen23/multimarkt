@@ -191,10 +191,34 @@ function StatsBar({ entries }: { entries: ItemListEntry[] }) {
 
 // ─── Closed items section ─────────────────────────────────────────────────────
 
+function exportSoldCsv(entries: ItemListEntry[]) {
+  const sold = entries.filter((e) => e.item.status === 'SOLD');
+  if (sold.length === 0) return;
+  const rows: string[][] = [['Titel', 'Zustand', 'Listingpreis (€)', 'Erstellt', 'Aktualisiert']];
+  for (const { item, listings } of sold) {
+    rows.push([
+      item.title ?? item.id,
+      item.condition ?? '',
+      listings[0]?.sellingPrice?.toFixed(2) ?? '',
+      new Date(item.createdAt).toLocaleDateString('de-DE'),
+      new Date(item.updatedAt).toLocaleDateString('de-DE'),
+    ]);
+  }
+  const csv = rows
+    .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `verkaufshistorie-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function ClosedSection({ entries }: { entries: ItemListEntry[] }) {
-  const soldRevenue = entries
-    .filter((e) => e.item.status === 'SOLD')
-    .reduce((sum, e) => sum + (e.listings[0]?.sellingPrice ?? 0), 0);
+  const soldEntries = entries.filter((e) => e.item.status === 'SOLD');
+  const soldRevenue = soldEntries.reduce((sum, e) => sum + (e.listings[0]?.sellingPrice ?? 0), 0);
   const revenueLabel =
     soldRevenue > 0
       ? `${soldRevenue.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €`
@@ -209,6 +233,15 @@ function ClosedSection({ entries }: { entries: ItemListEntry[] }) {
         <div className="flex items-center gap-3">
           {revenueLabel && (
             <span className="text-xs text-ink-faint">Erlös: {revenueLabel}</span>
+          )}
+          {soldEntries.length > 0 && (
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); exportSoldCsv(entries); }}
+              className="text-[11px] font-bold text-ink-faint hover:text-accent transition-colors py-1 px-1"
+            >
+              CSV ↓
+            </button>
           )}
           <span className="text-ink-faint text-xs group-open:hidden">▼</span>
           <span className="text-ink-faint text-xs hidden group-open:inline">▲</span>
