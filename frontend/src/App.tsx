@@ -12,6 +12,7 @@ import { NegotiationDemoPage } from './pages/NegotiationDemoPage';
 import { ConfidenceCenterDemoPage } from './pages/ConfidenceCenterDemoPage';
 import { AngebotspaketPage } from './pages/AngebotspaketPage';
 import { AnkaufPage } from './pages/AnkaufPage';
+import { SalesPage } from './pages/SalesPage';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
       <AppShell>
         <Routes>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/verkaeufe" element={<SalesPage />} />
           <Route path="/new" element={<NewItemPage />} />
           <Route path="/items/:id" element={<ItemDetailPage />} />
           <Route path="/items/:id/angebotspaket" element={<AngebotspaketPage />} />

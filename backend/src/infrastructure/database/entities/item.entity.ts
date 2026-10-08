@@ -68,6 +68,121 @@ export class ItemEntity {
   @Column({ name: 'purchase_url', type: 'text', nullable: true })
   purchaseUrl: string | null;
 
+  // Verkaufsabschluss (Feature-Plan 3.4). Die Beträge sind der erfasste
+  // Verkauf, nicht die erwartete Marge. `salePurchasePriceEur` ist der
+  // Einstand in diesem Moment; `saleNetProfitEur` ist Netto minus diesen
+  // Einstand. Beides bleibt stehen, wenn der Einkauf später geändert wird.
+  @Column({
+    name: 'sale_proceeds_eur',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  saleProceedsEur: number | null;
+
+  @Column({ name: 'sale_portal', type: 'text', nullable: true })
+  salePortal: string | null;
+
+  @Column({
+    name: 'sale_fee_eur',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  saleFeeEur: number | null;
+
+  @Column({
+    name: 'sale_shipping_eur',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  saleShippingEur: number | null;
+
+  @Column({ name: 'sale_payment_method', type: 'text', nullable: true })
+  salePaymentMethod: string | null;
+
+  @Column({
+    name: 'sale_purchase_price_eur',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  salePurchasePriceEur: number | null;
+
+  @Column({
+    name: 'sale_net_profit_eur',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  saleNetProfitEur: number | null;
+
+  @Column({ name: 'sold_at', type: 'timestamptz', nullable: true })
+  soldAt: Date | null;
+
+  // Logistikprofil (Feature-Plan 3.5). Liegt neben der Produktwahrheit:
+  // Gewicht und Maße sind Angaben zum Versand, kein bestätigtes Attribut.
+  // `logisticsCaptured` trennt „Formular noch nicht gespeichert“ von
+  // einem echten Nein bei Sperrig, Abholung und Versand.
+  @Column({ name: 'weight_grams', type: 'int', nullable: true })
+  weightGrams: number | null;
+
+  @Column({
+    name: 'length_cm',
+    type: 'numeric',
+    precision: 6,
+    scale: 1,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  lengthCm: number | null;
+
+  @Column({
+    name: 'width_cm',
+    type: 'numeric',
+    precision: 6,
+    scale: 1,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  widthCm: number | null;
+
+  @Column({
+    name: 'height_cm',
+    type: 'numeric',
+    precision: 6,
+    scale: 1,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  heightCm: number | null;
+
+  @Column({ name: 'logistics_bulky', type: 'boolean', default: false })
+  logisticsBulky: boolean;
+
+  @Column({ name: 'pickup_only', type: 'boolean', default: false })
+  pickupOnly: boolean;
+
+  @Column({ name: 'shipping_possible', type: 'boolean', default: false })
+  shippingPossible: boolean;
+
+  @Column({ name: 'postal_code', type: 'text', nullable: true })
+  postalCode: string | null;
+
+  @Column({ name: 'logistics_captured', type: 'boolean', default: false })
+  logisticsCaptured: boolean;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

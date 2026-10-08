@@ -20,6 +20,7 @@ export interface DispositionRecommendation {
   recommendedPlatforms: PlatformRecommendation[];
   rationale: string;
   estimatedEffortMinutes: number;
+  shippingCostEur: number;
   margin: ExpectedMargin;
   individualSaleNotice: string | null;
 }
@@ -27,7 +28,6 @@ export interface DispositionRecommendation {
 export interface EvaluateDispositionInput {
   category: string;
   marketMedianPrice: number;
-  isBulky?: boolean;
   userGoal: DispositionUserGoal;
 }
 

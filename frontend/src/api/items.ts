@@ -1,3 +1,5 @@
+import type { LogisticsDraft } from '../logistics/profile';
+import type { SaleCloseoutDraft } from '../margin/sale-closeout';
 import { api } from './client';
 import type {
   CanonicalListing,
@@ -27,6 +29,8 @@ export const itemsApi = {
     condition?: string | null;
     url?: string | null;
   }) => api.post<Item>('/items/from-purchase', body),
+  updateLogistics: (id: string, body: LogisticsDraft) =>
+    api.patch<Item>(`/items/${id}/logistics`, body),
   updatePurchase: (
     id: string,
     body: {
@@ -75,6 +79,8 @@ export const itemsApi = {
     }),
   bundle: (id: string, title: string, itemIds: string[]) =>
     api.post(`/items/${id}/bundle`, { title, itemIds }),
+  recordSaleCloseout: (id: string, draft: SaleCloseoutDraft) =>
+    api.post<Item>(`/items/${id}/sale-closeout`, draft),
   saleEvents: (id: string) => api.get<SaleEvent[]>(`/items/${id}/sale-events`),
   resolveConflict: (id: string, winningSaleEventId: string) =>
     api.post<Item>(`/items/${id}/resolve-conflict`, { winningSaleEventId }),

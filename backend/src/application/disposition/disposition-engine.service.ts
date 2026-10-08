@@ -1,10 +1,20 @@
 import { Injectable } from '@nestjs/common';
+import {
+  LogisticsProfile,
+  SHIPPING_PORTAL_KEYS,
+  shippingCostEur,
+  shippingPortalsAllowed,
+} from '../../domain/logistics/logistics-profile';
 
 /**
  * Disposition Engine ("Lohnt sich das?", Freeze §10 / Zusammenfassung §3-III).
  * Reine, zustandslose Berechnung — keine DB-Zugriffe. Adaptiert aus
  * `docs/disposition_engine_decision_matrix.md`, an das V2.2-Vokabular
  * angepasst (Produktzustand als String passend zu `items.condition`).
+ *
+ * Feature-Plan 3.5: Versandportale und der Versandabzug kommen aus dem
+ * Logistikprofil. Die frühere Ja/Nein-Sperrig-Flagge und die pauschalen
+ * 1,50 € sind hier nicht mehr die Quelle.
  */
 
 export type DispositionAction =
@@ -21,7 +31,7 @@ export interface ProductProfile {
   category: string;
   condition: string;
   marketMedianPrice: number;
-  isBulky: boolean;
+  logistics: LogisticsProfile;
   userGoal: DispositionUserGoal;
 }
 
@@ -36,6 +46,8 @@ export interface DispositionRecommendation {
   recommendedPlatforms: PlatformRecommendation[];
   rationale: string;
   estimatedEffortMinutes: number;
+  /** 0 € bei Abholung oder ohne Profil. Sonst die Paketannahme aus Gewicht und Maßen. */
+  shippingCostEur: number;
 }
 
 const LOW_VALUE_THRESHOLD_EUR = 10;
@@ -45,6 +57,7 @@ const BUYBACK_CATEGORIES = ['electronics', 'books', 'media'];
 export class DispositionEngineService {
   evaluate(product: ProductProfile): DispositionRecommendation {
     const marketPrice = product.marketMedianPrice;
+    const parcelShippingEur = shippingCostEur(product.logistics);
 
     if (marketPrice < LOW_VALUE_THRESHOLD_EUR && product.condition !== 'new') {
       return {
@@ -52,6 +65,7 @@ export class DispositionEngineService {
         recommendedPlatforms: [],
         rationale: `Der geschätzte Marktwert liegt bei ca. ${marketPrice.toFixed(2)} €. Im Verhältnis zum Aufwand (Verpackung, Postweg, Rückfragen) lohnt sich ein Online-Verkauf ökonomisch kaum. Empfehlung: Spende oder Wertstoffhof.`,
         estimatedEffortMinutes: 5,
+        shippingCostEur: parcelShippingEur,
       };
     }
 
@@ -73,27 +87,50 @@ export class DispositionEngineService {
           rationale:
             'Da ein schneller Verkauf ohne Aufwand gewünscht ist, ist ein Direktankaufsdienst die effizienteste Wahl.',
           estimatedEffortMinutes: 10,
+          shippingCostEur: parcelShippingEur,
         };
       }
     }
 
-    // Vertriebskanal-Entscheidung (docs/README.md §4e-Ergänzung, September
-    // 2026): Kleinanzeigen ist der einzige Verkaufskanal — eBay/Vinted
-    // werden hier bewusst nicht mehr als Plattform empfohlen (eBay dient
-    // nur noch als Recherche-Quelle, siehe PriceTriangulationService).
+    const ship = shippingPortalsAllowed(product.logistics);
+    const postalCode = product.logistics.postalCode?.trim();
+    const pickupWhere = postalCode ? ` in ${postalCode}` : '';
     const platforms: PlatformRecommendation[] = [
       {
         key: 'KLEINANZEIGEN',
-        netExpectedValue: marketPrice * 1.0 - (product.isBulky ? 0 : 1.5),
-        reasoning: 'Einziger aktiver Verkaufskanal — ideal für lokale Abholung (kein Versandaufwand) oder schnelle Käufer.',
+        netExpectedValue: roundMoney(marketPrice - (ship ? parcelShippingEur : 0)),
+        reasoning: ship
+          ? `Versand möglich. Paketkosten ${parcelShippingEur.toFixed(2)} € aus Gewicht und Maßen.`
+          : product.logistics.captured
+            ? `Nur Abholung${pickupWhere}. Kein Versandportal.`
+            : 'Ohne Logistikprofil nur Kleinanzeigen, ohne Versandpauschale.',
       },
     ];
 
+    if (ship) {
+      for (const key of SHIPPING_PORTAL_KEYS) {
+        platforms.push({
+          key,
+          netExpectedValue: roundMoney(marketPrice - parcelShippingEur),
+          reasoning: 'Versandportal. Gewicht und Maße passen ins Paket.',
+        });
+      }
+    }
+
     return {
-      action: product.isBulky ? 'LOCAL_PICKUP_ONLY' : 'SELL_ONLINE',
+      action: product.logistics.captured && !ship ? 'LOCAL_PICKUP_ONLY' : 'SELL_ONLINE',
       recommendedPlatforms: platforms,
-      rationale: `Basierend auf Ziel (${product.userGoal}) und Zustand (${product.condition}) erzielt dieser Artikel den besten Nettoerlös über die aufgeführten Kanäle.`,
-      estimatedEffortMinutes: product.isBulky ? 15 : 25,
+      rationale: ship
+        ? `Versand ist möglich. Die Kanäle rechnen mit ${parcelShippingEur.toFixed(2)} € Paketkosten aus dem Logistikprofil.`
+        : product.logistics.captured
+          ? `Abholung${pickupWhere}. Versandportale entfallen: sperrig, nur Abholung oder kein Paket.`
+          : `Basierend auf Ziel (${product.userGoal}) und Zustand (${product.condition}) bleibt Kleinanzeigen der Rat, solange kein Logistikprofil vorliegt.`,
+      estimatedEffortMinutes: product.logistics.captured && !ship ? 15 : 25,
+      shippingCostEur: parcelShippingEur,
     };
   }
+}
+
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
 }

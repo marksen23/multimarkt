@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { itemsApi } from '../api/items';
+import { toLogisticsProfile } from '../logistics/profile';
 import { ApiRequestError } from '../api/client';
 import type { ItemDetail, ListingChannel, SaleEvent } from '../api/types';
 import { ConfidenceCenter } from '../components/ConfidenceCenter';
 import { DispositionPanel } from '../components/DispositionPanel';
+import { LogisticsProfileForm } from '../components/LogisticsProfileForm';
 import { ListingsManager } from '../components/ListingsManager';
 import { PhotoCapture } from '../components/PhotoCapture';
 import { PhotoGallery } from '../components/PhotoGallery';
 import { PhotoQualityPanel } from '../components/PhotoQualityPanel';
 import { PriceResearchPanel } from '../components/PriceResearchPanel';
 import { PurchasePanel } from '../components/PurchasePanel';
+import { SaleResultPanel } from '../components/SaleResultPanel';
 import { DetailPageSkeleton } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
 
@@ -124,7 +127,25 @@ export function ItemDetailPage() {
       {item.status === 'READY' && (
         <div className="space-y-4">
           <div className="px-4 pt-4">
-            <DispositionPanel itemId={id} />
+            <LogisticsProfileForm
+              key={[
+                item.logisticsCaptured,
+                item.weightGrams,
+                item.lengthCm,
+                item.widthCm,
+                item.heightCm,
+                item.logisticsBulky,
+                item.pickupOnly,
+                item.shippingPossible,
+                item.postalCode,
+              ].join('|')}
+              item={item}
+              busy={busy}
+              onSave={(draft) => run(() => itemsApi.updateLogistics(id, draft))}
+            />
+          </div>
+          <div className="px-4">
+            <DispositionPanel itemId={id} logistics={toLogisticsProfile(item)} />
           </div>
           <div className="px-4">
             <button
@@ -156,6 +177,7 @@ export function ItemDetailPage() {
             busy={busy}
             run={run}
             emptyLabel="Noch kein Canonical Listing vorhanden."
+            purchasePriceEur={item.purchasePriceEur}
           />
         </div>
       )}
@@ -172,7 +194,18 @@ export function ItemDetailPage() {
         />
       )}
 
-      {(item.status === 'SOLD' || item.status === 'CANCELLED' || item.status === 'ARCHIVED') && (
+      {item.status === 'SOLD' && (
+        <div className="p-4 space-y-4">
+          <h1 className="text-lg font-bold text-ink">{item.title ?? 'Artikel'}</h1>
+          <SaleResultPanel
+            item={item}
+            busy={busy}
+            onRecord={(draft) => run(() => itemsApi.recordSaleCloseout(id, draft))}
+          />
+        </div>
+      )}
+
+      {(item.status === 'CANCELLED' || item.status === 'ARCHIVED') && (
         <div className="p-4">
           <Centered
             title={item.title ?? 'Artikel'}

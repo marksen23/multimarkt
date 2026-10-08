@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { listingsApi } from '../api/listings';
 import type { ListingSummary } from '../api/types';
+import { portalLabel, type SaleCloseoutDraft } from '../margin/sale-closeout';
+import { SaleCloseoutForm } from './SaleCloseoutForm';
 import { StatusBadge } from './StatusBadge';
 
 // Vertriebskanal-Entscheidung (docs/README.md §4e-Ergänzung, September
@@ -18,17 +20,25 @@ export function ListingsManager({
   busy,
   run,
   emptyLabel,
+  purchasePriceEur,
 }: {
   listings: ListingSummary[];
   busy: boolean;
   run: (fn: () => Promise<unknown>) => Promise<void>;
   emptyLabel: string;
+  purchasePriceEur?: number | null;
 }) {
   return (
     <div className="space-y-3">
       {listings.length === 0 && <p className="text-sm text-ink-muted">{emptyLabel}</p>}
       {listings.map((listing) => (
-        <ListingCard key={listing.id} listing={listing} busy={busy} run={run} />
+        <ListingCard
+          key={listing.id}
+          listing={listing}
+          busy={busy}
+          run={run}
+          purchasePriceEur={purchasePriceEur}
+        />
       ))}
     </div>
   );
@@ -38,27 +48,23 @@ function ListingCard({
   listing,
   busy,
   run,
+  purchasePriceEur,
 }: {
   listing: ListingSummary;
   busy: boolean;
   run: (fn: () => Promise<unknown>) => Promise<void>;
+  purchasePriceEur?: number | null;
 }) {
   // Kleinanzeigen hat keine API und kann daher nie selbst melden, dass
   // etwas verkauft wurde (§4d/§4e-Ergänzung) — diese manuelle Meldung ist
   // für den einzigen aktiven Verkaufskanal der einzige Weg überhaupt.
+  // Beim Abschluss kommen Erlös, Portal, Gebühren, Versand und optional
+  // der Zahlungsweg dazu (Feature-Plan 3.4).
   const [reportingSoldFor, setReportingSoldFor] = useState<string | null>(null);
-  const [soldPrice, setSoldPrice] = useState('');
   const [confirmingCancelFor, setConfirmingCancelFor] = useState<string | null>(null);
 
-  const startReportingSold = (projectionId: string) => {
-    setReportingSoldFor(projectionId);
-    setSoldPrice(listing.sellingPrice.toString());
-  };
-
-  const confirmSold = async (projectionId: string) => {
-    const price = Number(soldPrice);
-    if (!price || price <= 0) return;
-    await run(() => listingsApi.markSold(projectionId, price));
+  const confirmSold = async (projectionId: string, draft: SaleCloseoutDraft) => {
+    await run(() => listingsApi.markSold(projectionId, draft));
     setReportingSoldFor(null);
   };
 
@@ -95,7 +101,7 @@ function ListingCard({
                   <>
                     <ActionButton
                       label="Als verkauft markieren"
-                      onClick={() => startReportingSold(p.id)}
+                      onClick={() => setReportingSoldFor(p.id)}
                       disabled={busy}
                     />
                     <ActionButton
@@ -134,30 +140,16 @@ function ListingCard({
               </div>
             </div>
             {reportingSoldFor === p.id && (
-              <div className="flex gap-2 items-center">
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.01"
-                  value={soldPrice}
-                  onChange={(e) => setSoldPrice(e.target.value)}
-                  className="flex-1 p-2 border border-line rounded-lg text-xs outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
-                  placeholder="Tatsächlicher Verkaufspreis in €"
-                  autoFocus
-                />
-                <ActionButton
-                  label="Bestätigen"
-                  onClick={() => confirmSold(p.id)}
-                  disabled={busy || !soldPrice}
-                />
-                <ActionButton
-                  label="Abbrechen"
-                  onClick={() => setReportingSoldFor(null)}
-                  disabled={busy}
-                  variant="secondary"
-                />
-              </div>
+              <SaleCloseoutForm
+                initialProceeds={listing.sellingPrice}
+                initialPortal={portalLabel(p.marketplaceId)}
+                purchasePriceEur={purchasePriceEur ?? null}
+                showProfit={purchasePriceEur !== undefined}
+                busy={busy}
+                submitLabel="Verkauf speichern"
+                onSubmit={(draft) => void confirmSold(p.id, draft)}
+                onCancel={() => setReportingSoldFor(null)}
+              />
             )}
           </div>
         ))}
