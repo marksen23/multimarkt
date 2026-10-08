@@ -231,6 +231,18 @@ export class ItemsController {
   }
 
   /**
+   * Re-Analyse auf vorhandenen Fotos (REVIEW_REQUIRED only).
+   * Aktualisiert UNKNOWN/INFERRED-Attribute ohne State-Transition.
+   * USER_CONFIRMED-Attribute werden nicht überschrieben.
+   */
+  @Post(':id/reanalyze')
+  async reanalyze(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ItemEntity> {
+    return this.productAnalysis.reanalyzeInPlace(id);
+  }
+
+  /**
    * §9e-Ergänzung (September 2026): Bildoptimierung ("Nano Banana") als
    * eigenständige, opt-in Aktion — liefert ein ZUSÄTZLICHES Bild, ersetzt
    * nie das Original. Kein StateGuard-Transition (verändert den

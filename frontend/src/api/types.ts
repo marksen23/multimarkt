@@ -45,6 +45,7 @@ export interface ItemAttribute {
   attributeValue: string | null;
   truthState: TruthState;
   source: string;
+  confidence: number | null;
   createdAt: string;
 }
 
