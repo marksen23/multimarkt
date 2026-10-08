@@ -272,6 +272,14 @@ export class ItemsController {
     return this.stateGuard.transitionItem(id, { type: 'DISCARD', actor });
   }
 
+  @Post(':id/mark-sold')
+  async markSold(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<ItemEntity> {
+    return this.stateGuard.transitionItem(id, { type: 'MARK_SOLD_MANUALLY', actor });
+  }
+
   @Post(':id/confirm-truth')
   async confirmTruth(
     @Param('id', ParseUUIDPipe) id: string,
