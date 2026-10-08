@@ -616,7 +616,7 @@ function CopyButton({ state, onClick, label }: { state: CopyState; onClick: () =
     <button
       type="button"
       onClick={onClick}
-      className={`text-[11px] font-bold transition-colors ${
+      className={`text-[11px] font-bold transition-colors py-1 px-1 ${
         state === 'copied' ? 'text-accent' : state === 'error' ? 'text-danger' : 'text-ink-faint hover:text-accent'
       }`}
     >
