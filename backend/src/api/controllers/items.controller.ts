@@ -243,6 +243,49 @@ export class ItemsController {
   }
 
   /**
+   * Neue Fotos hinzufügen + sofort neu analysieren (REVIEW_REQUIRED only).
+   * Speichert die Fotos dauerhaft und ruft dann reanalyzeInPlace auf,
+   * sodass alle Fotos (alt + neu) in die KI-Analyse einfließen.
+   */
+  @Post(':id/upload-more-photos')
+  @UseInterceptors(
+    FilesInterceptor('files', MAX_PHOTOS_PER_UPLOAD, {
+      storage: memoryStorage(),
+      limits: { fileSize: MAX_PHOTO_SIZE_BYTES },
+    }),
+  )
+  async uploadMorePhotos(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+  ): Promise<ItemEntity> {
+    if (!files?.length) {
+      throw new BadRequestException('At least one photo is required (field "files")');
+    }
+    for (const file of files) {
+      if (!ALLOWED_PHOTO_MIME_TYPES.has(file.mimetype)) {
+        throw new BadRequestException(`Unsupported image type: ${file.mimetype}`);
+      }
+    }
+
+    const uploaded = await Promise.all(
+      files.map((file) =>
+        this.storage.upload({
+          buffer: file.buffer,
+          mimeType: file.mimetype,
+          originalName: file.originalname,
+        }),
+      ),
+    );
+
+    await this.dataSource.manager.insert(
+      ItemPhotoEntity,
+      uploaded.map((f) => ({ itemId: id, url: f.url, storageKey: f.key })),
+    );
+
+    return this.productAnalysis.reanalyzeInPlace(id);
+  }
+
+  /**
    * §9e-Ergänzung (September 2026): Bildoptimierung ("Nano Banana") als
    * eigenständige, opt-in Aktion — liefert ein ZUSÄTZLICHES Bild, ersetzt
    * nie das Original. Kein StateGuard-Transition (verändert den

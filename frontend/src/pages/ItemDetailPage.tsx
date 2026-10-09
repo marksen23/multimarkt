@@ -552,11 +552,13 @@ function PrepareListingStep({
   onPrepare: (price: number, description?: string) => Promise<void>;
   onMedianAvailable?: (median: number) => void;
 }) {
+  const [title, setTitle] = useState(currentTitle ?? '');
   const [price, setPrice] = useState('');
   const [marketMedian, setMarketMedian] = useState<number | null>(null);
   const [description, setDescription] = useState('');
   const [salesGoal, setSalesGoal] = useState('BALANCED');
   const [generating, setGenerating] = useState(false);
+  const [autoFilling, setAutoFilling] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [descriptionMissingTokens, setDescriptionMissingTokens] = useState<string[]>([]);
   const [vaguePhrases, setVaguePhrases] = useState<{ phrase: string; suggestion: string }[]>([]);
@@ -576,45 +578,87 @@ function PrepareListingStep({
     }
   };
 
+  const autoFill = async () => {
+    setAutoFilling(true);
+    setGenerateError(null);
+    try {
+      const [titleResult, descResult, priceResult] = await Promise.all([
+        itemsApi.generateTitle(itemId, 'KLEINANZEIGEN'),
+        itemsApi.generateDescription(itemId, salesGoal),
+        itemsApi.priceResearch(itemId),
+      ]);
+      setTitle(titleResult.title);
+      setDescription(descResult.descriptionText);
+      setDescriptionMissingTokens(descResult.gapAnalysis.missingTokens);
+      setVaguePhrases(descResult.vaguePhrases);
+      if (priceResult.recommendation?.listPrice) {
+        setPrice(String(priceResult.recommendation.listPrice));
+      }
+    } catch {
+      setGenerateError('Automatisches Ausfüllen fehlgeschlagen — bitte einzeln versuchen.');
+    } finally {
+      setAutoFilling(false);
+    }
+  };
+
+  const anyGenerating = generating || autoFilling;
+
   return (
-    <div className="p-4 space-y-4">
-      <h1 className="text-lg font-bold text-ink">Verkaufspreis festlegen</h1>
-      <TitleEditor itemId={itemId} currentTitle={currentTitle} busy={busy} onUpdateTitle={onUpdateTitle} />
+    <div className=”p-4 space-y-4”>
+      <div className=”flex items-center justify-between gap-2”>
+        <h1 className=”text-lg font-bold text-ink”>Verkaufspreis festlegen</h1>
+        <button
+          type=”button”
+          disabled={anyGenerating || busy}
+          onClick={() => void autoFill()}
+          className=”text-xs font-bold text-accent hover:text-accent-hover disabled:opacity-50 transition-colors shrink-0”
+        >
+          {autoFilling ? 'Füllt aus…' : '✨ Alles ausfüllen'}
+        </button>
+      </div>
+      <TitleEditor
+        itemId={itemId}
+        title={title}
+        onTitleChange={setTitle}
+        savedTitle={currentTitle}
+        busy={busy}
+        onUpdateTitle={onUpdateTitle}
+      />
       <PriceResearchPanel
         itemId={itemId}
         onSuggestPrice={(p) => setPrice(String(p))}
         onMedianAvailable={(m) => { setMarketMedian(m); onMedianAvailable?.(m); }}
       />
       <input
-        type="number"
-        inputMode="decimal"
-        min="0"
-        step="0.01"
-        placeholder="Preis in €"
+        type=”number”
+        inputMode=”decimal”
+        min=”0”
+        step=”0.01”
+        placeholder=”Preis in €”
         value={price}
         onChange={(e) => setPrice(e.target.value)}
-        className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
+        className=”w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition”
       />
       <PriceHint enteredPrice={Number(price)} marketMedian={marketMedian} />
-      <div className="space-y-1">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-bold text-ink-muted uppercase tracking-wide shrink-0">Beschreibung</span>
-          <div className="flex items-center gap-2">
+      <div className=”space-y-1”>
+        <div className=”flex items-center justify-between gap-2”>
+          <span className=”text-xs font-bold text-ink-muted uppercase tracking-wide shrink-0”>Beschreibung</span>
+          <div className=”flex items-center gap-2”>
             <select
               value={salesGoal}
               onChange={(e) => setSalesGoal(e.target.value)}
-              className="text-[11px] border border-line rounded-lg px-1.5 py-1 bg-surface text-ink-muted outline-none focus:border-accent"
+              className=”text-[11px] border border-line rounded-lg px-1.5 py-1 bg-surface text-ink-muted outline-none focus:border-accent”
             >
-              <option value="BALANCED">Ausgewogen</option>
-              <option value="FAST_SALE">Schnell verkaufen</option>
-              <option value="MAX_PROFIT">Maximaler Erlös</option>
-              <option value="MINIMAL_EFFORT">Minimaler Aufwand</option>
+              <option value=”BALANCED”>Ausgewogen</option>
+              <option value=”FAST_SALE”>Schnell verkaufen</option>
+              <option value=”MAX_PROFIT”>Maximaler Erlös</option>
+              <option value=”MINIMAL_EFFORT”>Minimaler Aufwand</option>
             </select>
             <button
-              type="button"
-              onClick={generateDescription}
-              disabled={generating}
-              className="text-[11px] font-bold text-ink-muted hover:text-accent disabled:opacity-60 transition-colors shrink-0"
+              type=”button”
+              onClick={() => void generateDescription()}
+              disabled={anyGenerating}
+              className=”text-[11px] font-bold text-ink-muted hover:text-accent disabled:opacity-60 transition-colors shrink-0”
             >
               {generating ? 'Generiert…' : '✨ Vorschlag generieren'}
             </button>
@@ -622,39 +666,39 @@ function PrepareListingStep({
         </div>
         <textarea
           rows={3}
-          placeholder="Beschreibung (optional — leer lassen für eine einfache Standardvorlage)"
+          placeholder=”Beschreibung (optional — leer lassen für eine einfache Standardvorlage)”
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
+          className=”w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition”
         />
         {description.length > 0 && (
-          <div className="flex justify-end">
+          <div className=”flex justify-end”>
             <span className={`text-[11px] tabular-nums ${description.length > 1500 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-ink-faint'}`}>
               {description.length} / 1500
             </span>
           </div>
         )}
-        {generateError && <p className="text-xs text-danger">{generateError}</p>}
+        {generateError && <p className=”text-xs text-danger”>{generateError}</p>}
         {descriptionMissingTokens.length > 0 && (
-          <p className="text-xs text-ink-faint">
+          <p className=”text-xs text-ink-faint”>
             Vergleichsangebote nutzen zusätzlich: {descriptionMissingTokens.slice(0, 6).join(', ')}
           </p>
         )}
         {vaguePhrases.length > 0 && (
-          <div className="text-xs text-ink-faint space-y-0.5">
+          <div className=”text-xs text-ink-faint space-y-0.5”>
             {vaguePhrases.map((v, i) => (
               <p key={i}>
-                ⚠️ „{v.phrase}“ ist vage — {v.suggestion}
+                ⚠️ „{v.phrase}” ist vage — {v.suggestion}
               </p>
             ))}
           </div>
         )}
       </div>
       <button
-        type="button"
+        type=”button”
         disabled={busy || !price}
         onClick={() => onPrepare(Number(price), description || undefined)}
-        className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
+        className=”w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors”
       >
         {busy ? 'Wird angelegt…' : 'Listing anlegen'}
       </button>
@@ -685,16 +729,19 @@ function PriceHint({ enteredPrice, marketMedian }: { enteredPrice: number; marke
 
 function TitleEditor({
   itemId,
-  currentTitle,
+  title,
+  onTitleChange,
+  savedTitle,
   busy,
   onUpdateTitle,
 }: {
   itemId: string;
-  currentTitle: string | null;
+  title: string;
+  onTitleChange: (t: string) => void;
+  savedTitle: string | null;
   busy: boolean;
   onUpdateTitle: (title: string) => Promise<void>;
 }) {
-  const [title, setTitle] = useState(currentTitle ?? '');
   const [channel, setChannel] = useState<ListingChannel>('KLEINANZEIGEN');
   const [missingTokens, setMissingTokens] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
@@ -712,7 +759,7 @@ function TitleEditor({
     setGenerateError(null);
     try {
       const result = await itemsApi.generateTitle(itemId, channel);
-      setTitle(result.title);
+      onTitleChange(result.title);
       setMissingTokens(result.gapAnalysis.missingTokens);
     } catch {
       setGenerateError('Vorschlag konnte nicht erzeugt werden.');
@@ -737,7 +784,7 @@ function TitleEditor({
           </select>
           <button
             type="button"
-            onClick={generateTitle}
+            onClick={() => void generateTitle()}
             disabled={generating}
             className="text-[11px] font-bold text-ink-muted hover:text-accent disabled:opacity-60 transition-colors shrink-0"
           >
@@ -750,13 +797,13 @@ function TitleEditor({
           type="text"
           placeholder="Titel"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => onTitleChange(e.target.value)}
           className="flex-1 p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
         />
         <button
           type="button"
-          disabled={busy || !title || title === currentTitle}
-          onClick={saveTitle}
+          disabled={busy || !title || title === savedTitle}
+          onClick={() => void saveTitle()}
           className="px-3 rounded-xl text-xs font-bold bg-surface border border-line text-ink-muted hover:text-accent disabled:opacity-50 transition-colors"
         >
           {saved ? '✓ Gespeichert' : 'Speichern'}

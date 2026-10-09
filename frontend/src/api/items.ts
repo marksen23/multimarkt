@@ -55,6 +55,11 @@ export const itemsApi = {
   confirmTruth: (id: string, condition: string) =>
     api.post<Item>(`/items/${id}/confirm-truth`, { condition }),
   reanalyze: (id: string) => api.post<Item>(`/items/${id}/reanalyze`),
+  uploadMorePhotos: (id: string, files: File[], onProgress?: (fraction: number) => void) => {
+    const form = new FormData();
+    files.forEach((file) => form.append('files', file));
+    return api.postForm<Item>(`/items/${id}/upload-more-photos`, form, onProgress);
+  },
   discard: (id: string) => api.post<Item>(`/items/${id}/discard`),
   markSold: (id: string) => api.post<Item>(`/items/${id}/mark-sold`),
   confirmAttribute: (id: string, key: string, value?: string) =>
