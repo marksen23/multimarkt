@@ -8,6 +8,14 @@ import { StatusBadge } from '../components/StatusBadge';
 import { usePendingActions } from '../contexts/PendingActionsContext';
 
 type FilterKey = 'alle' | 'handlung' | 'aktiv' | 'abgeschlossen';
+type SortKey = 'newest' | 'oldest' | 'price-desc' | 'price-asc';
+
+const SORT_LABELS: Record<SortKey, string> = {
+  newest: 'Neueste zuerst',
+  oldest: 'Älteste zuerst',
+  'price-desc': 'Preis ↓',
+  'price-asc': 'Preis ↑',
+};
 
 const MP_LABELS: Record<string, string> = {
   KLEINANZEIGEN: 'Kleinanzeigen',
@@ -41,6 +49,9 @@ export function DashboardPage() {
   const [entries, setEntries] = useState<ItemListEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>('alle');
+  const [sort, setSort] = useState<SortKey>(() => {
+    try { return (localStorage.getItem('dashboard_sort') as SortKey) ?? 'newest'; } catch { return 'newest'; }
+  });
   const [search, setSearch] = useState('');
   const { setPendingCount } = usePendingActions();
 
@@ -67,9 +78,10 @@ export function DashboardPage() {
     ) ?? null;
 
   // 'abgeschlossen' filter: show closed items in main list; all others: exclude closed from main, show in ClosedSection
-  const activeEntries = filter === 'abgeschlossen'
+  const unsortedActive = filter === 'abgeschlossen'
     ? (visible ?? [])
     : (visible?.filter((e) => !ABGESCHLOSSEN_STATES.includes(e.item.status)) ?? []);
+  const activeEntries = sortEntries(unsortedActive, sort);
   const closedEntries = filter === 'alle'
     ? (entries?.filter((e) => ABGESCHLOSSEN_STATES.includes(e.item.status)) ?? [])
     : [];
@@ -139,37 +151,56 @@ export function DashboardPage() {
           <StatCard
             label="Verkauft"
             value={stats.verkauft}
+            sub={stats.realisiertErloes > 0 ? `${stats.realisiertErloes.toFixed(0)} €` : undefined}
             onClick={() => setFilter('abgeschlossen')}
           />
           <StatCard
-            label="Erw. Erlös"
-            value={stats.erwarteterErloes > 0 ? `${stats.erwarteterErloes.toFixed(0)} €` : '—'}
+            label="Pipeline"
+            value={stats.pipeline > 0 ? `${stats.pipeline.toFixed(0)} €` : '—'}
             onClick={() => setFilter('aktiv')}
           />
         </div>
       )}
 
-      {/* Filter tabs */}
+      {/* Filter tabs + sort — sticky below the app header */}
       {entries && entries.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {(Object.keys(FILTER_LABELS) as FilterKey[]).map((key) => {
-            const count = entries.filter((e) => matchesFilter(e, key)).length;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setFilter(key)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-                  filter === key
-                    ? 'bg-accent text-accent-ink border-accent'
-                    : 'bg-surface text-ink-muted border-line hover:border-accent hover:text-accent'
-                }`}
-              >
-                {FILTER_LABELS[key]}
-                {count > 0 && <span className="ml-1 opacity-70">({count})</span>}
-              </button>
-            );
-          })}
+        <div className="sticky top-[44px] z-10 -mx-4 px-4 py-2 bg-bg/95 backdrop-blur-sm border-b border-line/40">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide flex-1 min-w-0">
+            {(Object.keys(FILTER_LABELS) as FilterKey[]).map((key) => {
+              const count = entries.filter((e) => matchesFilter(e, key)).length;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setFilter(key)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                    filter === key
+                      ? 'bg-accent text-accent-ink border-accent'
+                      : 'bg-surface text-ink-muted border-line hover:border-accent hover:text-accent'
+                  }`}
+                >
+                  {FILTER_LABELS[key]}
+                  {count > 0 && <span className="ml-1 opacity-70">({count})</span>}
+                </button>
+              );
+            })}
+          </div>
+          <select
+            value={sort}
+            onChange={(e) => {
+              const key = e.target.value as SortKey;
+              setSort(key);
+              try { localStorage.setItem('dashboard_sort', key); } catch {}
+            }}
+            className="flex-shrink-0 text-[11px] border border-line rounded-lg px-2 py-1.5 bg-surface text-ink-muted outline-none focus:border-accent transition-colors"
+            aria-label="Sortierung"
+          >
+            {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
+              <option key={key} value={key}>{SORT_LABELS[key]}</option>
+            ))}
+          </select>
+        </div>
         </div>
       )}
 
@@ -231,6 +262,7 @@ export function DashboardPage() {
                   </p>
                   <p className="text-xs text-ink-faint">
                     {item.condition ?? 'Zustand noch nicht bestätigt'}
+                    <span className="ml-1.5 opacity-60">· {relativeDate(item.createdAt)}</span>
                   </p>
                 </div>
               </div>
@@ -297,10 +329,42 @@ function computeStats(entries: ItemListEntry[]) {
     (AKTIV_STATES as ItemLifecycleState[]).includes(e.item.status),
   ).length;
   const verkauft = entries.filter((e) => e.item.status === 'SOLD').length;
-  const erwarteterErloes = entries
+  const pipeline = entries
     .filter((e) => e.item.status === 'LISTED' && e.listings.length > 0)
     .reduce((sum, e) => sum + e.listings[0].sellingPrice, 0);
-  return { handlungNoetig, aktiv, verkauft, erwarteterErloes };
+  const realisiertErloes = entries
+    .filter((e) => e.item.status === 'SOLD' && e.listings.length > 0)
+    .reduce((sum, e) => sum + e.listings[0].sellingPrice, 0);
+  return { handlungNoetig, aktiv, verkauft, pipeline, realisiertErloes };
+}
+
+function relativeDate(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (minutes < 2) return 'gerade eben';
+  if (minutes < 60) return `vor ${minutes} Min.`;
+  if (hours < 24) return `vor ${hours} Std.`;
+  if (days === 1) return 'gestern';
+  if (days < 7) return `vor ${days} Tagen`;
+  if (days < 30) return `vor ${Math.floor(days / 7)} Wo.`;
+  return new Date(iso).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
+}
+
+function sortEntries(entries: ItemListEntry[], sort: SortKey): ItemListEntry[] {
+  return [...entries].sort((a, b) => {
+    switch (sort) {
+      case 'oldest':
+        return new Date(a.item.createdAt).getTime() - new Date(b.item.createdAt).getTime();
+      case 'price-desc':
+        return (b.listings[0]?.sellingPrice ?? 0) - (a.listings[0]?.sellingPrice ?? 0);
+      case 'price-asc':
+        return (a.listings[0]?.sellingPrice ?? 0) - (b.listings[0]?.sellingPrice ?? 0);
+      default:
+        return new Date(b.item.createdAt).getTime() - new Date(a.item.createdAt).getTime();
+    }
+  });
 }
 
 function EmptyState() {
@@ -440,11 +504,11 @@ function ClosedSection({ entries }: { entries: ItemListEntry[] }) {
                 <p className="font-bold text-ink text-sm truncate">
                   {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
                 </p>
-                {listings[0]?.sellingPrice != null && (
-                  <p className="text-xs text-ink-faint tabular-nums">
-                    {listings[0].sellingPrice.toFixed(2)} €
-                  </p>
-                )}
+                <p className="text-xs text-ink-faint tabular-nums">
+                  {listings[0]?.sellingPrice != null ? `${listings[0].sellingPrice.toFixed(2)} €` : ''}
+                  {listings[0]?.sellingPrice != null && <span className="mx-1">·</span>}
+                  {relativeDate(item.updatedAt)}
+                </p>
               </div>
             </div>
             <StatusBadge status={item.status} />
@@ -458,11 +522,13 @@ function ClosedSection({ entries }: { entries: ItemListEntry[] }) {
 function StatCard({
   label,
   value,
+  sub,
   highlight,
   onClick,
 }: {
   label: string;
   value: string | number;
+  sub?: string;
   highlight?: boolean;
   onClick?: () => void;
 }) {
@@ -475,6 +541,7 @@ function StatCard({
       <p className={`text-lg font-extrabold ${highlight ? 'text-accent' : 'text-ink'}`}>
         {value}
       </p>
+      {sub && <p className="text-xs font-semibold text-accent tabular-nums">{sub}</p>}
       <p className="text-[11px] text-ink-faint mt-0.5">{label}</p>
     </button>
   );
