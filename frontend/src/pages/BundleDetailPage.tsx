@@ -2,10 +2,24 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { bundlesApi } from '../api/bundles';
 import { ApiRequestError } from '../api/client';
-import type { BundleDetail } from '../api/types';
+import type { BundleDetail, Item } from '../api/types';
 import { ListingsManager } from '../components/ListingsManager';
 import { DetailPageSkeleton } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
+
+function buildBundleDescription(items: Item[]): string {
+  const lines = items.map((item) => {
+    const name = item.title ?? `Artikel ${item.id.slice(0, 6)}`;
+    return item.condition ? `• ${name} (${item.condition})` : `• ${name}`;
+  });
+  return [
+    `Angebotspaket mit ${items.length} ${items.length === 1 ? 'Artikel' : 'Artikeln'}:`,
+    '',
+    ...lines,
+    '',
+    'Alle Artikel aus privater Hand, keine Garantie oder Rücknahme.',
+  ].join('\n');
+}
 
 export function BundleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -119,34 +133,59 @@ export function BundleDetailPage() {
       {bundle.status === 'READY' && listings.length === 0 && (
         <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
           <p className="text-xs font-bold text-ink-muted uppercase">Listing anlegen</p>
-          <input
-            type="number"
-            inputMode="decimal"
-            min="0"
-            step="0.01"
-            placeholder="Preis in €"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            autoFocus
-            className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
-          />
-          <div className="space-y-1">
+
+          {/* Description with suggestion button */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-ink-muted font-medium">Beschreibung</label>
+              {items.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setDescription(buildBundleDescription(items))}
+                  className="text-xs font-bold text-accent hover:text-accent-hover transition-colors"
+                >
+                  ✨ Vorschlag generieren
+                </button>
+              )}
+            </div>
             <textarea
-              rows={3}
-              placeholder="Beschreibung"
+              rows={5}
+              placeholder="Beschreibung des Bundles…"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
+              className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition resize-none"
             />
-            <div className="flex justify-end">
-              <span className={`text-[11px] tabular-nums ${description.length > 1500 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-ink-faint'}`}>
+            <div className="flex items-center justify-between px-0.5">
+              <div className="flex-1 h-0.5 rounded-full bg-line overflow-hidden mr-3">
+                <div
+                  className={`h-full rounded-full transition-all ${description.length > 1500 ? 'bg-danger' : 'bg-accent'}`}
+                  style={{ width: `${Math.min((description.length / 1500) * 100, 100)}%` }}
+                />
+              </div>
+              <span className={`text-[11px] tabular-nums flex-shrink-0 ${description.length > 1500 ? 'text-danger font-bold' : 'text-ink-faint'}`}>
                 {description.length} / 1500
               </span>
             </div>
           </div>
+
+          {/* Price */}
+          <div className="space-y-1.5">
+            <label className="text-xs text-ink-muted font-medium">Preis (€)</label>
+            <input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              placeholder="z. B. 29.99"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
+            />
+          </div>
+
           <button
             type="button"
-            disabled={busy || !price || !description}
+            disabled={busy || !price || !description || description.length > 1500}
             onClick={prepareListing}
             className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
           >
