@@ -46,6 +46,12 @@ export function ItemDetailPage() {
     }
   }, [schnellmodus, detail?.item.status, navigate, id]);
 
+  useEffect(() => {
+    if (detail?.item.status !== 'ANALYZING') return;
+    const interval = setInterval(() => void reload(), 3000);
+    return () => clearInterval(interval);
+  }, [detail?.item.status, reload]);
+
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
     setError(null);
@@ -192,6 +198,9 @@ export function ItemDetailPage() {
             <span className="text-base">↻</span>
             Angebotspaket neu generieren
           </button>
+          {detail.listings.length > 0 && detail.listings[0].descriptionText && (
+            <CopyDescriptionButton text={detail.listings[0].descriptionText} />
+          )}
           <MarkSoldAction busy={busy} onMarkSold={() => run(() => itemsApi.markSold(id))} />
           <ListingsManager
             listings={detail.listings}
@@ -449,6 +458,31 @@ function MarkSoldAction({
       className="w-full p-3 rounded-xl font-bold border border-accent text-accent hover:bg-accent hover:text-accent-ink disabled:opacity-50 transition-colors"
     >
       ✓ Als verkauft markieren
+    </button>
+  );
+}
+
+function CopyDescriptionButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard not available
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={() => void copy()}
+      className="w-full p-2.5 rounded-xl border border-line text-sm font-bold text-ink-muted hover:bg-surface-hover hover:border-accent/40 transition-colors text-left flex items-center gap-2"
+    >
+      <span className="text-base">{copied ? '✓' : '⎘'}</span>
+      {copied ? 'Beschreibung kopiert!' : 'Beschreibung kopieren'}
     </button>
   );
 }
