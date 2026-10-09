@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import { PhotoCapture } from '../components/PhotoCapture';
@@ -11,8 +11,11 @@ import { PhotoCapture } from '../components/PhotoCapture';
  * drei separate Klicks.
  */
 export function NewItemPage() {
+  const location = useLocation();
+  const prefillTitle = (location.state as { title?: string } | null)?.title ?? '';
   const [photos, setPhotos] = useState<File[]>([]);
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(prefillTitle);
+  const [titleExpanded, setTitleExpanded] = useState(!!prefillTitle);
   const [stage, setStage] = useState<'idle' | 'creating' | 'uploading' | 'analyzing'>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +72,11 @@ export function NewItemPage() {
 
         <PhotoCapture files={photos} onChange={setPhotos} />
 
-        <details className="text-sm">
+        <details
+          className="text-sm"
+          open={titleExpanded}
+          onToggle={(e) => setTitleExpanded((e.target as HTMLDetailsElement).open)}
+        >
           <summary className="cursor-pointer text-ink-muted font-medium">
             Titel schon jetzt vergeben (optional)
           </summary>

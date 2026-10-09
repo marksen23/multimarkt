@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ankaufApi } from '../api/ankauf';
 import type { AnkaufListing, AnkaufResearchResult, DealScore } from '../api/types';
 
@@ -127,6 +128,7 @@ export function AnkaufPage() {
   const [activeCondition, setActiveCondition] = useState<ConditionKey>('alle');
   const [showMargen, setShowMargen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
   const { bookmarks, isBookmarked, toggle, remove } = useAnkaufMerkliste();
 
   useEffect(() => {
@@ -264,6 +266,13 @@ export function AnkaufPage() {
                   bookmarked
                   onToggleBookmark={() => remove(b.id)}
                 />
+                <button
+                  type="button"
+                  onClick={() => navigate('/new', { state: { title: b.listing.title } })}
+                  className="w-full py-2.5 rounded-xl text-xs font-bold bg-accent text-accent-ink hover:bg-accent-hover transition-colors"
+                >
+                  Aufnehmen →
+                </button>
               </div>
             ))
           )}
