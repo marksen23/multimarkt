@@ -201,7 +201,7 @@ export function DashboardPage() {
         {activeEntries.map(({ item, listings, thumbnailUrl }) => (
           <Link
             key={item.id}
-            to={`/items/${item.id}`}
+            to={item.status === 'READY' ? `/items/${item.id}/angebotspaket` : `/items/${item.id}`}
             className={`block bg-surface rounded-2xl p-4 hover:shadow-md transition border ${
               item.status === 'READY'
                 ? 'border-accent/40 ring-1 ring-accent/20'
@@ -244,6 +244,13 @@ export function DashboardPage() {
                 )}
               </div>
             </div>
+            {item.status === 'READY' && (
+              <div className="mt-3">
+                <span className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-accent/10 border border-accent/30 text-accent font-medium">
+                  ✨ Angebotspaket erstellen →
+                </span>
+              </div>
+            )}
             {item.status === 'BUNDLED' && (
               <div className="mt-3">
                 <span className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-surface-hover border border-line text-ink-muted">
