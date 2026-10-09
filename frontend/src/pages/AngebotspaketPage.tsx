@@ -172,12 +172,13 @@ export function AngebotspaketPage() {
     return d && (d.loadState === 'loaded' || d.loadState === 'loading' || d.loadState === 'error');
   });
 
-  // suppress unused-var warnings — kept for future use
-  void navigate;
+  // suppress unused-var warning — kept for future use
   void toast;
 
+  const anyLoaded = Object.values(drafts).some((d) => d?.loadState === 'loaded');
+
   return (
-    <div className="max-w-md mx-auto pb-12">
+    <div className="max-w-md mx-auto pb-28">
       {/* Header */}
       <div className="p-4 flex items-center justify-between">
         <Link to={`/items/${id}`} className="text-xs text-ink-faint hover:text-ink-muted">
@@ -318,6 +319,25 @@ export function AngebotspaketPage() {
           );
         })}
       </div>
+
+      {/* Sticky CTA — visible once recommendations are loaded */}
+      {!loadingRecs && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-bg via-bg/95 to-transparent pointer-events-none">
+          <div className="max-w-md mx-auto pointer-events-auto">
+            <button
+              type="button"
+              onClick={() => navigate(`/items/${id}`)}
+              className={`w-full p-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all shadow-lg ${
+                anyLoaded
+                  ? 'bg-accent text-accent-ink hover:bg-accent-hover active:scale-[0.98]'
+                  : 'bg-surface border border-line text-ink-muted hover:bg-surface-hover'
+              }`}
+            >
+              {anyLoaded ? 'Listing anlegen →' : '← Zurück zum Artikel'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -352,59 +352,39 @@ export function SmartReviewPanel({
             </div>
           </details>
         )}
-        {/* Add more photos + re-analyze */}
-        <div className="space-y-2">
-          <label className="flex items-center justify-center gap-2 w-full py-2 border border-dashed border-line rounded-xl text-xs font-bold text-ink-muted hover:bg-surface-hover cursor-pointer transition-colors">
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/heic"
-              multiple
-              className="sr-only"
-              onChange={(e) => {
-                const files = Array.from(e.target.files ?? []);
-                setNewPhotos((prev) => [...prev, ...files]);
-                e.target.value = '';
-              }}
-            />
-            + Fotos hinzufügen
-          </label>
-          {newPhotos.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="flex-1 text-xs text-ink-muted truncate">
-                {newPhotos.length} Foto{newPhotos.length !== 1 ? 's' : ''} ausgewählt
-              </span>
-              <button
-                type="button"
-                onClick={() => setNewPhotos([])}
-                className="text-xs text-ink-faint hover:text-danger transition-colors"
-              >
-                ✕
-              </button>
-              <button
-                type="button"
-                disabled={uploadingPhotos || anyActionInProgress}
-                onClick={() => void uploadAndReanalyze()}
-                className="px-3 py-1.5 bg-accent text-accent-ink rounded-lg text-xs font-bold disabled:opacity-50 transition-colors"
-              >
-                {uploadingPhotos
-                  ? uploadProgress > 0
-                    ? `${Math.round(uploadProgress * 100)}%`
-                    : 'Lädt hoch…'
-                  : 'Hochladen & neu analysieren'}
-              </button>
+        {/* Add more photos + re-analyze — collapsed when only condition remains */}
+        {isOneTap ? (
+          <details className="group">
+            <summary className="flex items-center gap-2 cursor-pointer select-none py-1 px-1 text-xs font-bold text-ink-faint list-none">
+              <span className="group-open:hidden">▶</span>
+              <span className="hidden group-open:inline">▼</span>
+              Fotos hinzufügen / neu analysieren
+            </summary>
+            <div className="mt-2 space-y-2">
+              <PhotosAndReanalyze
+                newPhotos={newPhotos}
+                uploadingPhotos={uploadingPhotos}
+                uploadProgress={uploadProgress}
+                reanalyzing={reanalyzing}
+                anyActionInProgress={anyActionInProgress}
+                onNewPhotos={setNewPhotos}
+                onUpload={() => void uploadAndReanalyze()}
+                onReanalyze={() => void reanalyze()}
+              />
             </div>
-          )}
-        </div>
-
-        {/* Re-analyze button */}
-        <button
-          type="button"
-          disabled={reanalyzing || anyActionInProgress}
-          onClick={() => void reanalyze()}
-          className="w-full py-2 border border-line rounded-xl text-xs font-bold text-ink-muted hover:bg-surface-hover disabled:opacity-50 transition-colors"
-        >
-          {reanalyzing ? 'KI analysiert neu…' : '↺ KI-Analyse wiederholen'}
-        </button>
+          </details>
+        ) : (
+          <PhotosAndReanalyze
+            newPhotos={newPhotos}
+            uploadingPhotos={uploadingPhotos}
+            uploadProgress={uploadProgress}
+            reanalyzing={reanalyzing}
+            anyActionInProgress={anyActionInProgress}
+            onNewPhotos={setNewPhotos}
+            onUpload={() => void uploadAndReanalyze()}
+            onReanalyze={() => void reanalyze()}
+          />
+        )}
       </div>
 
       {/* Sticky CTA */}
@@ -434,5 +414,80 @@ export function SmartReviewPanel({
         )}
       </div>
     </div>
+  );
+}
+
+function PhotosAndReanalyze({
+  newPhotos,
+  uploadingPhotos,
+  uploadProgress,
+  reanalyzing,
+  anyActionInProgress,
+  onNewPhotos,
+  onUpload,
+  onReanalyze,
+}: {
+  newPhotos: File[];
+  uploadingPhotos: boolean;
+  uploadProgress: number;
+  reanalyzing: boolean;
+  anyActionInProgress: boolean;
+  onNewPhotos: (fn: (prev: File[]) => File[]) => void;
+  onUpload: () => void;
+  onReanalyze: () => void;
+}) {
+  return (
+    <>
+      <div className="space-y-2">
+        <label className="flex items-center justify-center gap-2 w-full py-2 border border-dashed border-line rounded-xl text-xs font-bold text-ink-muted hover:bg-surface-hover cursor-pointer transition-colors">
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/heic"
+            multiple
+            className="sr-only"
+            onChange={(e) => {
+              const files = Array.from(e.target.files ?? []);
+              onNewPhotos((prev) => [...prev, ...files]);
+              e.target.value = '';
+            }}
+          />
+          + Fotos hinzufügen
+        </label>
+        {newPhotos.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="flex-1 text-xs text-ink-muted truncate">
+              {newPhotos.length} Foto{newPhotos.length !== 1 ? 's' : ''} ausgewählt
+            </span>
+            <button
+              type="button"
+              onClick={() => onNewPhotos(() => [])}
+              className="text-xs text-ink-faint hover:text-danger transition-colors"
+            >
+              ✕
+            </button>
+            <button
+              type="button"
+              disabled={uploadingPhotos || anyActionInProgress}
+              onClick={onUpload}
+              className="px-3 py-1.5 bg-accent text-accent-ink rounded-lg text-xs font-bold disabled:opacity-50 transition-colors"
+            >
+              {uploadingPhotos
+                ? uploadProgress > 0
+                  ? `${Math.round(uploadProgress * 100)}%`
+                  : 'Lädt hoch…'
+                : 'Hochladen & neu analysieren'}
+            </button>
+          </div>
+        )}
+      </div>
+      <button
+        type="button"
+        disabled={reanalyzing || anyActionInProgress}
+        onClick={onReanalyze}
+        className="w-full py-2 border border-line rounded-xl text-xs font-bold text-ink-muted hover:bg-surface-hover disabled:opacity-50 transition-colors"
+      >
+        {reanalyzing ? 'KI analysiert neu…' : '↺ KI-Analyse wiederholen'}
+      </button>
+    </>
   );
 }
