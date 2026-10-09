@@ -341,11 +341,17 @@ export class ItemsController {
     @Body() dto: ConfirmTruthDto,
     @CurrentActor() actor: ActorContext,
   ): Promise<ItemEntity> {
-    return this.stateGuard.transitionItem(id, {
+    const item = await this.stateGuard.transitionItem(id, {
       type: 'CONFIRM_TRUTH',
       actor,
       condition: dto.condition,
     });
+    // Pre-warm price research cache so the first PrepareListingStep load is instant.
+    // Fire-and-forget — never blocks the response.
+    if (item.status === 'READY') {
+      void this.priceTriangulation.research(id, {}).catch(() => {});
+    }
+    return item;
   }
 
   /**
