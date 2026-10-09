@@ -8,6 +8,14 @@ import { StatusBadge } from '../components/StatusBadge';
 import { usePendingActions } from '../contexts/PendingActionsContext';
 
 type FilterKey = 'alle' | 'handlung' | 'aktiv' | 'abgeschlossen';
+type SortKey = 'newest' | 'oldest' | 'price-desc' | 'price-asc';
+
+const SORT_LABELS: Record<SortKey, string> = {
+  newest: 'Neueste zuerst',
+  oldest: 'Älteste zuerst',
+  'price-desc': 'Preis ↓',
+  'price-asc': 'Preis ↑',
+};
 
 const MP_LABELS: Record<string, string> = {
   KLEINANZEIGEN: 'Kleinanzeigen',
@@ -41,6 +49,7 @@ export function DashboardPage() {
   const [entries, setEntries] = useState<ItemListEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>('alle');
+  const [sort, setSort] = useState<SortKey>('newest');
   const [search, setSearch] = useState('');
   const { setPendingCount } = usePendingActions();
 
@@ -67,9 +76,10 @@ export function DashboardPage() {
     ) ?? null;
 
   // 'abgeschlossen' filter: show closed items in main list; all others: exclude closed from main, show in ClosedSection
-  const activeEntries = filter === 'abgeschlossen'
+  const unsortedActive = filter === 'abgeschlossen'
     ? (visible ?? [])
     : (visible?.filter((e) => !ABGESCHLOSSEN_STATES.includes(e.item.status)) ?? []);
+  const activeEntries = sortEntries(unsortedActive, sort);
   const closedEntries = filter === 'alle'
     ? (entries?.filter((e) => ABGESCHLOSSEN_STATES.includes(e.item.status)) ?? [])
     : [];
@@ -139,37 +149,50 @@ export function DashboardPage() {
           <StatCard
             label="Verkauft"
             value={stats.verkauft}
+            sub={stats.realisiertErloes > 0 ? `${stats.realisiertErloes.toFixed(0)} €` : undefined}
             onClick={() => setFilter('abgeschlossen')}
           />
           <StatCard
-            label="Erw. Erlös"
-            value={stats.erwarteterErloes > 0 ? `${stats.erwarteterErloes.toFixed(0)} €` : '—'}
+            label="Pipeline"
+            value={stats.pipeline > 0 ? `${stats.pipeline.toFixed(0)} €` : '—'}
             onClick={() => setFilter('aktiv')}
           />
         </div>
       )}
 
-      {/* Filter tabs */}
+      {/* Filter tabs + sort */}
       {entries && entries.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {(Object.keys(FILTER_LABELS) as FilterKey[]).map((key) => {
-            const count = entries.filter((e) => matchesFilter(e, key)).length;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setFilter(key)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-                  filter === key
-                    ? 'bg-accent text-accent-ink border-accent'
-                    : 'bg-surface text-ink-muted border-line hover:border-accent hover:text-accent'
-                }`}
-              >
-                {FILTER_LABELS[key]}
-                {count > 0 && <span className="ml-1 opacity-70">({count})</span>}
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide flex-1 min-w-0">
+            {(Object.keys(FILTER_LABELS) as FilterKey[]).map((key) => {
+              const count = entries.filter((e) => matchesFilter(e, key)).length;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setFilter(key)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                    filter === key
+                      ? 'bg-accent text-accent-ink border-accent'
+                      : 'bg-surface text-ink-muted border-line hover:border-accent hover:text-accent'
+                  }`}
+                >
+                  {FILTER_LABELS[key]}
+                  {count > 0 && <span className="ml-1 opacity-70">({count})</span>}
+                </button>
+              );
+            })}
+          </div>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="flex-shrink-0 text-[11px] border border-line rounded-lg px-2 py-1.5 bg-surface text-ink-muted outline-none focus:border-accent transition-colors"
+            aria-label="Sortierung"
+          >
+            {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
+              <option key={key} value={key}>{SORT_LABELS[key]}</option>
+            ))}
+          </select>
         </div>
       )}
 
@@ -297,10 +320,28 @@ function computeStats(entries: ItemListEntry[]) {
     (AKTIV_STATES as ItemLifecycleState[]).includes(e.item.status),
   ).length;
   const verkauft = entries.filter((e) => e.item.status === 'SOLD').length;
-  const erwarteterErloes = entries
+  const pipeline = entries
     .filter((e) => e.item.status === 'LISTED' && e.listings.length > 0)
     .reduce((sum, e) => sum + e.listings[0].sellingPrice, 0);
-  return { handlungNoetig, aktiv, verkauft, erwarteterErloes };
+  const realisiertErloes = entries
+    .filter((e) => e.item.status === 'SOLD' && e.listings.length > 0)
+    .reduce((sum, e) => sum + e.listings[0].sellingPrice, 0);
+  return { handlungNoetig, aktiv, verkauft, pipeline, realisiertErloes };
+}
+
+function sortEntries(entries: ItemListEntry[], sort: SortKey): ItemListEntry[] {
+  return [...entries].sort((a, b) => {
+    switch (sort) {
+      case 'oldest':
+        return new Date(a.item.createdAt).getTime() - new Date(b.item.createdAt).getTime();
+      case 'price-desc':
+        return (b.listings[0]?.sellingPrice ?? 0) - (a.listings[0]?.sellingPrice ?? 0);
+      case 'price-asc':
+        return (a.listings[0]?.sellingPrice ?? 0) - (b.listings[0]?.sellingPrice ?? 0);
+      default:
+        return new Date(b.item.createdAt).getTime() - new Date(a.item.createdAt).getTime();
+    }
+  });
 }
 
 function EmptyState() {
@@ -458,11 +499,13 @@ function ClosedSection({ entries }: { entries: ItemListEntry[] }) {
 function StatCard({
   label,
   value,
+  sub,
   highlight,
   onClick,
 }: {
   label: string;
   value: string | number;
+  sub?: string;
   highlight?: boolean;
   onClick?: () => void;
 }) {
@@ -475,6 +518,7 @@ function StatCard({
       <p className={`text-lg font-extrabold ${highlight ? 'text-accent' : 'text-ink'}`}>
         {value}
       </p>
+      {sub && <p className="text-xs font-semibold text-accent tabular-nums">{sub}</p>}
       <p className="text-[11px] text-ink-faint mt-0.5">{label}</p>
     </button>
   );
