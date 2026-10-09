@@ -49,7 +49,9 @@ export function DashboardPage() {
   const [entries, setEntries] = useState<ItemListEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>('alle');
-  const [sort, setSort] = useState<SortKey>('newest');
+  const [sort, setSort] = useState<SortKey>(() => {
+    try { return (localStorage.getItem('dashboard_sort') as SortKey) ?? 'newest'; } catch { return 'newest'; }
+  });
   const [search, setSearch] = useState('');
   const { setPendingCount } = usePendingActions();
 
@@ -160,8 +162,9 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* Filter tabs + sort */}
+      {/* Filter tabs + sort — sticky below the app header */}
       {entries && entries.length > 0 && (
+        <div className="sticky top-[44px] z-10 -mx-4 px-4 py-2 bg-bg/95 backdrop-blur-sm border-b border-line/40">
         <div className="flex items-center gap-2">
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide flex-1 min-w-0">
             {(Object.keys(FILTER_LABELS) as FilterKey[]).map((key) => {
@@ -185,7 +188,11 @@ export function DashboardPage() {
           </div>
           <select
             value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
+            onChange={(e) => {
+              const key = e.target.value as SortKey;
+              setSort(key);
+              try { localStorage.setItem('dashboard_sort', key); } catch {}
+            }}
             className="flex-shrink-0 text-[11px] border border-line rounded-lg px-2 py-1.5 bg-surface text-ink-muted outline-none focus:border-accent transition-colors"
             aria-label="Sortierung"
           >
@@ -193,6 +200,7 @@ export function DashboardPage() {
               <option key={key} value={key}>{SORT_LABELS[key]}</option>
             ))}
           </select>
+        </div>
         </div>
       )}
 
@@ -254,6 +262,7 @@ export function DashboardPage() {
                   </p>
                   <p className="text-xs text-ink-faint">
                     {item.condition ?? 'Zustand noch nicht bestätigt'}
+                    <span className="ml-1.5 opacity-60">· {relativeDate(item.createdAt)}</span>
                   </p>
                 </div>
               </div>
@@ -327,6 +336,20 @@ function computeStats(entries: ItemListEntry[]) {
     .filter((e) => e.item.status === 'SOLD' && e.listings.length > 0)
     .reduce((sum, e) => sum + e.listings[0].sellingPrice, 0);
   return { handlungNoetig, aktiv, verkauft, pipeline, realisiertErloes };
+}
+
+function relativeDate(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (minutes < 2) return 'gerade eben';
+  if (minutes < 60) return `vor ${minutes} Min.`;
+  if (hours < 24) return `vor ${hours} Std.`;
+  if (days === 1) return 'gestern';
+  if (days < 7) return `vor ${days} Tagen`;
+  if (days < 30) return `vor ${Math.floor(days / 7)} Wo.`;
+  return new Date(iso).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
 }
 
 function sortEntries(entries: ItemListEntry[], sort: SortKey): ItemListEntry[] {
@@ -481,11 +504,11 @@ function ClosedSection({ entries }: { entries: ItemListEntry[] }) {
                 <p className="font-bold text-ink text-sm truncate">
                   {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
                 </p>
-                {listings[0]?.sellingPrice != null && (
-                  <p className="text-xs text-ink-faint tabular-nums">
-                    {listings[0].sellingPrice.toFixed(2)} €
-                  </p>
-                )}
+                <p className="text-xs text-ink-faint tabular-nums">
+                  {listings[0]?.sellingPrice != null ? `${listings[0].sellingPrice.toFixed(2)} €` : ''}
+                  {listings[0]?.sellingPrice != null && <span className="mx-1">·</span>}
+                  {relativeDate(item.updatedAt)}
+                </p>
               </div>
             </div>
             <StatusBadge status={item.status} />
