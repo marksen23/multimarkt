@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
@@ -55,7 +55,7 @@ export function DashboardPage() {
   const [search, setSearch] = useState('');
   const { setPendingCount } = usePendingActions();
 
-  useEffect(() => {
+  const fetchItems = useCallback(() => {
     itemsApi
       .list()
       .then((list) => {
@@ -65,6 +65,16 @@ export function DashboardPage() {
       })
       .catch((e) => setError(e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler'));
   }, [setPendingCount]);
+
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
+
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchItems(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [fetchItems]);
 
   const stats = entries ? computeStats(entries) : null;
   const searchLower = search.trim().toLowerCase();

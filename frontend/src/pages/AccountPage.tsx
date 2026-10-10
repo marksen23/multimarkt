@@ -42,27 +42,7 @@ export function AccountPage() {
   };
 
   if (result) {
-    return (
-      <div className="max-w-md mx-auto p-6">
-        <div className="bg-surface border border-line rounded-2xl p-6 space-y-3 text-center">
-          <h1 className="text-lg font-bold text-ink">Löschung abgeschlossen</h1>
-          <p className="text-sm text-ink-muted">
-            Alle personenbezogenen Daten wurden kaskadierend aus der Datenbank entfernt.
-          </p>
-          <div className="text-left text-xs bg-surface-hover rounded-xl p-3 space-y-1 font-mono text-ink-muted">
-            <p>db_records_deleted: {String(result.dbRecordsDeleted)}</p>
-            <p>media_hard_deleted: {String(result.mediaHardDeleted)}</p>
-            <p>hash: {result.anonymizedUserHash.slice(0, 16)}…</p>
-          </div>
-          {!result.mediaHardDeleted && (
-            <p className="text-[11px] text-orange-600 dark:text-orange-400">
-              Hinweis: Hochgeladene Fotos werden separat im Medienspeicher verwaltet und müssen
-              ggf. manuell gelöscht werden.
-            </p>
-          )}
-        </div>
-      </div>
-    );
+    return <DeletionSuccessScreen mediaDeleted={result.mediaHardDeleted} />;
   }
 
   const total = entries?.length ?? 0;
@@ -213,6 +193,48 @@ export function AccountPage() {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function DeletionSuccessScreen({ mediaDeleted }: { mediaDeleted: boolean }) {
+  const [countdown, setCountdown] = useState(4);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdown((c) => {
+        if (c <= 1) {
+          clearInterval(interval);
+          clearAccessToken();
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="max-w-md mx-auto p-6 flex items-center justify-center min-h-[60vh]">
+      <div className="bg-surface border border-line rounded-2xl p-8 space-y-4 text-center w-full">
+        <div className="w-12 h-12 rounded-full bg-accent-soft flex items-center justify-center mx-auto text-2xl">
+          ✓
+        </div>
+        <div>
+          <h1 className="text-lg font-bold text-ink">Konto gelöscht</h1>
+          <p className="text-sm text-ink-muted mt-1">
+            Alle deine Daten wurden dauerhaft entfernt.
+          </p>
+        </div>
+        {!mediaDeleted && (
+          <p className="text-xs text-warning">
+            Hochgeladene Fotos werden separat verwaltet und können noch einen Moment verfügbar sein.
+          </p>
+        )}
+        <p className="text-xs text-ink-faint">
+          Abmeldung in {countdown} Sekunde{countdown !== 1 ? 'n' : ''}…
+        </p>
       </div>
     </div>
   );
