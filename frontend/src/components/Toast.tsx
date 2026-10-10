@@ -29,7 +29,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const show = useCallback((message: string, kind: ToastKind = 'success') => {
     const id = ++nextId;
     setToasts((prev) => [...prev.slice(-3), { id, message, kind }]);
-    timers.current.set(id, setTimeout(() => dismiss(id), 3500));
+    timers.current.set(id, setTimeout(() => dismiss(id), kind === 'error' ? 8000 : 3500));
   }, [dismiss]);
 
   return (

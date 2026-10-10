@@ -1,11 +1,108 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { bundlesApi } from '../api/bundles';
+import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
-import type { BundleDetail, Item } from '../api/types';
+import type { BundleDetail, Item, ItemListEntry } from '../api/types';
 import { ListingsManager } from '../components/ListingsManager';
 import { DetailPageSkeleton } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
+import { useToast } from '../components/Toast';
+
+function AddItemsSection({
+  bundleId,
+  busy,
+  run,
+}: {
+  bundleId: string;
+  busy: boolean;
+  run: (fn: () => Promise<unknown>) => Promise<void>;
+}) {
+  const [readyItems, setReadyItems] = useState<ItemListEntry[] | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    itemsApi.list('READY').then(setReadyItems).catch(() => setReadyItems([]));
+  }, []);
+
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
+  const add = () => run(() => bundlesApi.addItems(bundleId, Array.from(selected)));
+
+  return (
+    <div className="bg-surface border border-accent/30 rounded-2xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold text-ink-muted uppercase">Bereite Artikel hinzufügen</p>
+        {readyItems && readyItems.length > 1 && (
+          <button
+            type="button"
+            onClick={() =>
+              setSelected(
+                selected.size === readyItems.length
+                  ? new Set()
+                  : new Set(readyItems.map(({ item }) => item.id)),
+              )
+            }
+            className="text-xs font-bold text-accent hover:text-accent-hover transition-colors"
+          >
+            {selected.size === readyItems.length ? 'Keine' : 'Alle'}
+          </button>
+        )}
+      </div>
+      {readyItems === null && (
+        <div className="flex items-center gap-2 text-xs text-ink-faint">
+          <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+          Artikel werden geladen…
+        </div>
+      )}
+      {readyItems?.length === 0 && (
+        <p className="text-xs text-ink-faint">
+          Noch keine bereiten Artikel vorhanden. Artikel zuerst analysieren und bestätigen.
+        </p>
+      )}
+      <div className="space-y-1">
+        {readyItems?.map(({ item }) => (
+          <label
+            key={item.id}
+            className={`flex items-center gap-3 bg-surface border rounded-xl px-3 py-2.5 text-sm text-ink cursor-pointer transition ${
+              selected.has(item.id) ? 'border-accent/60 bg-accent-soft/30' : 'border-line hover:border-accent/40'
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={selected.has(item.id)}
+              onChange={() => toggle(item.id)}
+              className="accent-accent"
+            />
+            <div className="min-w-0">
+              <p className="font-medium truncate">{item.title ?? `Artikel ${item.id.slice(0, 8)}`}</p>
+              {item.condition && <p className="text-[11px] text-ink-faint">{item.condition}</p>}
+            </div>
+          </label>
+        ))}
+      </div>
+      {(readyItems?.length ?? 0) > 0 && (
+        <button
+          type="button"
+          disabled={busy || selected.size === 0}
+          onClick={add}
+          className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
+        >
+          {busy
+            ? 'Wird hinzugefügt…'
+            : selected.size > 0
+              ? `${selected.size} ${selected.size === 1 ? 'Artikel' : 'Artikel'} hinzufügen → Bundle bereit`
+              : 'Artikel auswählen'}
+        </button>
+      )}
+    </div>
+  );
+}
 
 function buildBundleDescription(items: Item[]): string {
   const lines = items.map((item) => {
@@ -23,6 +120,7 @@ function buildBundleDescription(items: Item[]): string {
 
 export function BundleDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const toast = useToast();
   const [detail, setDetail] = useState<BundleDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -49,7 +147,9 @@ export function BundleDetailPage() {
       await fn();
       await reload();
     } catch (e) {
-      setError(e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler');
+      const msg = e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler';
+      setError(msg);
+      toast(msg, 'error');
     } finally {
       setBusy(false);
     }
@@ -85,15 +185,9 @@ export function BundleDetailPage() {
         <p className="text-xs font-bold text-ink-muted uppercase mb-2">
           Enthaltene Artikel ({items.length})
         </p>
-        {items.length === 0 ? (
+        {items.length === 0 && bundle.status !== 'NEW' ? (
           <div className="bg-surface border border-dashed border-line rounded-xl px-4 py-6 text-center">
             <p className="text-sm text-ink-muted">Noch keine Artikel in diesem Bundle.</p>
-            <Link
-              to="/bundles/new"
-              className="mt-2 inline-block text-xs font-bold text-accent hover:text-accent-hover"
-            >
-              + Artikel hinzufügen
-            </Link>
           </div>
         ) : (
           <div className="space-y-1">
@@ -117,6 +211,10 @@ export function BundleDetailPage() {
           </div>
         )}
       </div>
+
+      {bundle.status === 'NEW' && id && (
+        <AddItemsSection bundleId={id} busy={busy} run={run} />
+      )}
 
       {listings.length > 0 && (
         <div>

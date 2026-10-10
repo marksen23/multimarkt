@@ -242,7 +242,7 @@ export function ItemDetailPage() {
       )}
 
       {item.status === 'SALE_CONFLICT' && (
-        <ConflictResolutionPanel itemId={id} busy={busy} run={run} />
+        <ConflictResolutionPanel itemId={id} busy={busy} run={run} onReload={() => void reload()} />
       )}
 
       {item.status === 'BUNDLED' && (
@@ -822,10 +822,12 @@ function ConflictResolutionPanel({
   itemId,
   busy,
   run,
+  onReload,
 }: {
   itemId: string;
   busy: boolean;
   run: (fn: () => Promise<unknown>) => Promise<void>;
+  onReload: () => void;
 }) {
   const [events, setEvents] = useState<SaleEvent[] | null>(null);
 
@@ -876,10 +878,19 @@ function ConflictResolutionPanel({
       ))}
 
       {events && openEvents.length === 0 && (
-        <p className="text-sm text-ink-faint">
-          Keine offenen Verkaufsmeldungen (mehr) — dieser Status müsste sich in Kürze automatisch
-          auflösen. Falls nicht, lade die Seite neu.
-        </p>
+        <div className="space-y-2 text-sm text-ink-faint">
+          <p>
+            Keine offenen Verkaufsmeldungen (mehr) — dieser Status müsste sich in Kürze automatisch
+            auflösen.
+          </p>
+          <button
+            type="button"
+            onClick={onReload}
+            className="text-xs font-bold text-accent hover:text-accent-hover transition-colors"
+          >
+            ↻ Seite neu laden
+          </button>
+        </div>
       )}
     </div>
   );

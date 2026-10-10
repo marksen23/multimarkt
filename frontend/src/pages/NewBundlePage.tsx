@@ -62,9 +62,26 @@ export function NewBundlePage() {
       />
 
       <div>
-        <p className="text-xs font-bold text-ink-muted uppercase mb-2">
-          Bereite Artikel auswählen (optional)
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-bold text-ink-muted uppercase">
+            Bereite Artikel auswählen (optional)
+          </p>
+          {readyItems && readyItems.length > 1 && (
+            <button
+              type="button"
+              onClick={() =>
+                setSelected(
+                  selected.size === readyItems.length
+                    ? new Set()
+                    : new Set(readyItems.map(({ item }) => item.id)),
+                )
+              }
+              className="text-xs font-bold text-accent hover:text-accent-hover transition-colors"
+            >
+              {selected.size === readyItems.length ? 'Keine' : 'Alle'}
+            </button>
+          )}
+        </div>
         {readyItems === null && (
           <div className="flex items-center gap-2 text-xs text-ink-faint py-1">
             <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
@@ -113,7 +130,11 @@ export function NewBundlePage() {
         onClick={create}
         className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
       >
-        {creating ? 'Wird erstellt…' : 'Bundle anlegen'}
+        {creating
+          ? 'Wird erstellt…'
+          : selected.size > 0
+            ? `Bundle anlegen (${selected.size} ${selected.size === 1 ? 'Artikel' : 'Artikel'})`
+            : 'Bundle anlegen'}
       </button>
     </div>
   );
