@@ -1,6 +1,6 @@
 # Corporate Design & Workflow — Plan
 
-Status: **Entwurf, wartet auf Freigabe** (Branch `claude/admiring-ride-3je6me`)
+Status: **Umgesetzt** (freigegeben: P1–P6, neue Navigation, Grün + Logo bleiben) (Branch `claude/admiring-ride-3je6me`)
 
 ## Ausgangslage (gemessen, nicht geschätzt)
 
@@ -111,12 +111,12 @@ Erfassen ──► Prüfen ──► Inserieren ──► Online ──► Verka
 
 ## Umsetzungsphasen (je ein Commit, je `tsc` + `vite build` grün)
 
-- [ ] **P1 Tokens:** Phasen-Farben, Typo-Skala, Radius/Schatten in `index.css`; Dark-Warning-Bug fixen; PNG-App-Icons 192/512 aus dem Logo erzeugen
-- [ ] **P2 Primitives:** `ui/` mit Icon, Button, Card, PhaseBadge, PhaseStepper, ActionBar, Sheet, Field
-- [ ] **P3 Migration:** 13 Dateien von Rohfarben/`text-[Npx]`/Emojis auf Tokens + Primitives (rein visuell, kein Verhaltenswechsel)
-- [ ] **P4 Navigation:** Heute / Bestand / Erfassen / Ankauf / Mehr
-- [ ] **P5 Artikel-Flow:** ItemDetail + Angebotspaket zu einem phasengesteuerten Screen; ActionBar + Sheets
-- [ ] **P6 Verifikation:** Playwright-Screenshots 390 px + 1280 px, hell/dunkel, jede Phase; Kontrast-Check; Ergebnis unten dokumentieren
+- [x] **P1 Tokens:** Phasen-Farben, Typo-Skala, Radius/Schatten in `index.css`; Dark-Warning-Bug fixen; PNG-App-Icons 192/512 aus dem Logo erzeugen
+- [x] **P2 Primitives:** `ui/` mit Icon, Button, Card, PhaseBadge, PhaseStepper, ActionBar, Sheet, Field
+- [x] **P3 Migration:** 13 Dateien von Rohfarben/`text-[Npx]`/Emojis auf Tokens + Primitives (rein visuell, kein Verhaltenswechsel)
+- [x] **P4 Navigation:** Heute / Bestand / Erfassen / Ankauf / Mehr
+- [x] **P5 Artikel-Flow:** ItemDetail + Angebotspaket zu einem phasengesteuerten Screen; ActionBar + Sheets
+- [x] **P6 Verifikation:** Playwright-Screenshots 390 px + 1280 px, hell/dunkel, jede Phase; Kontrast-Check; Ergebnis unten dokumentieren
 
 ## Risiken
 
@@ -125,4 +125,17 @@ Erfassen ──► Prüfen ──► Inserieren ──► Online ──► Verka
 
 ## Review
 
-_(wird nach Umsetzung ausgefüllt)_
+**Ergebnis (gemessen):**
+- `npm run build` (Frontend, wie in `render.yaml`) grün; `nest build` (Backend) grün; `oxlint` 0 Fehler.
+- 0 rohe Tailwind-Farbklassen, 0 `text-[Npx]`, 0 Emoji-Icons im Frontend (vorher 119 / 99 / viele).
+- axe-core WCAG 2 A/AA auf 12 Seiten × hell/dunkel: 0 Verstöße. Gegenprobe: ein eingeschleustes Element mit dem alten Grau `#a3a3a1` wird als 2.35:1 erkannt.
+- Playwright-Screenshots 390 px / 1280 px, hell/dunkel, alle Artikelphasen gegen gemockte API: keine Laufzeitfehler.
+
+**Abweichungen vom Plan / Zusatzfunde:**
+- Akzent `#059669` → `#047857` und `ink-faint` → `#71716e`, weil die alten Werte AA verfehlten (3.77:1 bzw. 2.53:1).
+- „Inseriert“ fasst für Kleinanzeigen prepare-listing → Projektion → publish → confirm-published zusammen (vorher 4 manuelle Klicks).
+- „Verkauft“ meldet über die Online-Projektion mit echtem Verkaufspreis (vorher ging der Preis bei item-level mark-sold verloren).
+- Vorbestehende Fehler behoben: Prüf-CTA und ConfidenceCenter-CTA lagen mobil hinter der Navigation (`position: fixed`); Portal-Zeile in ListingsManager lief horizontal über.
+
+**Nicht verifiziert:** Verhalten gegen das echte Backend (insb. die Kleinanzeigen-Kette und `publish` mit Capability-Check) — nur gegen Mocks getestet. Kein Gerätetest auf echtem Android-Telefon.
+
