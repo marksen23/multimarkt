@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { copyText } from '../lib/clipboard';
 import { itemsApi } from '../api/items';
 import { listingsApi } from '../api/listings';
 import type {
@@ -58,7 +59,7 @@ function useCopy() {
   const copy = async (text: string) => {
     if (timer.current) clearTimeout(timer.current);
     try {
-      await navigator.clipboard.writeText(text);
+      await copyText(text);
       setState('copied');
     } catch {
       setState('error');

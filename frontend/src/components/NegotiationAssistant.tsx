@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { copyText } from '../lib/clipboard';
 import { useToast } from './Toast';
 import { Button, Icon, inputClass } from '../ui';
 
@@ -67,7 +68,7 @@ export function NegotiationAssistant({
 
   const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(reply);
+      await copyText(reply);
       toast(`Kopiert — bei ${platform} einfügen.`, 'success');
     } catch {
       toast('Kopieren nicht möglich — Text oben manuell markieren und kopieren.', 'error');
