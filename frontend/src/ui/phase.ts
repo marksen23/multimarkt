@@ -48,13 +48,3 @@ export const PHASE_BORDER: Record<Phase, string> = {
   conflict: 'border-danger/50',
   archive: 'border-line',
 };
-
-/** Was der Nutzer als Nächstes tun soll — Basis für „Heute“ und die ActionBar. */
-export const NEXT_STEP: Partial<Record<string, { label: string; urgency: number }>> = {
-  SALE_CONFLICT: { label: 'Konflikt lösen', urgency: 0 },
-  REVIEW_REQUIRED: { label: 'Angaben prüfen', urgency: 1 },
-  READY: { label: 'Inserieren', urgency: 2 },
-  NEW: { label: 'Fotos hinzufügen', urgency: 3 },
-  ANALYZING: { label: 'Analyse läuft', urgency: 4 },
-  LISTED: { label: 'Verkauft?', urgency: 5 },
-};

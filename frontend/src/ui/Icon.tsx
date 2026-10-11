@@ -25,7 +25,8 @@ const PATHS = {
   moon: <path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" />,
   auto: <><circle cx="12" cy="12" r="9" /><path d="M12 3v18" /><path d="M12 3a9 9 0 010 18z" fill="currentColor" /></>,
   euro: <path d="M18 7a7 7 0 100 10M4 10h10M4 14h10" />,
-  download: <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />,
+  sort: <path d="M3 6h13M3 12h9M3 18h5M17 10v10M14 17l3 3 3-3" />,
+  download:<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />,
 } as const;
 
 export type IconName = keyof typeof PATHS;

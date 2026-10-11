@@ -6,4 +6,4 @@ export { ActionBar } from './ActionBar';
 export { Sheet } from './Sheet';
 export { Field, inputClass } from './Field';
 export { MoreMenu, type MoreMenuItem } from './MoreMenu';
-export { statusInfo, NEXT_STEP, PHASE_BORDER, type Phase } from './phase';
+export { statusInfo, PHASE_BORDER, type Phase } from './phase';
