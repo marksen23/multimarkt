@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { itemsApi } from '../api/items';
 import type { ItemDetail } from '../api/types';
-import { ActionBar, Button } from '../ui';
+import { ActionBar, Button, Card, Icon, inputClass } from '../ui';
 
 const CONDITION_OPTIONS = ['Neu', 'Wie neu', 'Gut', 'Gebraucht', 'Defekt'];
 
@@ -144,23 +144,23 @@ export function SmartReviewPanel({
       <header className="bg-surface/90 backdrop-blur p-4 border-b border-line sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-bold text-ink text-base leading-tight">
+            <h1 className="text-title text-ink">
               {isOneTap ? 'Fast fertig!' : 'Kurze Fragen'}
             </h1>
-            <p className="text-xs text-ink-muted mt-0.5">
+            <p className="text-label font-normal text-ink-muted mt-0.5">
               {isOneTap
                 ? 'KI hat alles erkannt — nur Zustand bestätigen'
                 : `${missing.length + inferred.length + 1} Angabe${missing.length + inferred.length + 1 !== 1 ? 'n' : ''} nötig`}
             </p>
           </div>
           {autoConfirmed.length > 0 && (
-            <span className="text-xs bg-accent-soft text-accent px-2 py-1 rounded-full font-bold">
-              {autoConfirmed.length} auto ✓
+            <span className="inline-flex items-center gap-1 text-label bg-accent-soft text-accent px-2 py-1 rounded-full">
+              {autoConfirmed.length} auto <Icon name="check" size={12} strokeWidth={3} />
             </span>
           )}
         </div>
         {reanalyzeError && (
-          <p className="text-xs text-danger mt-1">{reanalyzeError}</p>
+          <p className="text-label text-danger mt-1">{reanalyzeError}</p>
         )}
         {/* Progress bar */}
         <div className="mt-3 h-1.5 bg-line rounded-full overflow-hidden">
@@ -177,16 +177,16 @@ export function SmartReviewPanel({
 
         {/* UNKNOWN attributes — required, AI had no answer */}
         {missing.map((a) => (
-          <div key={a.id} className="bg-red-500/5 p-4 rounded-2xl border border-red-500/20 space-y-2">
+          <div key={a.id} className="bg-danger/5 p-4 rounded-card border border-danger/20 space-y-2">
             <div className="flex items-start gap-2">
-              <span className="mt-0.5 w-4 h-4 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              <span className="mt-0.5 w-4 h-4 rounded-full bg-danger/20 flex items-center justify-center shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-danger" />
               </span>
               <div className="flex-1 min-w-0">
-                <label className="block text-sm font-bold text-ink">
+                <label className="block text-body font-bold text-ink">
                   {KEY_LABELS[a.attributeKey] ?? a.attributeKey}?
                 </label>
-                <p className="text-xs text-ink-muted mt-0.5">
+                <p className="text-label font-normal text-ink-muted mt-0.5">
                   Auf dem Foto nicht erkennbar — bitte ergänzen
                 </p>
               </div>
@@ -199,29 +199,28 @@ export function SmartReviewPanel({
                 onChange={(e) =>
                   setMissingDrafts((prev) => ({ ...prev, [a.attributeKey]: e.target.value }))
                 }
-                className="flex-1 p-2.5 border border-red-500/30 rounded-xl text-sm outline-none focus:border-red-500 bg-surface"
+                className={`${inputClass} flex-1 min-w-0`}
               />
-              <button
-                type="button"
+              <Button
                 disabled={
                   anyActionInProgress ||
                   !missingDrafts[a.attributeKey]?.trim()
                 }
+                loading={savingKey === a.attributeKey}
                 onClick={() => confirmAttr(a.attributeKey, missingDrafts[a.attributeKey])}
-                className="px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm disabled:bg-line disabled:text-ink-faint transition-colors"
               >
-                {savingKey === a.attributeKey ? '…' : 'OK'}
-              </button>
+                OK
+              </Button>
             </div>
           </div>
         ))}
 
         {/* INFERRED attributes — AI guessed, needs confirmation */}
         {inferred.length > 0 && (
-          <div className="bg-surface rounded-2xl border border-line overflow-hidden">
-            <div className="px-4 py-2.5 bg-yellow-500/5 border-b border-yellow-500/20 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
-              <span className="text-xs font-bold text-yellow-700 dark:text-yellow-500 uppercase tracking-wide">
+          <Card className="overflow-hidden">
+            <div className="px-4 py-2.5 bg-warning/5 border-b border-warning/20 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-warning" />
+              <span className="text-micro uppercase text-warning">
                 KI-Vorschläge — bitte prüfen
               </span>
             </div>
@@ -230,33 +229,33 @@ export function SmartReviewPanel({
                 <div key={a.id} className="p-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <span className="text-[11px] text-ink-faint uppercase font-bold capitalize block">
+                      <span className="text-micro uppercase capitalize text-ink-faint block">
                         {KEY_LABELS[a.attributeKey] ?? a.attributeKey}
                       </span>
-                      <span className="font-semibold text-ink text-sm truncate block">
+                      <span className="font-semibold text-ink text-body truncate block">
                         {a.attributeValue}
                       </span>
                     </div>
                     <div className="flex gap-2 shrink-0">
-                      <button
-                        type="button"
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         disabled={anyActionInProgress}
                         onClick={() => {
                           setEditingKey(editingKey === a.attributeKey ? null : a.attributeKey);
                           setEditValue(a.attributeValue ?? '');
                         }}
-                        className="px-2.5 py-1.5 border border-line rounded-lg text-xs font-bold text-ink-muted hover:bg-surface-hover disabled:opacity-50 transition-colors"
                       >
                         Ändern
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        size="sm"
+                        icon="check"
+                        aria-label="Stimmt"
                         disabled={anyActionInProgress}
+                        loading={savingKey === a.attributeKey}
                         onClick={() => confirmAttr(a.attributeKey)}
-                        className="px-3 py-1.5 bg-yellow-400 text-yellow-900 rounded-lg font-bold text-sm hover:bg-yellow-500 disabled:opacity-50 transition-colors"
-                      >
-                        {savingKey === a.attributeKey ? '…' : '✓'}
-                      </button>
+                      />
                     </div>
                   </div>
                   {editingKey === a.attributeKey && (
@@ -265,46 +264,46 @@ export function SmartReviewPanel({
                         type="text"
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
-                        className="flex-1 p-2 border border-yellow-500/30 rounded-lg text-sm outline-none focus:border-yellow-500 bg-surface"
+                        className={`${inputClass} flex-1 min-w-0`}
                       />
-                      <button
-                        type="button"
+                      <Button
                         disabled={!editValue.trim() || anyActionInProgress}
+                        loading={savingKey === a.attributeKey}
                         onClick={() => confirmAttr(a.attributeKey, editValue)}
-                        className="px-3 py-2 bg-yellow-500 text-white rounded-lg font-bold text-xs disabled:opacity-50"
                       >
-                        {savingKey === a.attributeKey ? '…' : 'OK'}
-                      </button>
+                        OK
+                      </Button>
                     </div>
                   )}
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
         )}
 
         {/* Condition picker — always required */}
         <div
-          className={`p-4 rounded-2xl border-2 transition-all ${
+          className={`p-4 rounded-card border-2 transition-all ${
             isConditionConfirmed
               ? 'bg-surface border-accent/30'
               : aiConditionMapped
                 ? 'bg-accent-soft/30 border-accent/40'
-                : 'bg-red-500/5 border-red-500/30'
+                : 'bg-danger/5 border-danger/30'
           }`}
         >
           <div className="flex items-start justify-between mb-3">
             <div>
-              <label className="block text-sm font-bold text-ink">Wie ist der Zustand?</label>
+              <label className="block text-body font-bold text-ink">Wie ist der Zustand?</label>
               {aiConditionMapped && !isConditionConfirmed && (
-                <p className="text-xs text-accent mt-0.5">
+                <p className="text-label font-normal text-accent mt-0.5">
                   KI-Vorschlag: <strong>{aiConditionMapped}</strong> — bitte bestätigen
                 </p>
               )}
             </div>
             {isConditionConfirmed && (
-              <span className="text-xs font-bold text-accent bg-accent-soft px-2 py-0.5 rounded-full">
-                ✓ Bestätigt
+              <span className="inline-flex items-center gap-1 text-label text-accent bg-accent-soft px-2 py-0.5 rounded-full">
+                <Icon name="check" size={12} strokeWidth={3} />
+                Bestätigt
               </span>
             )}
           </div>
@@ -314,9 +313,9 @@ export function SmartReviewPanel({
                 key={cond}
                 type="button"
                 onClick={() => setSelectedCondition(cond)}
-                className={`py-2.5 px-1 text-sm rounded-xl border font-bold transition-all ${
+                className={`py-2.5 px-1 text-body rounded-control border font-bold transition-all ${
                   selectedCondition === cond
-                    ? 'bg-accent border-accent text-accent-ink shadow-sm'
+                    ? 'bg-accent border-accent text-accent-ink shadow-card'
                     : cond === aiConditionMapped && !isConditionConfirmed
                       ? 'bg-accent-soft border-accent/30 text-accent'
                       : 'bg-surface border-line text-ink-muted hover:bg-surface-hover'
@@ -333,32 +332,34 @@ export function SmartReviewPanel({
           <details className="group">
             <summary className="flex items-center gap-2 cursor-pointer select-none py-1 px-1">
               <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-              <span className="text-xs font-bold text-ink-muted uppercase tracking-wide">
+              <span className="text-micro uppercase text-ink-muted">
                 {autoConfirmed.length} Attribute automatisch erkannt
               </span>
-              <span className="ml-auto text-ink-faint text-xs group-open:hidden">▼</span>
-              <span className="ml-auto text-ink-faint text-xs hidden group-open:inline">▲</span>
+              <Icon
+                name="chevronRight"
+                size={14}
+                className="ml-auto text-ink-faint rotate-90 group-open:-rotate-90 transition-transform"
+              />
             </summary>
-            <div className="mt-2 bg-surface rounded-2xl border border-line p-4 grid grid-cols-2 gap-3">
+            <Card className="mt-2 p-4 grid grid-cols-2 gap-3">
               {autoConfirmed.map((a) => (
                 <div key={a.id}>
-                  <span className="text-[10px] text-ink-faint uppercase font-bold block">
+                  <span className="text-micro uppercase text-ink-faint block">
                     {KEY_LABELS[a.attributeKey] ?? a.attributeKey}
                   </span>
-                  <span className="font-semibold text-ink text-sm truncate block">
+                  <span className="font-semibold text-ink text-body truncate block">
                     {a.attributeValue}
                   </span>
                 </div>
               ))}
-            </div>
+            </Card>
           </details>
         )}
         {/* Add more photos + re-analyze — collapsed when only condition remains */}
         {isOneTap ? (
           <details className="group">
-            <summary className="flex items-center gap-2 cursor-pointer select-none py-1 px-1 text-xs font-bold text-ink-faint list-none">
-              <span className="group-open:hidden">▶</span>
-              <span className="hidden group-open:inline">▼</span>
+            <summary className="flex items-center gap-2 cursor-pointer select-none py-1 px-1 text-label text-ink-faint list-none">
+              <Icon name="chevronRight" size={14} className="group-open:rotate-90 transition-transform" />
               Fotos hinzufügen / neu analysieren
             </summary>
             <div className="mt-2 space-y-2">
@@ -431,7 +432,7 @@ function PhotosAndReanalyze({
   return (
     <>
       <div className="space-y-2">
-        <label className="flex items-center justify-center gap-2 w-full py-2 border border-dashed border-line rounded-xl text-xs font-bold text-ink-muted hover:bg-surface-hover cursor-pointer transition-colors">
+        <label className="flex items-center justify-center gap-2 w-full py-2 border border-dashed border-line rounded-control text-label text-ink-muted hover:bg-surface-hover cursor-pointer transition-colors">
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp,image/heic"
@@ -443,43 +444,47 @@ function PhotosAndReanalyze({
               e.target.value = '';
             }}
           />
-          + Fotos hinzufügen
+          <Icon name="plus" size={15} />
+          Fotos hinzufügen
         </label>
         {newPhotos.length > 0 && (
           <div className="flex items-center gap-2">
-            <span className="flex-1 text-xs text-ink-muted truncate">
+            <span className="flex-1 text-label font-normal text-ink-muted truncate">
               {newPhotos.length} Foto{newPhotos.length !== 1 ? 's' : ''} ausgewählt
             </span>
             <button
               type="button"
               onClick={() => onNewPhotos(() => [])}
-              className="text-xs text-ink-faint hover:text-danger transition-colors"
+              aria-label="Auswahl verwerfen"
+              className="text-ink-faint hover:text-danger transition-colors"
             >
-              ✕
+              <Icon name="x" size={15} />
             </button>
-            <button
-              type="button"
+            <Button
+              size="sm"
               disabled={uploadingPhotos || anyActionInProgress}
               onClick={onUpload}
-              className="px-3 py-1.5 bg-accent text-accent-ink rounded-lg text-xs font-bold disabled:opacity-50 transition-colors"
             >
               {uploadingPhotos
                 ? uploadProgress > 0
                   ? `${Math.round(uploadProgress * 100)}%`
                   : 'Lädt hoch…'
                 : 'Hochladen & neu analysieren'}
-            </button>
+            </Button>
           </div>
         )}
       </div>
-      <button
-        type="button"
+      <Button
+        variant="secondary"
+        size="sm"
+        block
+        icon="refresh"
+        loading={reanalyzing}
         disabled={reanalyzing || anyActionInProgress}
         onClick={onReanalyze}
-        className="w-full py-2 border border-line rounded-xl text-xs font-bold text-ink-muted hover:bg-surface-hover disabled:opacity-50 transition-colors"
       >
-        {reanalyzing ? 'KI analysiert neu…' : '↺ KI-Analyse wiederholen'}
-      </button>
+        {reanalyzing ? 'KI analysiert neu…' : 'KI-Analyse wiederholen'}
+      </Button>
     </>
   );
 }
