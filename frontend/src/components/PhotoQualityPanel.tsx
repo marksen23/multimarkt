@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { itemsApi } from '../api/items';
+import { Card } from '../ui';
 import type { PhotoQualityIssue, PhotoQualityIssueType, PhotoQualityReport } from '../api/types';
 
 /**
@@ -10,34 +11,29 @@ import type { PhotoQualityIssue, PhotoQualityIssueType, PhotoQualityReport } fro
 
 const ISSUE_CONFIG: Record<
   PhotoQualityIssueType,
-  { icon: string; label: string; tip: string; critical: boolean }
+  { label: string; tip: string; critical: boolean }
 > = {
   BLURRY: {
-    icon: '◎',
     label: 'Unscharf',
     tip: 'Kamera stabilisieren, ggf. Stativ nutzen.',
     critical: true,
   },
   TOO_DARK: {
-    icon: '◑',
     label: 'Zu dunkel',
     tip: 'Helleren Hintergrund oder zusätzliches Licht nutzen.',
     critical: true,
   },
   TOO_BRIGHT: {
-    icon: '○',
     label: 'Überbelichtet',
     tip: 'Direktes Sonnenlicht vermeiden, indirektes Licht verwenden.',
     critical: true,
   },
   LOW_RESOLUTION: {
-    icon: '▢',
     label: 'Niedrige Auflösung',
     tip: 'Foto in höherer Auflösung aufnehmen.',
     critical: false,
   },
   DUPLICATE: {
-    icon: '⊟',
     label: 'Duplikat',
     tip: 'Ähnliches Foto entfernen.',
     critical: false,
@@ -68,58 +64,51 @@ export function PhotoQualityPanel({ itemId, photoCount }: { itemId: string; phot
   const byPhoto = groupByPhoto(report.issues);
 
   return (
-    <div className="bg-surface border border-line rounded-xl overflow-hidden">
-      {/* Header */}
-      <div
-        className={`flex items-center justify-between px-3 py-2 border-b border-line ${
-          criticalCount > 0 ? 'bg-amber-50 dark:bg-amber-950/20' : 'bg-surface-hover'
-        }`}
-      >
-        <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">Foto-Check</p>
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
+        <h2 className="text-micro uppercase text-ink-faint">Foto-Check</h2>
         <span
-          className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-            criticalCount > 0
-              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
-              : 'bg-surface text-ink-faint border border-line'
+          className={`text-label tabular-nums px-2 py-0.5 rounded-full ${
+            criticalCount > 0 ? 'bg-warning-soft text-warning' : 'bg-phase-archive-soft text-ink-faint'
           }`}
         >
           {report.issues.length} {report.issues.length === 1 ? 'Hinweis' : 'Hinweise'}
         </span>
       </div>
 
-      {/* Issues grouped by photo */}
-      <div className="divide-y divide-line">
+      <ul className="px-4 pb-1 divide-y divide-line">
         {Array.from(byPhoto.entries()).map(([photoIndex, issues]) => (
-          <div key={photoIndex} className="p-3 space-y-1.5">
-            <p className="text-[11px] font-bold text-ink-faint">Foto {photoIndex + 1}</p>
-            {issues.map((issue, i) => {
-              const cfg = ISSUE_CONFIG[issue.type];
-              return (
-                <div key={i} className="flex items-start gap-2">
-                  <span
-                    className={`text-sm flex-shrink-0 mt-0.5 ${
-                      cfg?.critical ? 'text-amber-600 dark:text-amber-400' : 'text-ink-faint'
-                    }`}
-                    aria-hidden="true"
-                  >
-                    {cfg?.icon ?? '⚠'}
-                  </span>
-                  <div className="min-w-0">
-                    <p className={`text-xs font-bold ${cfg?.critical ? 'text-ink' : 'text-ink-muted'}`}>
-                      {cfg?.label ?? issue.type}
+          <li key={photoIndex} className="py-2.5 flex gap-3">
+            <p className="text-label text-ink-faint tabular-nums w-14 shrink-0">Foto {photoIndex + 1}</p>
+            <ul className="min-w-0 flex-1 space-y-1.5">
+              {issues.map((issue, i) => {
+                const cfg = ISSUE_CONFIG[issue.type];
+                return (
+                  <li key={i} className="flex items-start gap-2">
+                    <span
+                      className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${
+                        cfg?.critical ? 'bg-warning' : 'bg-ink-faint/50'
+                      }`}
+                      aria-hidden="true"
+                    />
+                    <p className="min-w-0 text-label font-normal text-ink-muted">
+                      <span className={`font-semibold ${cfg?.critical ? 'text-ink' : 'text-ink-muted'}`}>
+                        {cfg?.label ?? issue.type}
+                      </span>
+                      {' · '}
+                      <span className="text-ink-faint">{cfg?.tip ?? issue.message}</span>
                     </p>
-                    <p className="text-[11px] text-ink-faint leading-snug">{cfg?.tip ?? issue.message}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </li>
         ))}
-      </div>
+      </ul>
 
-      <p className="px-3 py-2 text-[11px] text-ink-faint border-t border-line">
+      <p className="px-4 py-2.5 text-label font-normal text-ink-faint border-t border-line">
         Hinweise sind rein informativ — Listing kann trotzdem erstellt werden.
       </p>
-    </div>
+    </Card>
   );
 }
