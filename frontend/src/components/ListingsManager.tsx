@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { listingsApi } from '../api/listings';
 import type { ListingSummary } from '../api/types';
-import { StatusBadge } from './StatusBadge';
+import { Button, Card, PhaseBadge, inputClass } from '../ui';
+import { formatEuro } from '../lib/format';
 
 const MARKETPLACE = 'KLEINANZEIGEN';
 
@@ -16,23 +17,26 @@ const MP_LABELS: Record<string, string> = {
  * Verwaltet Marketplace Projections eines Canonical Listings — geteilt
  * zwischen Item- und Bundle-Detailseiten (beide hängen an derselben
  * `canonical_listings`/`marketplace_projections`-Struktur, Doc 01 §3).
+ * `reportSold=false`, wenn die Seite selbst eine Verkauft-Aktion anbietet.
  */
 export function ListingsManager({
   listings,
   busy,
   run,
   emptyLabel,
+  reportSold = true,
 }: {
   listings: ListingSummary[];
   busy: boolean;
   run: (fn: () => Promise<unknown>) => Promise<void>;
   emptyLabel: string;
+  reportSold?: boolean;
 }) {
   return (
     <div className="space-y-3">
-      {listings.length === 0 && <p className="text-sm text-ink-muted">{emptyLabel}</p>}
+      {listings.length === 0 && <p className="text-body text-ink-muted">{emptyLabel}</p>}
       {listings.map((listing) => (
-        <ListingCard key={listing.id} listing={listing} busy={busy} run={run} />
+        <ListingCard key={listing.id} listing={listing} busy={busy} run={run} reportSold={reportSold} />
       ))}
     </div>
   );
@@ -42,10 +46,12 @@ function ListingCard({
   listing,
   busy,
   run,
+  reportSold,
 }: {
   listing: ListingSummary;
   busy: boolean;
   run: (fn: () => Promise<unknown>) => Promise<void>;
+  reportSold: boolean;
 }) {
   // Kleinanzeigen hat keine API und kann daher nie selbst melden, dass
   // etwas verkauft wurde (§4d/§4e-Ergänzung) — diese manuelle Meldung ist
@@ -53,11 +59,6 @@ function ListingCard({
   const [reportingSoldFor, setReportingSoldFor] = useState<string | null>(null);
   const [soldPrice, setSoldPrice] = useState('');
   const [confirmingCancelFor, setConfirmingCancelFor] = useState<string | null>(null);
-
-  const startReportingSold = (projectionId: string) => {
-    setReportingSoldFor(projectionId);
-    setSoldPrice(listing.sellingPrice.toString());
-  };
 
   const confirmSold = async (projectionId: string) => {
     const price = Number(soldPrice);
@@ -67,80 +68,71 @@ function ListingCard({
   };
 
   return (
-    <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
+    <Card className="p-4 space-y-3">
       <div>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-[11px] text-ink-faint uppercase font-bold tracking-wide">Preis</span>
-          <span className="font-bold text-ink">{listing.sellingPrice.toFixed(2)} €</span>
-        </div>
-        {listing.descriptionText && (
-          <p className="text-xs text-ink-muted line-clamp-2 mt-0.5">{listing.descriptionText}</p>
-        )}
+        <p className="text-title tabular-nums text-ink">{formatEuro(listing.sellingPrice)}</p>
+        {listing.descriptionText && <p className="text-label font-normal text-ink-muted line-clamp-2 mt-0.5">{listing.descriptionText}</p>}
       </div>
       <div className="space-y-2">
         {listing.projections.map((p) => (
-          <div key={p.id} className="bg-surface-hover rounded-xl p-2 border border-line space-y-2">
-            <div className="flex items-center justify-between">
+          <div key={p.id} className="bg-surface-hover rounded-control p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-ink-muted">
-                  {MP_LABELS[p.marketplaceId] ?? p.marketplaceId}
-                </span>
-                <StatusBadge status={p.status} />
+                <span className="text-body font-semibold text-ink">{MP_LABELS[p.marketplaceId] ?? p.marketplaceId}</span>
+                <PhaseBadge status={p.status} />
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1.5 flex-wrap">
                 {(p.status === 'DRAFT' || p.status === 'READY') && (
-                  <ActionButton
-                    label="Veröffentlichen"
-                    onClick={() => run(() => listingsApi.publish(p.id))}
-                    disabled={busy}
-                  />
+                  <Button size="sm" disabled={busy} onClick={() => void run(() => listingsApi.publish(p.id))}>
+                    Veröffentlichen
+                  </Button>
                 )}
                 {p.status === 'PUBLISHING' && (
-                  <ActionButton
-                    label="Ich habe es eingestellt"
-                    onClick={() => run(() => listingsApi.confirmPublished(p.id))}
-                    disabled={busy}
-                  />
+                  <Button size="sm" disabled={busy} onClick={() => void run(() => listingsApi.confirmPublished(p.id))}>
+                    Ich habe es eingestellt
+                  </Button>
                 )}
                 {p.status === 'ONLINE' && reportingSoldFor !== p.id && confirmingCancelFor !== p.id && (
                   <>
-                    <ActionButton
-                      label="Als verkauft markieren"
-                      onClick={() => startReportingSold(p.id)}
-                      disabled={busy}
-                    />
-                    <ActionButton
-                      label="Zurückziehen"
-                      onClick={() => setConfirmingCancelFor(p.id)}
-                      disabled={busy}
-                      variant="secondary"
-                    />
+                    {reportSold && (
+                      <Button
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => {
+                          setReportingSoldFor(p.id);
+                          setSoldPrice(listing.sellingPrice.toString());
+                        }}
+                      >
+                        Verkauft
+                      </Button>
+                    )}
+                    <Button size="sm" variant="ghost" disabled={busy} onClick={() => setConfirmingCancelFor(p.id)}>
+                      Zurückziehen
+                    </Button>
                   </>
                 )}
                 {confirmingCancelFor === p.id && (
                   <>
-                    <ActionButton
-                      label="Wirklich zurückziehen?"
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      disabled={busy}
                       onClick={() => {
                         setConfirmingCancelFor(null);
-                        run(() => listingsApi.cancel(p.id));
+                        void run(() => listingsApi.cancel(p.id));
                       }}
-                      disabled={busy}
-                    />
-                    <ActionButton
-                      label="Abbrechen"
-                      onClick={() => setConfirmingCancelFor(null)}
-                      disabled={busy}
-                      variant="secondary"
-                    />
+                    >
+                      Wirklich zurückziehen
+                    </Button>
+                    <Button size="sm" variant="ghost" disabled={busy} onClick={() => setConfirmingCancelFor(null)}>
+                      Abbrechen
+                    </Button>
                   </>
                 )}
                 {p.status === 'CANCEL_PENDING' && (
-                  <ActionButton
-                    label="Storno bestätigen"
-                    onClick={() => run(() => listingsApi.confirmCancellation(p.id))}
-                    disabled={busy}
-                  />
+                  <Button size="sm" disabled={busy} onClick={() => void run(() => listingsApi.confirmCancellation(p.id))}>
+                    Storno bestätigen
+                  </Button>
                 )}
               </div>
             </div>
@@ -153,62 +145,27 @@ function ListingCard({
                   step="0.01"
                   value={soldPrice}
                   onChange={(e) => setSoldPrice(e.target.value)}
-                  className="flex-1 p-2 border border-line rounded-lg text-xs outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
+                  className={`${inputClass} flex-1 min-w-0`}
                   placeholder="Tatsächlicher Verkaufspreis in €"
+                  aria-label="Tatsächlicher Verkaufspreis in Euro"
                   autoFocus
                 />
-                <ActionButton
-                  label="Bestätigen"
-                  onClick={() => confirmSold(p.id)}
-                  disabled={busy || !soldPrice}
-                />
-                <ActionButton
-                  label="Abbrechen"
-                  onClick={() => setReportingSoldFor(null)}
-                  disabled={busy}
-                  variant="secondary"
-                />
+                <Button size="sm" disabled={busy || !soldPrice} onClick={() => void confirmSold(p.id)}>
+                  Bestätigen
+                </Button>
+                <Button size="sm" variant="ghost" disabled={busy} onClick={() => setReportingSoldFor(null)}>
+                  Abbrechen
+                </Button>
               </div>
             )}
           </div>
         ))}
         {!listing.projections.some((p) => p.marketplaceId === MARKETPLACE) && (
-          <div className="flex gap-2 items-center pt-1">
-            <ActionButton
-              label="+ Kleinanzeigen-Listing"
-              onClick={() => run(() => listingsApi.create(listing.id, MARKETPLACE))}
-              disabled={busy}
-            />
-          </div>
+          <Button size="sm" variant="secondary" icon="plus" disabled={busy} onClick={() => void run(() => listingsApi.create(listing.id, MARKETPLACE))}>
+            Kleinanzeigen verfolgen
+          </Button>
         )}
       </div>
-    </div>
-  );
-}
-
-function ActionButton({
-  label,
-  onClick,
-  disabled,
-  variant = 'primary',
-}: {
-  label: string;
-  onClick: () => void;
-  disabled: boolean;
-  variant?: 'primary' | 'secondary';
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={
-        variant === 'primary'
-          ? 'text-[11px] font-bold px-2 py-1 rounded-lg bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors shrink-0'
-          : 'text-[11px] font-bold px-2 py-1 rounded-lg bg-surface-hover text-ink-muted hover:bg-line disabled:opacity-60 transition-colors shrink-0'
-      }
-    >
-      {label}
-    </button>
+    </Card>
   );
 }

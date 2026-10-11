@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ItemPhoto } from '../api/types';
+import { Icon } from '../ui';
 
 /**
  * Fotogalerie pro Artikel (September 2026) — zeigt die dauerhaft mit dem
@@ -20,7 +21,7 @@ export function PhotoGallery({ photos }: { photos: ItemPhoto[] }) {
             key={photo.id}
             type="button"
             onClick={() => setLightbox(i)}
-            className="aspect-square rounded-xl overflow-hidden border border-line hover:opacity-90 transition focus:outline-none focus:ring-2 focus:ring-accent-soft"
+            className="aspect-square rounded-control overflow-hidden border border-line hover:opacity-90 transition focus:outline-none focus:ring-2 focus:ring-accent-soft"
             aria-label={`Foto ${i + 1} vergrößern`}
           >
             <img src={photo.url} alt="" className="w-full h-full object-cover" />
@@ -73,7 +74,7 @@ function PhotoLightbox({
       <img
         src={photos[index].url}
         alt=""
-        className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
+        className="max-h-[85vh] max-w-[90vw] object-contain rounded-control shadow-float"
         onClick={(e) => e.stopPropagation()}
       />
 
@@ -81,15 +82,15 @@ function PhotoLightbox({
       <button
         type="button"
         onClick={onClose}
-        className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition text-lg"
+        className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition"
         aria-label="Schließen"
       >
-        ✕
+        <Icon name="x" size={20} />
       </button>
 
       {/* Counter */}
       {photos.length > 1 && (
-        <span className="absolute top-4 left-4 text-xs font-bold text-white/70 bg-black/30 px-2 py-1 rounded-full">
+        <span className="absolute top-4 left-4 text-label tabular-nums text-white/70 bg-black/30 px-2 py-1 rounded-full">
           {index + 1} / {photos.length}
         </span>
       )}
@@ -99,10 +100,10 @@ function PhotoLightbox({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onChange(index - 1); }}
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition text-lg"
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition"
           aria-label="Vorheriges Foto"
         >
-          ‹
+          <Icon name="chevronLeft" size={22} />
         </button>
       )}
 
@@ -111,10 +112,10 @@ function PhotoLightbox({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onChange(index + 1); }}
-          className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition text-lg"
+          className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition"
           aria-label="Nächstes Foto"
         >
-          ›
+          <Icon name="chevronRight" size={22} />
         </button>
       )}
 
@@ -129,7 +130,7 @@ function PhotoLightbox({
               key={p.id}
               type="button"
               onClick={() => onChange(i)}
-              className={`w-10 h-10 rounded-lg overflow-hidden border-2 transition flex-shrink-0 ${
+              className={`w-10 h-10 rounded-control overflow-hidden border-2 transition flex-shrink-0 ${
                 i === index ? 'border-white' : 'border-white/20 opacity-60 hover:opacity-80'
               }`}
               aria-label={`Foto ${i + 1}`}

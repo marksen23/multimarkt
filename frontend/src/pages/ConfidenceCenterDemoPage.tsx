@@ -22,6 +22,7 @@ const initialDetail: ItemDetail = {
       attributeValue: 'Bekleidung > Herren > Jacken',
       truthState: 'USER_CONFIRMED',
       source: 'USER_INPUT',
+      confidence: null,
       createdAt: new Date().toISOString(),
     },
     {
@@ -31,6 +32,7 @@ const initialDetail: ItemDetail = {
       attributeValue: 'Schwarz',
       truthState: 'INFERRED',
       source: 'mock-gemini-vision-stub-v1',
+      confidence: null,
       createdAt: new Date().toISOString(),
     },
     {
@@ -40,6 +42,7 @@ const initialDetail: ItemDetail = {
       attributeValue: 'Polyester',
       truthState: 'INFERRED',
       source: 'mock-gemini-vision-stub-v1',
+      confidence: null,
       createdAt: new Date().toISOString(),
     },
     {
@@ -49,6 +52,7 @@ const initialDetail: ItemDetail = {
       attributeValue: null,
       truthState: 'UNKNOWN',
       source: 'mock-gemini-vision-stub-v1',
+      confidence: null,
       createdAt: new Date().toISOString(),
     },
     {
@@ -58,6 +62,7 @@ const initialDetail: ItemDetail = {
       attributeValue: null,
       truthState: 'UNKNOWN',
       source: 'mock-gemini-vision-stub-v1',
+      confidence: null,
       createdAt: new Date().toISOString(),
     },
   ],
@@ -94,6 +99,7 @@ export function ConfidenceCenterDemoPage() {
                   attributeValue: value ?? a.attributeValue,
                   truthState: 'USER_CONFIRMED',
                   source: 'USER_INPUT',
+                  confidence: null,
                 }
               : a,
           ),
