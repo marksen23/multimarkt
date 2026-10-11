@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { itemsApi } from '../api/items';
 import type { ItemDetail } from '../api/types';
+import { ActionBar, Button } from '../ui';
 
 const CONDITION_OPTIONS = ['Neu', 'Wie neu', 'Gut', 'Gebraucht', 'Defekt'];
 
@@ -139,7 +140,7 @@ export function SmartReviewPanel({
   const isOneTap = missing.length === 0 && inferred.length === 0;
 
   return (
-    <div className="max-w-md mx-auto bg-bg min-h-screen pb-28">
+    <div>
       <header className="bg-surface/90 backdrop-blur p-4 border-b border-line sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div>
@@ -387,32 +388,23 @@ export function SmartReviewPanel({
         )}
       </div>
 
-      {/* Sticky CTA */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-bg via-bg/95 to-transparent">
-        <button
-          type="button"
+      <ActionBar>
+        <Button
+          size="lg"
+          icon="check"
+          loading={saving}
           disabled={!canSave || anyActionInProgress}
           onClick={() => selectedCondition && onConfirmCondition(selectedCondition)}
-          className={`w-full p-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all ${
-            canSave && !anyActionInProgress
-              ? 'bg-accent text-accent-ink shadow-lg hover:bg-accent-hover active:scale-[0.98]'
-              : 'bg-line text-ink-faint cursor-not-allowed'
-          }`}
         >
-          {saving
-            ? 'Speichert…'
+          {!canSave
+            ? 'Bitte Zustand auswählen'
             : isConditionConfirmed
               ? 'Zustand aktualisieren'
               : isOneTap
                 ? `Bereit stellen — ${selectedCondition ?? '…'}`
                 : `Zustand bestätigen${selectedCondition ? ` — ${selectedCondition}` : ''}`}
-        </button>
-        {!canSave && (
-          <p className="text-center text-xs text-ink-faint mt-2">
-            Bitte Zustand auswählen
-          </p>
-        )}
-      </div>
+        </Button>
+      </ActionBar>
     </div>
   );
 }

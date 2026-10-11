@@ -14,7 +14,6 @@ import { BundleDetailPage } from './pages/BundleDetailPage';
 import { AccountPage } from './pages/AccountPage';
 import { NegotiationDemoPage } from './pages/NegotiationDemoPage';
 import { ConfidenceCenterDemoPage } from './pages/ConfidenceCenterDemoPage';
-import { AngebotspaketPage } from './pages/AngebotspaketPage';
 import { AnkaufPage } from './pages/AnkaufPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
@@ -30,7 +29,6 @@ function App() {
               <Route path="/mehr" element={<MehrPage />} />
               <Route path="/new" element={<NewItemPage />} />
               <Route path="/items/:id" element={<ItemDetailPage />} />
-              <Route path="/items/:id/angebotspaket" element={<AngebotspaketPage />} />
               <Route path="/ankauf" element={<AnkaufPage />} />
               <Route path="/bundles" element={<BundlesPage />} />
               <Route path="/bundles/new" element={<NewBundlePage />} />
