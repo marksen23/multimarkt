@@ -74,6 +74,9 @@ export function AngebotspaketPage() {
   const [recommendations, setRecommendations] = useState<MarketplaceRecommendation[]>([]);
   const [detectedCategory, setDetectedCategory] = useState<string>('');
   const [drafts, setDrafts] = useState<Partial<Record<SecondhandMarketplace, PortalDraft>>>({});
+  const [listingPanelOpen, setListingPanelOpen] = useState(false);
+  const [listingPrice, setListingPrice] = useState('');
+  const [listingBusy, setListingBusy] = useState(false);
 
   const loadPortalText = useCallback(
     async (marketplace: SecondhandMarketplace, goal: SalesGoal) => {
@@ -172,10 +175,34 @@ export function AngebotspaketPage() {
     return d && (d.loadState === 'loaded' || d.loadState === 'loading' || d.loadState === 'error');
   });
 
-  // suppress unused-var warning — kept for future use
-  void toast;
-
   const anyLoaded = Object.values(drafts).some((d) => d?.loadState === 'loaded');
+
+  const firstLoadedDescription = (): string => {
+    for (const rec of recommendations) {
+      const d = drafts[rec.marketplace];
+      if (d?.loadState === 'loaded' && d.description) return d.description;
+    }
+    return '';
+  };
+
+  const createListing = async () => {
+    if (!id || !listingPrice) return;
+    const parsedPrice = parseFloat(listingPrice.replace(',', '.'));
+    if (isNaN(parsedPrice) || parsedPrice <= 0) return;
+    setListingBusy(true);
+    try {
+      await itemsApi.prepareListing(id, parsedPrice, firstLoadedDescription() || undefined);
+      navigate(`/items/${id}`);
+    } catch {
+      toast('Listing konnte nicht angelegt werden.', 'error');
+      setListingBusy(false);
+    }
+  };
+
+  const openListingPanel = () => {
+    setListingPrice(price !== null ? price.toFixed(2) : '');
+    setListingPanelOpen(true);
+  };
 
   return (
     <div className="max-w-md mx-auto pb-28">
@@ -322,11 +349,49 @@ export function AngebotspaketPage() {
 
       {/* Sticky CTA — visible once recommendations are loaded */}
       {!loadingRecs && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-bg via-bg/95 to-transparent pointer-events-none">
-          <div className="max-w-md mx-auto pointer-events-auto">
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-bg via-bg/95 to-transparent pointer-events-none">
+          {listingPanelOpen && (
+            <div className="max-w-md mx-auto pointer-events-auto px-4 pb-2">
+              <div className="bg-surface border border-line rounded-2xl p-4 space-y-3 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-ink">Listing anlegen</p>
+                  <button
+                    type="button"
+                    onClick={() => setListingPanelOpen(false)}
+                    className="text-ink-faint hover:text-ink text-lg leading-none"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-ink-muted font-medium">Verkaufspreis (€)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    inputMode="decimal"
+                    placeholder="z. B. 29.99"
+                    value={listingPrice}
+                    onChange={(e) => setListingPrice(e.target.value)}
+                    className="w-full px-3 py-2.5 text-sm border border-line rounded-xl outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition bg-transparent text-ink"
+                    autoFocus
+                  />
+                </div>
+                <button
+                  type="button"
+                  disabled={listingBusy || !listingPrice || parseFloat(listingPrice) <= 0}
+                  onClick={() => void createListing()}
+                  className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
+                >
+                  {listingBusy ? 'Wird angelegt…' : '✓ Als inseriert markieren'}
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="max-w-md mx-auto pointer-events-auto p-4">
             <button
               type="button"
-              onClick={() => navigate(`/items/${id}`)}
+              onClick={anyLoaded ? openListingPanel : () => navigate(`/items/${id}`)}
               className={`w-full p-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all shadow-lg ${
                 anyLoaded
                   ? 'bg-accent text-accent-ink hover:bg-accent-hover active:scale-[0.98]'

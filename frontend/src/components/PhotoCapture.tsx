@@ -20,7 +20,8 @@ export function PhotoCapture({
   onChange: (files: File[]) => void;
   itemId?: string;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<string[]>([]);
   const [optimizingIndex, setOptimizingIndex] = useState<number | null>(null);
   const [optimizeError, setOptimizeError] = useState<string | null>(null);
@@ -112,21 +113,51 @@ export function PhotoCapture({
 
       {optimizeError && <p className="text-xs text-danger">{optimizeError}</p>}
 
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        className="w-full p-6 rounded-2xl border-2 border-dashed border-line text-ink-muted text-sm font-semibold hover:border-accent hover:bg-accent-soft/40 hover:text-accent transition-colors flex flex-col items-center gap-1"
-      >
-        <span className="text-2xl">📷</span>
-        {files.length === 0
-          ? 'Foto aufnehmen / auswählen'
-          : `${files.length} Foto${files.length > 1 ? 's' : ''} · Weiteres hinzufügen`}
-      </button>
+      {files.length === 0 ? (
+        <button
+          type="button"
+          onClick={() => cameraInputRef.current?.click()}
+          className="w-full p-6 rounded-2xl border-2 border-dashed border-line text-ink-muted text-sm font-semibold hover:border-accent hover:bg-accent-soft/40 hover:text-accent transition-colors flex flex-col items-center gap-1"
+        >
+          <span className="text-2xl">📷</span>
+          Foto aufnehmen
+        </button>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => cameraInputRef.current?.click()}
+            className="p-3 rounded-xl border border-line text-ink-muted text-sm font-semibold hover:border-accent hover:bg-accent-soft/40 hover:text-accent transition-colors flex items-center justify-center gap-2"
+          >
+            <span>📷</span> Kamera
+          </button>
+          <button
+            type="button"
+            onClick={() => galleryInputRef.current?.click()}
+            className="p-3 rounded-xl border border-line text-ink-muted text-sm font-semibold hover:border-accent hover:bg-accent-soft/40 hover:text-accent transition-colors flex items-center justify-center gap-2"
+          >
+            <span>🖼</span> Galerie
+          </button>
+        </div>
+      )}
+
+      {/* Camera input — opens rear camera directly */}
       <input
-        ref={inputRef}
+        ref={cameraInputRef}
         type="file"
         accept="image/*"
         capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          addFiles(e.target.files);
+          e.target.value = '';
+        }}
+      />
+      {/* Gallery input — opens file picker / photo library */}
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
         multiple
         className="hidden"
         onChange={(e) => {
