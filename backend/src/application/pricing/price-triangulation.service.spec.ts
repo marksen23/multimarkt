@@ -92,10 +92,43 @@ describe('PriceTriangulationService', () => {
     expect(market?.median).toBe(34);
     expect(market?.detail?.comparableListings).toHaveLength(1);
     expect(buyback?.median).toBe(15 * BUYBACK_TO_RESALE_MULTIPLIER);
+    expect(buyback?.detail?.illustrative).toBe(true);
+    expect(result.recommendation?.buybackRecommended).toBe(false);
+    expect(result.recommendation?.minPrice).toBeLessThan(15 * BUYBACK_TO_RESALE_MULTIPLIER);
+    expect(result.recommendation?.reasoning.some((line) => line.includes('Beispiel'))).toBe(true);
     expect(marketProvider.search).toHaveBeenCalledWith({ keywords: 'Nike Sneaker', condition: 'good' });
     expect(insert).toHaveBeenCalledTimes(1);
     const insertedRows = insert.mock.calls[0][1] as Array<{ source: string }>;
     expect(insertedRows).toHaveLength(2);
+  });
+
+  it('still lets a real buyback quote raise the pain threshold', async () => {
+    const { dataSource } = makeDataSource({
+      item: { id: 'i1', condition: 'good' },
+      attributes: [attr('brand', 'Nike'), attr('category', 'Sneaker')],
+    });
+    marketProvider.search.mockResolvedValue({
+      median: 34,
+      p25: 28,
+      p75: 41,
+      sampleSize: 12,
+      currency: 'EUR',
+      providerLabel: 'eBay Browse API (Mock)',
+      comparableListings: [],
+    });
+    buybackProvider.quote.mockResolvedValue({
+      buybackPrice: 20,
+      currency: 'EUR',
+      portalName: 'Ankaufpartner',
+      illustrative: false,
+    });
+
+    const service = makeService(dataSource);
+    const result = await service.research('i1');
+    const buyback = result.sources.find((s) => s.source === 'ANKAUF_PORTAL');
+
+    expect(buyback?.detail?.illustrative).toBe(false);
+    expect(result.recommendation?.minPrice).toBeGreaterThanOrEqual(20 * BUYBACK_TO_RESALE_MULTIPLIER);
   });
 
   it('adds Gemini grounding as its own separately-labeled third source', async () => {

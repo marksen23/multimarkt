@@ -3,6 +3,7 @@ import { dispositionApi } from '../api/disposition';
 import type { DispositionRecommendation, DispositionUserGoal } from '../api/disposition';
 import { ApiRequestError } from '../api/client';
 import { itemsApi } from '../api/items';
+import { flushMarginAssumptions } from '../margin/use-margin-assumptions';
 import { Button, Card, inputClass } from '../ui';
 
 const USER_GOALS: { value: DispositionUserGoal; label: string }[] = [
@@ -69,6 +70,7 @@ export function DispositionPanel({ itemId, initialMedian }: { itemId: string; in
     setBusy(true);
     setError(null);
     try {
+      await flushMarginAssumptions();
       setResult(
         await dispositionApi.evaluate(itemId, {
           category,
@@ -181,6 +183,27 @@ export function DispositionPanel({ itemId, initialMedian }: { itemId: string; in
             {ACTION_LABELS[result.action] ?? result.action}
           </span>
           <p className="text-label font-normal text-ink-muted">{result.rationale}</p>
+          {result.margin && (
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <p className="text-ink-muted">
+                Gebühr {result.margin.feePercent.toFixed(2)} % · {result.margin.feeEur.toFixed(2)} €
+              </p>
+              <p className="text-ink-muted">Versand {result.margin.shippingEur.toFixed(2)} €</p>
+              <p className="text-ink">
+                Erwarteter Netto <span className="font-bold">{result.margin.expectedNetEur.toFixed(2)} €</span>
+              </p>
+              <p className="text-ink">
+                Marge{' '}
+                <span className="font-bold">
+                  {result.margin.marginEur == null ? '—' : `${result.margin.marginEur.toFixed(2)} €`}
+                  {result.margin.marginPercent != null ? ` (${result.margin.marginPercent.toFixed(2)} %)` : ''}
+                </span>
+              </p>
+            </div>
+          )}
+          {result.individualSaleNotice && (
+            <p className="text-sm font-bold text-danger">{result.individualSaleNotice}</p>
+          )}
           {result.recommendedPlatforms.length > 0 && (
             <div className="space-y-1">
               {result.recommendedPlatforms.map((p) => (

@@ -8,6 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { ITEM_LIFECYCLE_STATES, ItemLifecycleState } from '../../../domain/state-vocabulary';
+import { numericTransformer } from '../transformers/numeric.transformer';
 import { UserEntity } from './user.entity';
 
 // PRODUCT TRUTH: der physische Gegenstand (Doc 01 §2, Doc 02 §4).
@@ -41,6 +42,31 @@ export class ItemEntity {
   // attribute_key='condition' geführt, nicht auf dieser Spalte selbst.
   @Column({ type: 'text', nullable: true })
   condition: string | null;
+
+  // Einstand (Feature-Plan 3.3): der konkrete Einkauf, nicht die
+  // bestätigte Produktwahrheit. `condition` oben bleibt das Mensch-Tor
+  // fürs Listing; der Zustand des Einkaufs steht daneben.
+  @Column({
+    name: 'purchase_price_eur',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  purchasePriceEur: number | null;
+
+  @Column({ name: 'purchase_portal', type: 'text', nullable: true })
+  purchasePortal: string | null;
+
+  @Column({ name: 'purchase_date', type: 'date', nullable: true })
+  purchaseDate: string | null;
+
+  @Column({ name: 'purchase_condition', type: 'text', nullable: true })
+  purchaseCondition: string | null;
+
+  @Column({ name: 'purchase_url', type: 'text', nullable: true })
+  purchaseUrl: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
