@@ -14,15 +14,20 @@ function marketSource(overrides: Partial<PriceResearchSourceResult> = {}): Price
   };
 }
 
-function buybackSource(median: number): PriceResearchSourceResult {
+function buybackSource(
+  median: number,
+  overrides: Partial<PriceResearchSourceResult> = {},
+): PriceResearchSourceResult {
   return {
     source: 'ANKAUF_PORTAL',
-    providerLabel: 'momox (Mock)',
+    providerLabel: 'Ankaufportal',
     median,
     p25: null,
     p75: null,
     sampleSize: 1,
     currency: 'EUR',
+    detail: { illustrative: false },
+    ...overrides,
   };
 }
 
@@ -89,6 +94,33 @@ describe('PriceRecommendationService', () => {
 
     expect(closeToTarget.buybackRecommended).toBe(true);
     expect(farFromTarget.buybackRecommended).toBe(false);
+  });
+
+  it('does not let an illustrative Momox mock raise minPrice or recommend buyback', () => {
+    const marketOnly = service.recommend([marketSource({ median: 50, sampleSize: 10 })], 'FAST_SALE')!;
+    const withMock = service.recommend(
+      [
+        marketSource({ median: 50, sampleSize: 10 }),
+        buybackSource(45, { providerLabel: 'momox (Mock)', detail: { illustrative: true } }),
+      ],
+      'FAST_SALE',
+    )!;
+
+    expect(withMock.minPrice).toBe(marketOnly.minPrice);
+    expect(withMock.buybackRecommended).toBe(false);
+    expect(withMock.reasoning.some((line) => line.includes('Beispiel'))).toBe(true);
+  });
+
+  it('treats a "(Mock)" provider label as illustrative even without the explicit flag', () => {
+    const marketOnly = service.recommend([marketSource({ median: 100, sampleSize: 10 })], 'BALANCED')!;
+    const result = service.recommend(
+      [marketSource({ median: 100, sampleSize: 10 }), buybackSource(120, { providerLabel: 'momox (Mock)', detail: {} })],
+      'BALANCED',
+    )!;
+
+    expect(result.buybackRecommended).toBe(false);
+    expect(result.minPrice).toBe(marketOnly.minPrice);
+    expect(result.minPrice).toBeLessThan(120);
   });
 
   it('reports LOW confidence below the medium threshold, MEDIUM at/above it, HIGH at/above the high threshold', () => {

@@ -3,6 +3,7 @@ import { itemsApi } from '../api/items';
 import type { PriceRecommendation, PriceResearchResult, PriceResearchSourceResult, SalesGoal } from '../api/types';
 import { SkeletonBlock } from './Skeleton';
 import { Button, Icon } from '../ui';
+import { ExpectedMarginFields } from './ExpectedMarginFields';
 
 /**
  * §9d/§9e: Preisvorschläge sind rein beratend, nie automatisch übernommen —
@@ -26,10 +27,12 @@ const CONFIDENCE_LABELS: Record<string, string> = {
 
 export function PriceResearchPanel({
   itemId,
+  purchasePriceEur,
   onSuggestPrice,
   onMedianAvailable,
 }: {
   itemId: string;
+  purchasePriceEur: number | null;
   onSuggestPrice: (price: number) => void;
   onMedianAvailable?: (median: number) => void;
 }) {
@@ -127,7 +130,14 @@ export function PriceResearchPanel({
       </p>
 
       {result.recommendation && (
-        <RecommendationCard recommendation={result.recommendation} onSuggestPrice={onSuggestPrice} />
+        <>
+          <RecommendationCard recommendation={result.recommendation} onSuggestPrice={onSuggestPrice} />
+          <ExpectedMarginFields
+            salePriceEur={result.recommendation.targetPrice}
+            purchasePriceEur={purchasePriceEur}
+            salePriceLabel="Zielpreis"
+          />
+        </>
       )}
 
       {result.sources.map((source) => (
@@ -191,6 +201,12 @@ function RecommendationCard({
   );
 }
 
+function isExampleBuyback(source: PriceResearchSourceResult): boolean {
+  if (source.source !== 'ANKAUF_PORTAL') return false;
+  if (source.detail?.illustrative === true) return true;
+  return /\(Mock\)/i.test(source.providerLabel);
+}
+
 function SourceCard({
   source,
   onSuggestPrice,
@@ -199,26 +215,30 @@ function SourceCard({
   onSuggestPrice: (price: number) => void;
 }) {
   const listings = source.detail?.comparableListings ?? [];
+  const example = isExampleBuyback(source);
 
   return (
     <div className="bg-surface-hover border border-line rounded-control p-3 space-y-1">
       <div className="flex items-center justify-between gap-2">
         <span className="text-label text-ink-muted">
-          {SOURCE_LABELS[source.source] ?? source.source}
+          {example ? 'Ankaufportal (Beispiel)' : (SOURCE_LABELS[source.source] ?? source.source)}
         </span>
-        {source.median !== null && (
-          <Button size="sm" className="shrink-0 tabular-nums" onClick={() => onSuggestPrice(source.median as number)}>
+        {source.median !== null && !example && (
+          <Button size="sm" className="shrink-0 tabular-nums" onClick={() => onSuggestPrice(source.median as number)}
+          >
             {source.median.toFixed(2)} € übernehmen
           </Button>
         )}
       </div>
 
-      <p className="text-label font-normal text-ink-faint">
-        {source.source === 'ANKAUF_PORTAL'
-          ? `${source.providerLabel}: Ankaufspreis ${Number(source.detail?.buybackPrice ?? 0).toFixed(2)} € → Richtwert (×${source.detail?.multiplier ?? '?'})`
-          : source.p25 !== null && source.p75 !== null
-            ? `${source.sampleSize} Angebote (${source.providerLabel}), Spanne ${source.p25.toFixed(2)}–${source.p75.toFixed(2)} € (Angebotspreise, keine Verkaufsgarantie)`
-            : source.providerLabel}
+      <p className="text-[11px] text-ink-faint">
+        {example
+          ? `${source.providerLabel}: Beispiel, kein echtes Angebot (${Number(source.detail?.buybackPrice ?? 0).toFixed(2)} €). Hebt die Schmerzgrenze nicht an und lenkt nicht zum Ankauf.`
+          : source.source === 'ANKAUF_PORTAL'
+            ? `${source.providerLabel}: Ankaufspreis ${Number(source.detail?.buybackPrice ?? 0).toFixed(2)} € → Richtwert (×${source.detail?.multiplier ?? '?'})`
+            : source.p25 !== null && source.p75 !== null
+              ? `${source.sampleSize} Angebote (${source.providerLabel}), Spanne ${source.p25.toFixed(2)}–${source.p75.toFixed(2)} € (Angebotspreise, keine Verkaufsgarantie)`
+              : source.providerLabel}
       </p>
 
       {listings.length > 0 && (

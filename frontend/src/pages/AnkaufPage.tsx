@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ankaufApi } from '../api/ankauf';
+import { itemsApi } from '../api/items';
 import type { AnkaufListing, AnkaufResearchResult, DealScore } from '../api/types';
 import { Button, Card, EmptyState, Icon, Notice, PageHeader, inputClass } from '../ui';
 
@@ -118,6 +119,13 @@ function useRecentSearches(max = 5) {
   return { recent, add };
 }
 
+function todayLocal(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
 // ---------- Page ----------
 
 export function AnkaufPage() {
@@ -128,6 +136,7 @@ export function AnkaufPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeCondition, setActiveCondition] = useState<ConditionKey>('alle');
   const [showMargen, setShowMargen] = useState(false);
+  const [adoptingKey, setAdoptingKey] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { bookmarks, isBookmarked, toggle, remove } = useAnkaufMerkliste();
@@ -138,6 +147,25 @@ export function AnkaufPage() {
     }
   }, [pageTab]);
   const { recent, add: addRecent } = useRecentSearches();
+
+  const adopt = async (listing: AnkaufListing, key: string) => {
+    setAdoptingKey(key);
+    setError(null);
+    try {
+      const item = await itemsApi.createFromPurchase({
+        title: listing.title,
+        price: listing.price,
+        portal: PLATFORM_LABELS[listing.platform] ?? listing.platform,
+        date: todayLocal(),
+        condition: listing.condition,
+        url: listing.url,
+      });
+      navigate(`/items/${item.id}`);
+    } catch {
+      setError('Einkauf konnte nicht übernommen werden.');
+      setAdoptingKey(null);
+    }
+  };
 
   const search = async (kw: string) => {
     if (!kw.trim()) return;
@@ -398,14 +426,19 @@ export function AnkaufPage() {
                     }
                   />
                 )}
-                {visibleListings.map((listing, i) => (
-                  <ListingCard
-                    key={i}
-                    listing={listing}
-                    bookmarked={isBookmarked(listing)}
-                    onToggleBookmark={() => toggle(listing, query)}
-                  />
-                ))}
+                {visibleListings.map((listing, i) => {
+                  const key = `${listing.platform}-${listing.title}-${i}`;
+                  return (
+                    <ListingCard
+                      key={key}
+                      listing={listing}
+                      bookmarked={isBookmarked(listing)}
+                      onToggleBookmark={() => toggle(listing, query)}
+                      adopting={adoptingKey === key}
+                      onAdopt={() => void adopt(listing, key)}
+                    />
+                  );
+                })}
               </div>
             </div>
           )}
@@ -418,6 +451,7 @@ export function AnkaufPage() {
               <p className="text-label font-normal text-ink-faint mt-2">Standort: Berlin</p>
             </div>
           )}
+
         </>
       )}
     </div>
@@ -461,10 +495,7 @@ function MargenRechner({ marketMedian }: { marketMedian: number }) {
             const marginPct = (margin / buy) * 100;
             const isPositive = margin >= 0;
             return (
-              <div
-                key={p.id}
-                className="flex items-center justify-between bg-surface-hover rounded-control px-3 py-2"
-              >
+              <div key={p.id} className="flex items-center justify-between bg-surface-hover rounded-control px-3 py-2">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
                   <span className="text-label text-ink">{p.label}</span>
@@ -496,10 +527,14 @@ function ListingCard({
   listing,
   bookmarked,
   onToggleBookmark,
+  adopting = false,
+  onAdopt,
 }: {
   listing: AnkaufListing;
   bookmarked: boolean;
   onToggleBookmark: () => void;
+  adopting?: boolean;
+  onAdopt?: () => void;
 }) {
   const score = listing.dealScore;
   const scoreConfig = score ? SCORE_CONFIG[score] : null;
@@ -569,6 +604,16 @@ function ListingCard({
           <span className="text-label font-normal text-ink-faint shrink-0">Kein Link</span>
         )}
       </div>
+      {onAdopt && (
+        <button
+          type="button"
+          disabled={adopting}
+          onClick={onAdopt}
+          className="w-full text-xs font-bold px-3 py-2 rounded-lg border border-accent text-accent hover:bg-accent-soft disabled:opacity-60 transition-colors"
+        >
+          {adopting ? 'Übernimmt…' : 'Als Einkauf übernehmen'}
+        </button>
+      )}
     </Card>
   );
 }
