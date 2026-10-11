@@ -603,14 +603,14 @@ function PrepareListingStep({
   const anyGenerating = generating || autoFilling;
 
   return (
-    <div className=”p-4 space-y-4”>
-      <div className=”flex items-center justify-between gap-2”>
-        <h1 className=”text-lg font-bold text-ink”>Verkaufspreis festlegen</h1>
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-lg font-bold text-ink">Verkaufspreis festlegen</h1>
         <button
-          type=”button”
+          type="button"
           disabled={anyGenerating || busy}
           onClick={() => void autoFill()}
-          className=”text-xs font-bold text-accent hover:text-accent-hover disabled:opacity-50 transition-colors shrink-0”
+          className="text-xs font-bold text-accent hover:text-accent-hover disabled:opacity-50 transition-colors shrink-0"
         >
           {autoFilling ? 'Füllt aus…' : '✨ Alles ausfüllen'}
         </button>
@@ -629,35 +629,35 @@ function PrepareListingStep({
         onMedianAvailable={(m) => { setMarketMedian(m); onMedianAvailable?.(m); }}
       />
       <input
-        type=”number”
-        inputMode=”decimal”
-        min=”0”
-        step=”0.01”
-        placeholder=”Preis in €”
+        type="number"
+        inputMode="decimal"
+        min="0"
+        step="0.01"
+        placeholder="Preis in €"
         value={price}
         onChange={(e) => setPrice(e.target.value)}
-        className=”w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition”
+        className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
       />
       <PriceHint enteredPrice={Number(price)} marketMedian={marketMedian} />
-      <div className=”space-y-1”>
-        <div className=”flex items-center justify-between gap-2”>
-          <span className=”text-xs font-bold text-ink-muted uppercase tracking-wide shrink-0”>Beschreibung</span>
-          <div className=”flex items-center gap-2”>
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-bold text-ink-muted uppercase tracking-wide shrink-0">Beschreibung</span>
+          <div className="flex items-center gap-2">
             <select
               value={salesGoal}
               onChange={(e) => setSalesGoal(e.target.value)}
-              className=”text-[11px] border border-line rounded-lg px-1.5 py-1 bg-surface text-ink-muted outline-none focus:border-accent”
+              className="text-[11px] border border-line rounded-lg px-1.5 py-1 bg-surface text-ink-muted outline-none focus:border-accent"
             >
-              <option value=”BALANCED”>Ausgewogen</option>
-              <option value=”FAST_SALE”>Schnell verkaufen</option>
-              <option value=”MAX_PROFIT”>Maximaler Erlös</option>
-              <option value=”MINIMAL_EFFORT”>Minimaler Aufwand</option>
+              <option value="BALANCED">Ausgewogen</option>
+              <option value="FAST_SALE">Schnell verkaufen</option>
+              <option value="MAX_PROFIT">Maximaler Erlös</option>
+              <option value="MINIMAL_EFFORT">Minimaler Aufwand</option>
             </select>
             <button
-              type=”button”
+              type="button"
               onClick={() => void generateDescription()}
               disabled={anyGenerating}
-              className=”text-[11px] font-bold text-ink-muted hover:text-accent disabled:opacity-60 transition-colors shrink-0”
+              className="text-[11px] font-bold text-ink-muted hover:text-accent disabled:opacity-60 transition-colors shrink-0"
             >
               {generating ? 'Generiert…' : '✨ Vorschlag generieren'}
             </button>
@@ -665,26 +665,26 @@ function PrepareListingStep({
         </div>
         <textarea
           rows={3}
-          placeholder=”Beschreibung (optional — leer lassen für eine einfache Standardvorlage)”
+          placeholder="Beschreibung (optional — leer lassen für eine einfache Standardvorlage)"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className=”w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition”
+          className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
         />
         {description.length > 0 && (
-          <div className=”flex justify-end”>
+          <div className="flex justify-end">
             <span className={`text-[11px] tabular-nums ${description.length > 1500 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-ink-faint'}`}>
               {description.length} / 1500
             </span>
           </div>
         )}
-        {generateError && <p className=”text-xs text-danger”>{generateError}</p>}
+        {generateError && <p className="text-xs text-danger">{generateError}</p>}
         {descriptionMissingTokens.length > 0 && (
-          <p className=”text-xs text-ink-faint”>
+          <p className="text-xs text-ink-faint">
             Vergleichsangebote nutzen zusätzlich: {descriptionMissingTokens.slice(0, 6).join(', ')}
           </p>
         )}
         {vaguePhrases.length > 0 && (
-          <div className=”text-xs text-ink-faint space-y-0.5”>
+          <div className="text-xs text-ink-faint space-y-0.5">
             {vaguePhrases.map((v, i) => (
               <p key={i}>
                 ⚠️ „{v.phrase}” ist vage — {v.suggestion}
@@ -694,10 +694,10 @@ function PrepareListingStep({
         )}
       </div>
       <button
-        type=”button”
+        type="button"
         disabled={busy || !price}
         onClick={() => onPrepare(Number(price), description || undefined)}
-        className=”w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors”
+        className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
       >
         {busy ? 'Wird angelegt…' : 'Listing anlegen'}
       </button>

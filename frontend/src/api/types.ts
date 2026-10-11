@@ -138,6 +138,7 @@ export type PriceResearchSource = 'EBAY_ACTIVE_LISTINGS' | 'ANKAUF_PORTAL' | 'GE
 export interface ComparableListing {
   title: string;
   price: number;
+  url?: string | null;
 }
 
 export interface PriceResearchSourceResult {

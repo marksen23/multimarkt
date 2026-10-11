@@ -18,7 +18,10 @@ export default defineConfig({
         theme_color: '#059669',
         background_color: '#f7f7f5',
         display: 'standalone',
+        orientation: 'portrait',
         start_url: '/',
+        scope: '/',
+        lang: 'de',
         // HINWEIS: nur ein SVG-Icon vorhanden. Für vollständige "Add to
         // Home Screen"-Unterstützung (insb. iOS) fehlen noch echte
         // 192x192/512x512-PNG-Icons — ein Asset-/Design-Task, kein Code-Gap.

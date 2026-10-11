@@ -183,7 +183,6 @@ export function BundlesPage() {
             l.projections.some((p) => p.status === 'ONLINE' || p.status === 'PUBLISHING'),
           );
           const anyListing = listings[0];
-          const isActive = ACTIVE_STATES.includes(bundle.status);
           return (
             <Link
               key={bundle.id}
@@ -208,7 +207,7 @@ export function BundlesPage() {
                       <span className="text-[11px] text-ink-faint">Kein Listing</span>
                     )}
                     <span className="text-[11px] text-ink-faint opacity-60">
-                      · {relativeDate(isActive ? bundle.createdAt : bundle.updatedAt)}
+                      · {relativeDate(bundle.createdAt)}
                     </span>
                   </div>
                 </div>
