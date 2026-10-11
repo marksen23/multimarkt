@@ -4,6 +4,7 @@ import { bundlesApi } from '../api/bundles';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import type { ItemListEntry } from '../api/types';
+import { ActionBar, Button, PageHeader, SectionLabel, Spinner, inputClass } from '../ui';
 
 /** Nur READY-Items sind bündelbar (Doc 02 §11 Precondition, StateGuardService). */
 export function NewBundlePage() {
@@ -47,57 +48,58 @@ export function NewBundlePage() {
   };
 
   return (
-    <div className="max-w-md mx-auto p-6 space-y-4">
-      <Link to="/bundles" className="block text-xs text-ink-faint hover:text-ink-muted">
+    <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-4">
+      <Link to="/bundles" className="inline-block text-label font-normal text-ink-faint hover:text-ink-muted">
         ← Bundles
       </Link>
-      <h1 className="text-xl font-extrabold text-ink tracking-tight">Neues Bundle</h1>
+      <PageHeader title="Neues Bundle" />
       <input
         type="text"
         placeholder="Titel, z.B. „Kinderkleidung Gr. 98“"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         autoFocus
-        className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
+        className={inputClass}
       />
 
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-xs font-bold text-ink-muted uppercase">
-            Bereite Artikel auswählen (optional)
-          </p>
-          {readyItems && readyItems.length > 1 && (
-            <button
-              type="button"
-              onClick={() =>
-                setSelected(
-                  selected.size === readyItems.length
-                    ? new Set()
-                    : new Set(readyItems.map(({ item }) => item.id)),
-                )
-              }
-              className="text-xs font-bold text-accent hover:text-accent-hover transition-colors"
-            >
-              {selected.size === readyItems.length ? 'Keine' : 'Alle'}
-            </button>
-          )}
-        </div>
+      <section>
+        <SectionLabel
+          action={
+            readyItems && readyItems.length > 1 ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setSelected(
+                    selected.size === readyItems.length
+                      ? new Set()
+                      : new Set(readyItems.map(({ item }) => item.id)),
+                  )
+                }
+                className="text-label text-accent hover:text-accent-hover transition-colors"
+              >
+                {selected.size === readyItems.length ? 'Keine' : 'Alle'}
+              </button>
+            ) : undefined
+          }
+        >
+          Bereite Artikel auswählen (optional)
+        </SectionLabel>
         {readyItems === null && (
-          <div className="flex items-center gap-2 text-xs text-ink-faint py-1">
-            <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+          <div className="flex items-center gap-2 text-label font-normal text-ink-faint py-1">
+            <Spinner />
             Artikel werden geladen…
           </div>
         )}
         {readyItems?.length === 0 && (
-          <p className="text-xs text-ink-faint">
+          <p className="text-label font-normal text-ink-faint">
             Noch keine bereiten Artikel vorhanden — Bundle kann trotzdem leer angelegt werden.
           </p>
         )}
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           {readyItems?.map(({ item }) => (
             <label
               key={item.id}
-              className={`flex items-center gap-3 bg-surface border rounded-xl px-3 py-2.5 text-sm text-ink cursor-pointer transition ${
+              className={`flex items-center gap-3 bg-surface border rounded-control px-3 py-2.5 text-body text-ink cursor-pointer transition ${
                 selected.has(item.id)
                   ? 'border-accent/60 bg-accent-soft/30'
                   : 'border-line hover:border-accent/40'
@@ -114,28 +116,25 @@ export function NewBundlePage() {
                   {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
                 </p>
                 {item.condition && (
-                  <p className="text-[11px] text-ink-faint">{item.condition}</p>
+                  <p className="text-label font-normal text-ink-faint">{item.condition}</p>
                 )}
               </div>
             </label>
           ))}
         </div>
-      </div>
+      </section>
 
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {error && <p className="text-label text-danger">{error}</p>}
 
-      <button
-        type="button"
-        disabled={creating || !title}
-        onClick={create}
-        className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
-      >
-        {creating
-          ? 'Wird erstellt…'
-          : selected.size > 0
-            ? `Bundle anlegen (${selected.size} ${selected.size === 1 ? 'Artikel' : 'Artikel'})`
-            : 'Bundle anlegen'}
-      </button>
+      <ActionBar>
+        <Button size="lg" disabled={creating || !title} onClick={create}>
+          {creating
+            ? 'Wird erstellt…'
+            : selected.size > 0
+              ? `Bundle anlegen (${selected.size} ${selected.size === 1 ? 'Artikel' : 'Artikel'})`
+              : 'Bundle anlegen'}
+        </Button>
+      </ActionBar>
     </div>
   );
 }

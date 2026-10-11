@@ -5,6 +5,8 @@ import { ApiRequestError } from '../api/client';
 import { clearAccessToken } from '../components/TokenGate';
 import { useTheme } from '../hooks/useTheme';
 import type { DeletionAuditLog, ItemListEntry } from '../api/types';
+import { Button, Card, Icon, PageHeader } from '../ui';
+import { formatEuro } from '../lib/format';
 
 /** Doc 04 §16 / Doc 01 §15 — Hard-Delete-Lifecycle (T08-1). */
 export function AccountPage() {
@@ -61,13 +63,13 @@ export function AccountPage() {
       .reduce((sum, e) => sum + (e.listings[0]?.sellingPrice ?? 0), 0) ?? 0;
 
   return (
-    <div className="max-w-md mx-auto p-6 space-y-5">
-      <h1 className="text-xl font-extrabold text-ink tracking-tight">Konto</h1>
+    <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-5">
+      <PageHeader title="Konto" />
 
       {entries === null ? (
         <div className="grid grid-cols-2 gap-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-surface border border-line rounded-xl p-4 h-16 animate-pulse" />
+            <Card key={i} className="p-4 h-16 animate-pulse" />
           ))}
         </div>
       ) : (
@@ -78,118 +80,104 @@ export function AccountPage() {
             <StatCard label="Verkauft" value={String(sold)} />
             <StatCard
               label="Erlös"
-              value={
-                revenue > 0
-                  ? revenue.toLocaleString('de-DE', {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    }) + ' €'
-                  : '—'
-              }
+              value={revenue > 0 ? formatEuro(revenue, 0) : '—'}
               highlight={revenue > 0}
             />
           </div>
           {lagerwert > 0 && (
-            <div className="bg-surface border border-line rounded-xl px-4 py-3 flex items-center justify-between">
-              <span className="text-xs font-bold text-ink-muted uppercase tracking-wide">
-                Lagerwert
-              </span>
-              <span className="text-base font-extrabold tabular-nums text-accent">
-                {lagerwert.toLocaleString('de-DE', {
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                })}{' '}
-                €
-              </span>
-            </div>
+            <Card className="px-4 py-3 flex items-center justify-between">
+              <span className="text-micro uppercase text-ink-muted">Lagerwert</span>
+              <span className="text-title tabular-nums text-accent">{formatEuro(lagerwert, 0)}</span>
+            </Card>
           )}
         </div>
       )}
 
       {/* Darstellung */}
-      <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
-        <p className="text-sm font-bold text-ink">Darstellung</p>
+      <Card className="p-4 space-y-3">
+        <p className="text-body font-semibold text-ink">Darstellung</p>
         <div className="flex gap-2">
           {(['auto', 'light', 'dark'] as const).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => setThemePref(t)}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-colors ${
+              className={`flex-1 h-9 inline-flex items-center justify-center gap-1.5 rounded-control text-label border transition-colors ${
                 themePref === t
                   ? 'bg-accent text-accent-ink border-accent'
                   : 'bg-surface-hover text-ink-muted border-line hover:border-accent hover:text-accent'
               }`}
             >
-              {t === 'auto' ? '⚙ Auto' : t === 'light' ? '☀ Hell' : '☾ Dunkel'}
+              <Icon name={t === 'auto' ? 'auto' : t === 'light' ? 'sun' : 'moon'} size={15} />
+              {t === 'auto' ? 'Auto' : t === 'light' ? 'Hell' : 'Dunkel'}
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-ink-faint">
+        <p className="text-label font-normal text-ink-faint">
           {themePref === 'auto'
             ? 'Folgt dem Systemdesign.'
             : themePref === 'light'
             ? 'Helles Design erzwungen.'
             : 'Dunkles Design erzwungen.'}
         </p>
-      </div>
+      </Card>
 
       {/* Abmelden */}
-      <div className="bg-surface border border-line rounded-2xl p-4 space-y-2">
-        <p className="text-sm font-bold text-ink">Sitzung</p>
-        <p className="text-xs text-ink-faint">
+      <Card className="p-4 space-y-2">
+        <p className="text-body font-semibold text-ink">Sitzung</p>
+        <p className="text-label font-normal text-ink-faint">
           Personal Resale OS — Einzelnutzer-Modus. Kein Passwort, nur ein Zugriffstoken.
         </p>
         <button
           type="button"
           onClick={handleLogout}
-          className={`w-full mt-1 p-2.5 rounded-xl border text-sm font-bold transition-colors text-left flex items-center gap-2 ${
+          className={`w-full mt-1 h-11 px-3 rounded-control border text-body font-semibold transition-colors text-left flex items-center gap-2 ${
             confirmLogout
               ? 'bg-danger-soft border-danger/30 text-danger'
               : 'border-line text-ink-muted hover:bg-surface-hover hover:text-ink'
           }`}
         >
-          <span className="text-base">↩</span>
+          <Icon name="logout" size={17} />
           {confirmLogout ? 'Wirklich abmelden?' : 'Abmelden (Token entfernen)'}
         </button>
-      </div>
+      </Card>
 
       {/* Danger zone */}
-      <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4 space-y-3">
-        <h2 className="font-bold text-red-700 dark:text-red-400">Account löschen</h2>
-        <p className="text-xs text-red-700/90 dark:text-red-400/90">
+      <div className="bg-danger-soft/40 border border-danger/20 rounded-card p-4 space-y-3">
+        <h2 className="text-title text-danger">Account löschen</h2>
+        <p className="text-label font-normal text-danger/90">
           Löscht unwiderruflich alle Items, Listings, Bundles und Verkaufsdaten (DB-Kaskade). Diese
           Aktion kann nicht rückgängig gemacht werden.
         </p>
-        {error && <p className="text-xs text-red-800 dark:text-red-300 font-bold">{error}</p>}
+        {error && <p className="text-label text-danger">{error}</p>}
         {!confirming ? (
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="text-sm font-bold text-red-700 dark:text-red-400 underline"
+            className="text-body font-semibold text-danger underline"
           >
             Löschung starten
           </button>
         ) : (
           <div className="space-y-2">
-            <p className="text-xs font-bold text-red-700 dark:text-red-400">Bist du sicher?</p>
+            <p className="text-label text-danger">Bist du sicher?</p>
             <div className="flex gap-2">
-              <button
-                type="button"
+              <Button
+                variant="danger"
                 disabled={busy}
                 onClick={requestDeletion}
-                className="flex-1 p-2 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:bg-line disabled:text-ink-faint transition-colors"
+                className="flex-1"
               >
                 {busy ? 'Löscht…' : 'Ja, endgültig löschen'}
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="secondary"
                 disabled={busy}
                 onClick={() => setConfirming(false)}
-                className="flex-1 p-2 rounded-xl border border-line text-sm font-bold text-ink-muted hover:bg-surface-hover disabled:opacity-50 transition-colors"
+                className="flex-1"
               >
                 Abbrechen
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -216,26 +204,26 @@ function DeletionSuccessScreen({ mediaDeleted }: { mediaDeleted: boolean }) {
   }, []);
 
   return (
-    <div className="max-w-md mx-auto p-6 flex items-center justify-center min-h-[60vh]">
-      <div className="bg-surface border border-line rounded-2xl p-8 space-y-4 text-center w-full">
-        <div className="w-12 h-12 rounded-full bg-accent-soft flex items-center justify-center mx-auto text-2xl">
-          ✓
+    <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 flex items-center justify-center min-h-[60vh]">
+      <Card className="p-8 space-y-4 text-center w-full">
+        <div className="w-12 h-12 rounded-full bg-accent-soft text-accent flex items-center justify-center mx-auto">
+          <Icon name="check" size={22} strokeWidth={2.4} />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-ink">Konto gelöscht</h1>
-          <p className="text-sm text-ink-muted mt-1">
+          <h1 className="text-title text-ink">Konto gelöscht</h1>
+          <p className="text-body text-ink-muted mt-1">
             Alle deine Daten wurden dauerhaft entfernt.
           </p>
         </div>
         {!mediaDeleted && (
-          <p className="text-xs text-warning">
+          <p className="text-label font-normal text-warning">
             Hochgeladene Fotos werden separat verwaltet und können noch einen Moment verfügbar sein.
           </p>
         )}
-        <p className="text-xs text-ink-faint">
+        <p className="text-label font-normal text-ink-faint">
           Abmeldung in {countdown} Sekunde{countdown !== 1 ? 'n' : ''}…
         </p>
-      </div>
+      </Card>
     </div>
   );
 }
@@ -250,13 +238,9 @@ function StatCard({
   highlight?: boolean;
 }) {
   return (
-    <div className="bg-surface border border-line rounded-xl p-4 space-y-1">
-      <p
-        className={`text-xl font-extrabold tabular-nums ${highlight ? 'text-accent' : 'text-ink'}`}
-      >
-        {value}
-      </p>
-      <p className="text-[10px] font-bold text-ink-muted uppercase tracking-wide">{label}</p>
-    </div>
+    <Card className="p-4 space-y-1">
+      <p className={`text-display tabular-nums ${highlight ? 'text-accent' : 'text-ink'}`}>{value}</p>
+      <p className="text-micro uppercase text-ink-muted">{label}</p>
+    </Card>
   );
 }

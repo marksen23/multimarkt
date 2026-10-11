@@ -6,8 +6,8 @@ import { ApiRequestError } from '../api/client';
 import type { BundleDetail, Item, ItemListEntry } from '../api/types';
 import { ListingsManager } from '../components/ListingsManager';
 import { DetailPageSkeleton } from '../components/Skeleton';
-import { StatusBadge } from '../components/StatusBadge';
 import { useToast } from '../components/Toast';
+import { Button, Card, EmptyState, Icon, Notice, PageHeader, PhaseBadge, SectionLabel, Spinner, inputClass } from '../ui';
 
 function AddItemsSection({
   bundleId,
@@ -35,9 +35,9 @@ function AddItemsSection({
   const add = () => run(() => bundlesApi.addItems(bundleId, Array.from(selected)));
 
   return (
-    <div className="bg-surface border border-accent/30 rounded-2xl p-4 space-y-3">
+    <div className="bg-surface border border-accent/30 rounded-card shadow-card p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-bold text-ink-muted uppercase">Bereite Artikel hinzufügen</p>
+        <p className="text-micro uppercase text-ink-muted">Bereite Artikel hinzufügen</p>
         {readyItems && readyItems.length > 1 && (
           <button
             type="button"
@@ -48,20 +48,20 @@ function AddItemsSection({
                   : new Set(readyItems.map(({ item }) => item.id)),
               )
             }
-            className="text-xs font-bold text-accent hover:text-accent-hover transition-colors"
+            className="text-label text-accent hover:text-accent-hover transition-colors"
           >
             {selected.size === readyItems.length ? 'Keine' : 'Alle'}
           </button>
         )}
       </div>
       {readyItems === null && (
-        <div className="flex items-center gap-2 text-xs text-ink-faint">
-          <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+        <div className="flex items-center gap-2 text-label font-normal text-ink-faint">
+          <Spinner />
           Artikel werden geladen…
         </div>
       )}
       {readyItems?.length === 0 && (
-        <p className="text-xs text-ink-faint">
+        <p className="text-label font-normal text-ink-faint">
           Noch keine bereiten Artikel vorhanden. Artikel zuerst analysieren und bestätigen.
         </p>
       )}
@@ -69,7 +69,7 @@ function AddItemsSection({
         {readyItems?.map(({ item }) => (
           <label
             key={item.id}
-            className={`flex items-center gap-3 bg-surface border rounded-xl px-3 py-2.5 text-sm text-ink cursor-pointer transition ${
+            className={`flex items-center gap-3 bg-surface border rounded-control px-3 py-2.5 text-body text-ink cursor-pointer transition ${
               selected.has(item.id) ? 'border-accent/60 bg-accent-soft/30' : 'border-line hover:border-accent/40'
             }`}
           >
@@ -81,24 +81,24 @@ function AddItemsSection({
             />
             <div className="min-w-0">
               <p className="font-medium truncate">{item.title ?? `Artikel ${item.id.slice(0, 8)}`}</p>
-              {item.condition && <p className="text-[11px] text-ink-faint">{item.condition}</p>}
+              {item.condition && <p className="text-label font-normal text-ink-faint">{item.condition}</p>}
             </div>
           </label>
         ))}
       </div>
       {(readyItems?.length ?? 0) > 0 && (
-        <button
-          type="button"
+        <Button
+          block
+          size="md"
           disabled={busy || selected.size === 0}
           onClick={add}
-          className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
         >
           {busy
             ? 'Wird hinzugefügt…'
             : selected.size > 0
               ? `${selected.size} ${selected.size === 1 ? 'Artikel' : 'Artikel'} hinzufügen → Bundle bereit`
               : 'Artikel auswählen'}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -157,7 +157,11 @@ export function BundleDetailPage() {
 
   if (!detail || !id) {
     if (error) {
-      return <div className="p-6 text-center text-sm text-danger">{error}</div>;
+      return (
+        <div className="max-w-2xl mx-auto px-4 pt-6 pb-8">
+          <Notice tone="danger">{error}</Notice>
+        </div>
+      );
     }
     return <DetailPageSkeleton />;
   }
@@ -168,81 +172,78 @@ export function BundleDetailPage() {
     run(() => bundlesApi.prepareListing(id, Number(price), description));
 
   return (
-    <div className="max-w-md mx-auto p-4 space-y-4">
-      <Link to="/bundles" className="text-xs text-ink-faint hover:text-ink-muted">
+    <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-4">
+      <Link to="/bundles" className="inline-block text-label font-normal text-ink-faint hover:text-ink-muted">
         ← Bundles
       </Link>
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-ink">{bundle.title}</h1>
-        <StatusBadge status={bundle.status} />
-      </div>
-      {bundle.description && <p className="text-sm text-ink-muted">{bundle.description}</p>}
+      <PageHeader
+        title={bundle.title}
+        subtitle={bundle.description}
+        action={<PhaseBadge status={bundle.status} className="mt-1" />}
+      />
 
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {error && <p className="text-label text-danger">{error}</p>}
 
-      <div>
-        <p className="text-xs font-bold text-ink-muted uppercase mb-2">
-          Enthaltene Artikel ({items.length})
-        </p>
+      <section>
+        <SectionLabel>Enthaltene Artikel ({items.length})</SectionLabel>
         {items.length === 0 && bundle.status !== 'NEW' ? (
-          <div className="bg-surface border border-dashed border-line rounded-xl px-4 py-6 text-center">
-            <p className="text-sm text-ink-muted">Noch keine Artikel in diesem Bundle.</p>
-          </div>
+          <EmptyState icon="package" title="Noch keine Artikel in diesem Bundle." />
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {items.map((item) => (
               <Link
                 key={item.id}
                 to={`/items/${item.id}`}
-                className="flex items-center justify-between bg-surface border border-line rounded-xl px-3 py-2 hover:border-accent/40 transition"
+                className="flex items-center justify-between gap-3 bg-surface border border-line rounded-control px-3 py-2 hover:border-accent/40 transition-colors"
               >
                 <div className="min-w-0">
-                  <p className="text-sm text-ink font-medium truncate">
+                  <p className="text-body text-ink font-medium truncate">
                     {item.title ?? `Artikel ${item.id.slice(0, 8)}`}
                   </p>
                   {item.condition && (
-                    <p className="text-[11px] text-ink-faint">{item.condition}</p>
+                    <p className="text-label font-normal text-ink-faint">{item.condition}</p>
                   )}
                 </div>
-                <StatusBadge status={item.status} />
+                <PhaseBadge status={item.status} />
               </Link>
             ))}
           </div>
         )}
-      </div>
+      </section>
 
       {bundle.status === 'NEW' && id && (
         <AddItemsSection bundleId={id} busy={busy} run={run} />
       )}
 
       {listings.length > 0 && (
-        <div>
-          <p className="text-xs font-bold text-ink-muted uppercase mb-2">Listings</p>
+        <section>
+          <SectionLabel>Listings</SectionLabel>
           <ListingsManager
             listings={listings}
             busy={busy}
             run={run}
             emptyLabel="Noch kein Canonical Listing vorhanden."
           />
-        </div>
+        </section>
       )}
 
       {bundle.status === 'READY' && listings.length === 0 && (
-        <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
-          <p className="text-xs font-bold text-ink-muted uppercase">Listing anlegen</p>
+        <Card className="p-4 space-y-3">
+          <p className="text-micro uppercase text-ink-muted">Listing anlegen</p>
 
           {/* Description with suggestion button */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs text-ink-muted font-medium">Beschreibung</label>
+              <label className="text-label text-ink-muted">Beschreibung</label>
               {items.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setDescription(buildBundleDescription(items))}
-                  className="text-xs font-bold text-accent hover:text-accent-hover transition-colors"
+                  className="inline-flex items-center gap-1 text-label text-accent hover:text-accent-hover transition-colors"
                 >
-                  ✨ Vorschlag generieren
+                  <Icon name="sparkle" size={14} />
+                  Vorschlag generieren
                 </button>
               )}
             </div>
@@ -251,7 +252,7 @@ export function BundleDetailPage() {
               placeholder="Beschreibung des Bundles…"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition resize-none"
+              className={`${inputClass} resize-none`}
             />
             <div className="flex items-center justify-between px-0.5">
               <div className="flex-1 h-0.5 rounded-full bg-line overflow-hidden mr-3">
@@ -260,7 +261,7 @@ export function BundleDetailPage() {
                   style={{ width: `${Math.min((description.length / 1500) * 100, 100)}%` }}
                 />
               </div>
-              <span className={`text-[11px] tabular-nums flex-shrink-0 ${description.length > 1500 ? 'text-danger font-bold' : 'text-ink-faint'}`}>
+              <span className={`text-label tabular-nums shrink-0 ${description.length > 1500 ? 'text-danger' : 'font-normal text-ink-faint'}`}>
                 {description.length} / 1500
               </span>
             </div>
@@ -268,7 +269,7 @@ export function BundleDetailPage() {
 
           {/* Price */}
           <div className="space-y-1.5">
-            <label className="text-xs text-ink-muted font-medium">Preis (€)</label>
+            <label className="text-label text-ink-muted">Preis (€)</label>
             <input
               type="number"
               inputMode="decimal"
@@ -277,19 +278,19 @@ export function BundleDetailPage() {
               placeholder="z. B. 29.99"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
+              className={inputClass}
             />
           </div>
 
-          <button
-            type="button"
+          <Button
+            block
+            size="md"
             disabled={busy || !price || !description || description.length > 1500}
             onClick={prepareListing}
-            className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
           >
             {busy ? 'Wird angelegt…' : 'Listing anlegen'}
-          </button>
-        </div>
+          </Button>
+        </Card>
       )}
     </div>
   );
