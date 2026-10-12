@@ -7,7 +7,6 @@ import { ApiRequestError } from '../api/client';
 import type { BundleDetail, Item, ItemListEntry } from '../api/types';
 import { ListingsManager } from '../components/ListingsManager';
 import { DetailPageSkeleton } from '../components/Skeleton';
-import { useToast } from '../components/Toast';
 import { Button, Card, EmptyState, Icon, Notice, PageHeader, PhaseBadge, SectionLabel, Spinner, inputClass } from '../ui';
 
 function AddItemsSection({

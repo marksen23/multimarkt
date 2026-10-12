@@ -173,7 +173,7 @@ export function ItemDetailPage() {
         </div>
       )}
 
-      {item.status === 'NEW' && (
+      {(item.status === 'NEW' || item.status === 'ANALYZING') && (
         <AnalyzeStep
           itemId={id}
           analyzing={item.status === 'ANALYZING'}

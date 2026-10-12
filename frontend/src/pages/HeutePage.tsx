@@ -29,9 +29,14 @@ export function HeutePage() {
         subtitle={
           entries === null
             ? 'Lädt…'
-            : todo === 0
-              ? 'Nichts zu tun.'
-              : `${todo} ${todo === 1 ? 'Artikel wartet' : 'Artikel warten'} auf dich.`
+            : (() => {
+                const analyzing = entries.filter((e) => e.item.status === 'ANALYZING').length;
+                if (todo === 0 && analyzing === 0) return 'Nichts zu tun.';
+                const parts: string[] = [];
+                if (todo > 0) parts.push(`${todo} ${todo === 1 ? 'Artikel wartet' : 'Artikel warten'}`);
+                if (analyzing > 0) parts.push(`${analyzing} wird analysiert`);
+                return parts.join(' · ');
+              })()
         }
       />
 

@@ -42,6 +42,8 @@ export function ItemRow({
           {action}
           <Icon name="chevronRight" size={14} strokeWidth={2.4} />
         </span>
+      ) : item.status === 'ANALYZING' ? (
+        <span className="shrink-0 w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" aria-label="Wird analysiert" />
       ) : (
         <Icon name="chevronRight" className="text-ink-faint group-hover:text-accent" />
       )}
