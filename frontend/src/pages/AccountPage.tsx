@@ -66,6 +66,10 @@ export function AccountPage() {
   }
 
   const total = entries?.length ?? 0;
+  const pending =
+    entries?.filter((e) =>
+      ['NEW', 'ANALYZING', 'REVIEW_REQUIRED', 'READY'].includes(e.item.status),
+    ).length ?? 0;
   const active =
     entries?.filter((e) =>
       ['LISTED', 'SALE_CONFLICT', 'BUNDLED'].includes(e.item.status),
@@ -94,6 +98,7 @@ export function AccountPage() {
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <StatCard label="Artikel gesamt" value={String(total)} />
+            <StatCard label="Handlung nötig" value={String(pending)} highlight={pending > 0} />
             <StatCard label="Aktiv" value={String(active)} highlight={active > 0} />
             <StatCard label="Verkauft" value={String(sold)} />
             <StatCard

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useToast } from '../components/Toast';
 import { bundlesApi } from '../api/bundles';
 import { ApiRequestError } from '../api/client';
 import type { BundleDetail } from '../api/types';
@@ -9,6 +10,7 @@ import { StatusBadge } from '../components/StatusBadge';
 
 export function BundleDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const toast = useToast();
   const [detail, setDetail] = useState<BundleDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -35,7 +37,9 @@ export function BundleDetailPage() {
       await fn();
       await reload();
     } catch (e) {
-      setError(e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler');
+      const msg = e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler';
+      setError(msg);
+      toast(msg, 'error');
     } finally {
       setBusy(false);
     }

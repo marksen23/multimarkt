@@ -71,7 +71,14 @@ export function DashboardPage() {
     ? (visible ?? [])
     : (visible?.filter((e) => !ABGESCHLOSSEN_STATES.includes(e.item.status)) ?? []);
   const closedEntries = filter === 'alle'
-    ? (entries?.filter((e) => ABGESCHLOSSEN_STATES.includes(e.item.status)) ?? [])
+    ? (entries?.filter((e) => {
+        if (!ABGESCHLOSSEN_STATES.includes(e.item.status)) return false;
+        if (!searchLower) return true;
+        return (
+          (e.item.title ?? '').toLowerCase().includes(searchLower) ||
+          (e.item.condition ?? '').toLowerCase().includes(searchLower)
+        );
+      }) ?? [])
     : [];
 
   return (

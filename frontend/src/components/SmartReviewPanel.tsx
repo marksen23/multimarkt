@@ -187,9 +187,11 @@ export function SmartReviewPanel({
                   !missingDrafts[a.attributeKey]?.trim()
                 }
                 onClick={() => confirmAttr(a.attributeKey, missingDrafts[a.attributeKey])}
-                className="px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm disabled:bg-line disabled:text-ink-faint transition-colors"
+                className="px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm disabled:bg-line disabled:text-ink-faint transition-colors inline-flex items-center gap-1.5"
               >
-                {savingKey === a.attributeKey ? '…' : 'OK'}
+                {savingKey === a.attributeKey
+                  ? <span className="w-3 h-3 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />
+                  : 'OK'}
               </button>
             </div>
           </div>
@@ -232,9 +234,11 @@ export function SmartReviewPanel({
                         type="button"
                         disabled={anyActionInProgress}
                         onClick={() => confirmAttr(a.attributeKey)}
-                        className="px-3 py-1.5 bg-yellow-400 text-yellow-900 rounded-lg font-bold text-sm hover:bg-yellow-500 disabled:opacity-50 transition-colors"
+                        className="px-3 py-1.5 bg-yellow-400 text-yellow-900 rounded-lg font-bold text-sm hover:bg-yellow-500 disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
                       >
-                        {savingKey === a.attributeKey ? '…' : '✓'}
+                        {savingKey === a.attributeKey
+                          ? <span className="w-3 h-3 border-2 border-yellow-900/60 border-t-transparent rounded-full animate-spin" />
+                          : '✓'}
                       </button>
                     </div>
                   </div>

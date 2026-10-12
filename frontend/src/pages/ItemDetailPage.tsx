@@ -114,10 +114,10 @@ export function ItemDetailPage() {
         </div>
       )}
 
-      {(item.status === 'NEW' || item.status === 'ANALYZING') && (
+      {item.status === 'NEW' && (
         <AnalyzeStep
           itemId={id}
-          busy={busy || item.status === 'ANALYZING'}
+          busy={busy}
           onAnalyzeStart={() => {
             try { localStorage.setItem(`schnellmodus_${id}`, 'true'); } catch {}
             setSchnellmodus(true);
