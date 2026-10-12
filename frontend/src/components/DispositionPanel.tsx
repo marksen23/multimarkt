@@ -3,6 +3,8 @@ import { dispositionApi } from '../api/disposition';
 import type { DispositionRecommendation, DispositionUserGoal } from '../api/disposition';
 import { ApiRequestError } from '../api/client';
 import { itemsApi } from '../api/items';
+import { flushMarginAssumptions } from '../margin/use-margin-assumptions';
+import { Button, Card, inputClass } from '../ui';
 
 const USER_GOALS: { value: DispositionUserGoal; label: string }[] = [
   { value: 'BALANCED', label: 'Ausgewogen' },
@@ -29,11 +31,13 @@ const PLATFORM_LABELS: Record<string, string> = {
 
 const ACTION_COLORS: Record<string, string> = {
   SELL_ONLINE: 'bg-accent-soft text-accent',
-  LOCAL_PICKUP_ONLY: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
-  DONATE: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
-  DISCARD: 'bg-zinc-500/10 text-zinc-500',
-  BUYBACK_SERVICE: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+  LOCAL_PICKUP_ONLY: 'bg-phase-capture-soft text-phase-capture',
+  DONATE: 'bg-warning-soft text-warning',
+  DISCARD: 'bg-phase-archive-soft text-phase-archive',
+  BUYBACK_SERVICE: 'bg-phase-live-soft text-phase-live',
 };
+
+const ACTION_COLOR_FALLBACK = 'bg-phase-archive-soft text-phase-archive';
 
 /**
  * "Lohnt sich das?" (Freeze §10, Disposition Engine). Reine Empfehlung —
@@ -66,6 +70,7 @@ export function DispositionPanel({ itemId, initialMedian }: { itemId: string; in
     setBusy(true);
     setError(null);
     try {
+      await flushMarginAssumptions();
       setResult(
         await dispositionApi.evaluate(itemId, {
           category,
@@ -103,11 +108,11 @@ export function DispositionPanel({ itemId, initialMedian }: { itemId: string; in
       <button
         type="button"
         onClick={() => void openPanel()}
-        className="w-full p-3 rounded-xl border border-line text-sm font-bold text-ink-muted hover:bg-surface-hover transition-colors flex items-center justify-between gap-2"
+        className="w-full p-3 rounded-control border border-line text-body font-bold text-ink-muted hover:bg-surface-hover transition-colors flex items-center justify-between gap-2"
       >
         <span>Lohnt sich der Verkauf? — Disposition-Check</span>
         {result && (
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${ACTION_COLORS[result.action] ?? 'bg-zinc-500/10 text-zinc-500'}`}>
+          <span className={`text-micro px-2 py-0.5 rounded-full shrink-0 ${ACTION_COLORS[result.action] ?? ACTION_COLOR_FALLBACK}`}>
             {ACTION_LABELS[result.action] ?? result.action}
           </span>
         )}
@@ -116,10 +121,10 @@ export function DispositionPanel({ itemId, initialMedian }: { itemId: string; in
   }
 
   return (
-    <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
+    <Card className="p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-bold text-ink-muted uppercase">Disposition-Check</p>
-        <button type="button" onClick={() => setOpen(false)} className="text-xs text-ink-faint hover:text-ink-muted">
+        <p className="text-micro uppercase text-ink-muted">Disposition-Check</p>
+        <button type="button" onClick={() => setOpen(false)} className="text-label font-normal text-ink-faint hover:text-ink-muted">
           Schließen
         </button>
       </div>
@@ -128,7 +133,7 @@ export function DispositionPanel({ itemId, initialMedian }: { itemId: string; in
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="p-2 border border-line rounded-lg text-xs bg-surface text-ink"
+          className={inputClass}
         >
           <option value="household">Haushalt</option>
           <option value="fashion">Mode</option>
@@ -140,7 +145,7 @@ export function DispositionPanel({ itemId, initialMedian }: { itemId: string; in
         <select
           value={userGoal}
           onChange={(e) => setUserGoal(e.target.value as DispositionUserGoal)}
-          className="p-2 border border-line rounded-lg text-xs bg-surface text-ink"
+          className={inputClass}
         >
           {USER_GOALS.map((g) => (
             <option key={g.value} value={g.value}>
@@ -157,55 +162,71 @@ export function DispositionPanel({ itemId, initialMedian }: { itemId: string; in
         placeholder="Geschätzter Marktpreis (€)"
         value={marketMedianPrice}
         onChange={(e) => setMarketMedianPrice(e.target.value)}
-        className="w-full p-2 border border-line rounded-lg text-xs outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
+        className={inputClass}
       />
-      <label className="flex items-center gap-2 text-xs text-ink-muted">
+      <label className="flex items-center gap-2 text-label font-normal text-ink-muted">
         <input type="checkbox" checked={isBulky} onChange={(e) => setIsBulky(e.target.checked)} />
         Sperrig (nur Abholung möglich)
       </label>
 
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {error && <p className="text-label text-danger">{error}</p>}
 
-      <button
-        type="button"
-        disabled={busy || !marketMedianPrice}
-        onClick={evaluate}
-        className="w-full p-2 rounded-lg bg-accent text-accent-ink text-sm font-bold hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
-      >
+      <Button block loading={busy} disabled={busy || !marketMedianPrice} onClick={evaluate}>
         {busy ? 'Berechnet…' : 'Berechnen'}
-      </button>
+      </Button>
 
       {result && (
         <div className="space-y-2 pt-2 border-t border-line">
           <span
-            className={`inline-block px-2 py-1 rounded-lg text-xs font-bold ${ACTION_COLORS[result.action] ?? 'bg-zinc-500/10 text-zinc-500'}`}
+            className={`inline-block px-2 py-1 rounded-control text-label font-bold ${ACTION_COLORS[result.action] ?? ACTION_COLOR_FALLBACK}`}
           >
             {ACTION_LABELS[result.action] ?? result.action}
           </span>
-          <p className="text-xs text-ink-muted">{result.rationale}</p>
+          <p className="text-label font-normal text-ink-muted">{result.rationale}</p>
+          {result.margin && (
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <p className="text-ink-muted">
+                Gebühr {result.margin.feePercent.toFixed(2)} % · {result.margin.feeEur.toFixed(2)} €
+              </p>
+              <p className="text-ink-muted">Versand {result.margin.shippingEur.toFixed(2)} €</p>
+              <p className="text-ink">
+                Erwarteter Netto <span className="font-bold">{result.margin.expectedNetEur.toFixed(2)} €</span>
+              </p>
+              <p className="text-ink">
+                Marge{' '}
+                <span className="font-bold">
+                  {result.margin.marginEur == null ? '—' : `${result.margin.marginEur.toFixed(2)} €`}
+                  {result.margin.marginPercent != null ? ` (${result.margin.marginPercent.toFixed(2)} %)` : ''}
+                </span>
+              </p>
+            </div>
+          )}
+          {result.individualSaleNotice && (
+            <p className="text-sm font-bold text-danger">{result.individualSaleNotice}</p>
+          )}
           {result.recommendedPlatforms.length > 0 && (
             <div className="space-y-1">
               {result.recommendedPlatforms.map((p) => (
                 <div
                   key={p.key}
-                  className="flex items-center justify-between bg-surface-hover rounded-lg p-2 text-xs"
+                  className="flex items-center justify-between gap-2 bg-surface-hover rounded-control p-2 text-label font-normal"
                 >
                   <div>
                     <span className="font-bold text-ink">{PLATFORM_LABELS[p.key] ?? p.key}</span>
                     <p className="text-ink-faint">{p.reasoning}</p>
                   </div>
-                  <span className="font-bold text-accent">
+                  <span className="font-bold text-accent tabular-nums shrink-0">
                     ~{p.netExpectedValue.toFixed(2)} €
                   </span>
                 </div>
               ))}
             </div>
           )}
-          <p className="text-[11px] text-ink-faint">
+          <p className="text-label font-normal text-ink-faint">
             Geschätzter Aufwand: {result.estimatedEffortMinutes} Min.
           </p>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

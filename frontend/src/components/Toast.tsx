@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
+import { Icon } from '../ui';
 
 export type ToastKind = 'success' | 'error' | 'info';
 
@@ -29,37 +30,45 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const show = useCallback((message: string, kind: ToastKind = 'success') => {
     const id = ++nextId;
     setToasts((prev) => [...prev.slice(-3), { id, message, kind }]);
-    timers.current.set(id, setTimeout(() => dismiss(id), 3500));
+    timers.current.set(id, setTimeout(() => dismiss(id), kind === 'error' ? 8000 : 3500));
   }, [dismiss]);
 
   return (
     <ToastContext.Provider value={{ show }}>
       {children}
       <div
-        className="fixed bottom-20 sm:bottom-6 right-4 z-50 flex flex-col gap-2 items-end pointer-events-none"
+        className="fixed bottom-above-nav mb-4 sm:mb-6 right-4 left-4 sm:left-auto z-50 flex flex-col gap-2 items-end pointer-events-none"
         aria-live="polite"
         aria-atomic="true"
       >
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg border transition-all animate-in fade-in slide-in-from-bottom-2 duration-200 ${
-              toast.kind === 'error'
-                ? 'bg-danger-soft border-danger/30 text-danger'
-                : toast.kind === 'info'
-                ? 'bg-surface border-line text-ink'
-                : 'bg-accent-soft border-accent/30 text-accent'
-            }`}
+            className="pointer-events-auto max-w-full sm:max-w-sm flex items-center gap-2.5 pl-2.5 pr-2 py-2 rounded-card bg-surface border border-line text-body font-semibold text-ink shadow-float animate-fade-in"
           >
-            <span>{toast.kind === 'error' ? '✗' : toast.kind === 'info' ? 'ℹ' : '✓'}</span>
-            <span>{toast.message}</span>
+            <span
+              className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+                toast.kind === 'error'
+                  ? 'bg-danger-soft text-danger'
+                  : toast.kind === 'info'
+                  ? 'bg-phase-capture-soft text-phase-capture'
+                  : 'bg-accent-soft text-accent'
+              }`}
+            >
+              <Icon
+                name={toast.kind === 'error' ? 'alert' : toast.kind === 'info' ? 'sparkle' : 'check'}
+                size={15}
+                strokeWidth={2.2}
+              />
+            </span>
+            <span className="min-w-0">{toast.message}</span>
             <button
               type="button"
               onClick={() => dismiss(toast.id)}
-              className="ml-1 opacity-60 hover:opacity-100 transition-opacity text-xs"
+              className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-ink-faint hover:bg-surface-hover hover:text-ink transition-colors"
               aria-label="Schließen"
             >
-              ✕
+              <Icon name="x" size={15} />
             </button>
           </div>
         ))}

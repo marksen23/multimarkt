@@ -178,6 +178,8 @@ export class PriceTriangulationService {
 
     const impliedResaleEstimate = Math.round(quote.buybackPrice * BUYBACK_TO_RESALE_MULTIPLIER * 100) / 100;
 
+    const illustrative = quote.illustrative === true || /\(Mock\)/i.test(quote.portalName);
+
     return {
       source: 'ANKAUF_PORTAL',
       providerLabel: quote.portalName,
@@ -186,7 +188,11 @@ export class PriceTriangulationService {
       p75: null,
       sampleSize: 1,
       currency: quote.currency,
-      detail: { buybackPrice: quote.buybackPrice, multiplier: BUYBACK_TO_RESALE_MULTIPLIER },
+      detail: {
+        buybackPrice: quote.buybackPrice,
+        multiplier: BUYBACK_TO_RESALE_MULTIPLIER,
+        illustrative,
+      },
     };
   }
 

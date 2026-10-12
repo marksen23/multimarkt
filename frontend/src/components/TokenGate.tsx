@@ -1,6 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ApiRequestError } from '../api/client';
 import { itemsApi } from '../api/items';
+import { Button, Card, inputClass } from '../ui';
+import { LogoMark } from './AppShell';
 
 const STORAGE_KEY = 'resale_os_access_token';
 
@@ -70,7 +72,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
       <div className="min-h-screen bg-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-ink-muted">
           <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm">Verbindung wird geprüft…</p>
+          <p className="text-body">Verbindung wird geprüft…</p>
         </div>
       </div>
     );
@@ -80,35 +82,34 @@ export function TokenGate({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center p-6">
-      <div className="w-full max-w-sm bg-surface rounded-2xl shadow-sm border border-line p-6 space-y-4">
-        <div className="space-y-1">
-          <div className="w-9 h-9 rounded-xl bg-accent-soft flex items-center justify-center text-accent text-lg mb-1">
-            🔒
-          </div>
-          <h1 className="text-lg font-bold text-ink">Zugriffstoken</h1>
-          <p className="text-sm text-ink-muted">
-            Einzelnutzer-App ohne Login — trage den Wert von <code>APP_ACCESS_TOKEN</code> ein
-            (Render-Dashboard → resale-os-backend → Environment).
-          </p>
+      <div className="w-full max-w-sm space-y-6">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <LogoMark className="w-12 h-12 text-accent" />
+          <h1 className="text-display text-ink">Resale OS</h1>
         </div>
-        <input
-          type="password"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder="Access Token"
-          className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
-          autoFocus
-        />
-        {error && <p className="text-xs text-danger">{error}</p>}
-        <button
-          type="button"
-          disabled={checking || !input.trim()}
-          onClick={submit}
-          className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
-        >
-          {checking ? 'Prüft…' : 'Bestätigen'}
-        </button>
+        <Card className="p-6 space-y-4">
+          <div className="space-y-1">
+            <h2 className="text-title text-ink">Zugriffstoken</h2>
+            <p className="text-body text-ink-muted">
+              Einzelnutzer-App ohne Login — trage den Wert von <code>APP_ACCESS_TOKEN</code> ein
+              (Render-Dashboard → resale-os-backend → Environment).
+            </p>
+          </div>
+          <input
+            type="password"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
+            placeholder="Access Token"
+            aria-label="Access Token"
+            className={inputClass}
+            autoFocus
+          />
+          {error && <p className="text-label text-danger">{error}</p>}
+          <Button block size="lg" disabled={checking || !input.trim()} onClick={submit}>
+            {checking ? 'Prüft…' : 'Bestätigen'}
+          </Button>
+        </Card>
       </div>
     </div>
   );

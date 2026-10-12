@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { itemsApi } from '../api/items';
+import { Button, Icon } from '../ui';
 
 /**
  * README §3 Schritt 1 "Foto-Erfassung": der gesamte Workflow beginnt mit
@@ -20,7 +21,8 @@ export function PhotoCapture({
   onChange: (files: File[]) => void;
   itemId?: string;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<string[]>([]);
   const [optimizingIndex, setOptimizingIndex] = useState<number | null>(null);
   const [optimizeError, setOptimizeError] = useState<string | null>(null);
@@ -81,28 +83,34 @@ export function PhotoCapture({
       {previews.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
           {previews.map((src, i) => (
-            <div key={src} className="relative aspect-square rounded-xl overflow-hidden border border-line">
+            <div key={src} className="relative aspect-square rounded-control overflow-hidden border border-line">
               <img src={src} alt="" className="w-full h-full object-cover" />
               <button
                 type="button"
                 onClick={() => requestRemove(i)}
                 className={
                   confirmRemoveIndex === i
-                    ? 'absolute top-1 right-1 h-6 px-2 rounded-full bg-danger text-white text-[10px] font-bold flex items-center justify-center backdrop-blur'
-                    : 'absolute top-1 right-1 w-7 h-7 rounded-full bg-ink/70 text-white text-base flex items-center justify-center backdrop-blur'
+                    ? 'absolute top-1 right-1 h-6 px-2 rounded-full bg-danger text-white text-label flex items-center justify-center backdrop-blur'
+                    : 'absolute top-1 right-1 w-7 h-7 rounded-full bg-ink/70 text-white flex items-center justify-center backdrop-blur'
                 }
                 aria-label={confirmRemoveIndex === i ? 'Wirklich entfernen?' : 'Foto entfernen'}
               >
-                {confirmRemoveIndex === i ? 'Entfernen?' : '×'}
+                {confirmRemoveIndex === i ? 'Entfernen?' : <Icon name="x" size={15} strokeWidth={2.2} />}
               </button>
               {itemId && (
                 <button
                   type="button"
                   onClick={() => optimize(i)}
                   disabled={optimizingIndex === i}
-                  className="absolute bottom-1 left-1 right-1 py-1 rounded-lg bg-ink/70 text-white text-[10px] font-semibold disabled:opacity-60 backdrop-blur"
+                  className="absolute bottom-1 left-1 right-1 py-1 rounded-control bg-ink/70 text-white text-label flex items-center justify-center gap-1 disabled:opacity-60 backdrop-blur"
                 >
-                  {optimizingIndex === i ? 'Optimiert…' : '✨ Optimieren'}
+                  {optimizingIndex === i ? (
+                    'Optimiert…'
+                  ) : (
+                    <>
+                      <Icon name="sparkle" size={13} /> Optimieren
+                    </>
+                  )}
                 </button>
               )}
             </div>
@@ -110,23 +118,45 @@ export function PhotoCapture({
         </div>
       )}
 
-      {optimizeError && <p className="text-xs text-danger">{optimizeError}</p>}
+      {optimizeError && <p className="text-label text-danger">{optimizeError}</p>}
 
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        className="w-full p-6 rounded-2xl border-2 border-dashed border-line text-ink-muted text-sm font-semibold hover:border-accent hover:bg-accent-soft/40 hover:text-accent transition-colors flex flex-col items-center gap-1"
-      >
-        <span className="text-2xl">📷</span>
-        {files.length === 0
-          ? 'Foto aufnehmen / auswählen'
-          : `${files.length} Foto${files.length > 1 ? 's' : ''} · Weiteres hinzufügen`}
-      </button>
+      {files.length === 0 ? (
+        <button
+          type="button"
+          onClick={() => cameraInputRef.current?.click()}
+          className="w-full p-6 rounded-card border-2 border-dashed border-line text-ink-muted text-body font-semibold hover:border-accent hover:bg-accent-soft/40 hover:text-accent transition-colors flex flex-col items-center gap-2"
+        >
+          <Icon name="camera" size={26} />
+          Foto aufnehmen
+        </button>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="secondary" icon="camera" onClick={() => cameraInputRef.current?.click()}>
+            Kamera
+          </Button>
+          <Button variant="secondary" icon="image" onClick={() => galleryInputRef.current?.click()}>
+            Galerie
+          </Button>
+        </div>
+      )}
+
+      {/* Camera input — opens rear camera directly */}
       <input
-        ref={inputRef}
+        ref={cameraInputRef}
         type="file"
         accept="image/*"
         capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          addFiles(e.target.files);
+          e.target.value = '';
+        }}
+      />
+      {/* Gallery input — opens file picker / photo library */}
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
         multiple
         className="hidden"
         onChange={(e) => {

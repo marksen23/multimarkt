@@ -1,18 +1,38 @@
 import { useState, type ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { clearAccessToken } from './TokenGate';
-import { usePendingActions } from '../contexts/PendingActionsContext';
+import { useItems } from '../contexts/ItemsContext';
+import { Icon, type IconName } from '../ui';
 
-const NAV_ITEMS = [
-  { to: '/', label: 'Dashboard', end: true, icon: IconHome, showBadge: true },
-  { to: '/ankauf', label: 'Ankauf', end: false, icon: IconSearch, showBadge: false },
-  { to: '/new', label: 'Neu', end: false, icon: IconPlus, showBadge: false },
-  { to: '/bundles', label: 'Bundles', end: false, icon: IconPackage, showBadge: false },
-  { to: '/account', label: 'Konto', end: false, icon: IconUser, showBadge: false },
+interface NavItem {
+  to: string;
+  label: string;
+  icon: IconName;
+  end?: boolean;
+  badge?: boolean;
+  /** Weitere Pfade, unter denen der Eintrag als aktiv gilt (mobil „Mehr“). */
+  alsoActive?: string[];
+}
+
+const SIDEBAR_NAV: NavItem[] = [
+  { to: '/', label: 'Heute', icon: 'inbox', end: true, badge: true },
+  { to: '/bestand', label: 'Bestand', icon: 'layers' },
+  { to: '/ankauf', label: 'Ankauf', icon: 'search' },
+  { to: '/bundles', label: 'Bundles', icon: 'package' },
+  { to: '/account', label: 'Konto', icon: 'user' },
+];
+
+const BOTTOM_LEFT: NavItem[] = [
+  { to: '/', label: 'Heute', icon: 'inbox', end: true, badge: true },
+  { to: '/bestand', label: 'Bestand', icon: 'layers' },
+];
+const BOTTOM_RIGHT: NavItem[] = [
+  { to: '/ankauf', label: 'Ankauf', icon: 'search' },
+  { to: '/mehr', label: 'Mehr', icon: 'grid', alsoActive: ['/bundles', '/account'] },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { pendingCount } = usePendingActions();
+  const { pendingCount } = useItems();
   const [confirmLogout, setConfirmLogout] = useState(false);
 
   const handleLogout = () => {
@@ -25,137 +45,142 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-bg">
-      <header className="bg-surface/90 backdrop-blur border-b border-line sticky top-0 z-20">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <NavLink to="/" className="flex items-center gap-2 font-bold text-ink text-sm">
-            <span className="w-2 h-2 rounded-full bg-accent" />
-            Personal Resale OS
-          </NavLink>
-          {/* Desktop nav */}
-          <nav className="hidden sm:flex items-center gap-1">
-            {NAV_ITEMS.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `relative px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                    isActive ? 'bg-accent text-accent-ink' : 'text-ink-muted hover:bg-surface-hover'
-                  }`
-                }
-              >
-                {item.label}
-                {item.showBadge && pendingCount > 0 && (
-                  <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-red-500" aria-hidden="true" />
-                )}
-              </NavLink>
+    <div className="flex min-h-screen bg-bg">
+      <aside className="hidden sm:flex flex-col w-60 shrink-0 bg-surface border-r border-line sticky top-0 h-screen overflow-y-auto">
+        <Link to="/" className="flex items-center gap-3 px-5 pt-6 pb-5 group outline-none">
+          <LogoMark className="w-8 h-8 text-accent" />
+          <span className="text-body font-bold text-ink tracking-tight group-hover:text-accent transition-colors">
+            Resale OS
+          </span>
+        </Link>
+
+        <div className="px-4 pb-5">
+          <Link
+            to="/new"
+            className="flex items-center justify-center gap-2 h-11 rounded-control bg-accent text-accent-ink text-body font-semibold hover:bg-accent-hover active:scale-[0.98] transition-all shadow-card"
+          >
+            <Icon name="camera" size={17} />
+            Artikel erfassen
+          </Link>
+        </div>
+
+        <nav className="flex-1 px-3" aria-label="Hauptnavigation">
+          <ul className="space-y-0.5">
+            {SIDEBAR_NAV.map((item) => (
+              <li key={item.to}>
+                <NavLink
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 h-10 rounded-control text-body transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                      isActive
+                        ? 'bg-accent-soft text-accent font-semibold'
+                        : 'text-ink-muted hover:bg-surface-hover hover:text-ink'
+                    }`
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <Icon name={item.icon} strokeWidth={isActive ? 2.2 : 1.8} />
+                      <span className="flex-1">{item.label}</span>
+                      {item.badge && pendingCount > 0 && <CountBadge count={pendingCount} />}
+                    </>
+                  )}
+                </NavLink>
+              </li>
             ))}
-            <span className="text-line select-none">|</span>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                confirmLogout
-                  ? 'bg-danger-soft text-danger font-bold'
-                  : 'text-ink-faint hover:bg-surface-hover hover:text-ink-muted'
-              }`}
-              title="Zugriffstoken entfernen"
-            >
-              {confirmLogout ? 'Wirklich abmelden?' : 'Abmelden'}
-            </button>
-          </nav>
-        </div>
-      </header>
+          </ul>
+        </nav>
 
-      {/* Main content — bottom padding on mobile for the bottom nav */}
-      <main className="pb-20 sm:pb-0">{children}</main>
-
-      {/* Mobile bottom nav */}
-      <nav className="sm:hidden fixed bottom-0 inset-x-0 bg-surface/95 backdrop-blur border-t border-line z-20">
-        <div className="flex items-stretch">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-semibold transition-colors ${
-                    isActive ? 'text-accent' : 'text-ink-faint'
-                  }`
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <span className="relative">
-                      <Icon active={isActive} />
-                      {item.showBadge && pendingCount > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 border border-surface" aria-hidden="true" />
-                      )}
-                    </span>
-                    {item.label}
-                  </>
-                )}
-              </NavLink>
-            );
-          })}
+        <div className="p-3 border-t border-line">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className={`flex items-center gap-3 w-full px-3 h-10 rounded-control text-body transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              confirmLogout ? 'bg-danger-soft text-danger font-semibold' : 'text-ink-faint hover:bg-surface-hover hover:text-ink-muted'
+            }`}
+          >
+            <Icon name="logout" />
+            {confirmLogout ? 'Wirklich abmelden?' : 'Abmelden'}
+          </button>
         </div>
+      </aside>
+
+      <div className="flex-1 min-w-0">
+        <main className="pb-[calc(76px+env(safe-area-inset-bottom,0px))] sm:pb-0">{children}</main>
+      </div>
+
+      <nav
+        className="sm:hidden fixed bottom-0 inset-x-0 z-20 bg-surface/95 backdrop-blur-md border-t border-line"
+        aria-label="Hauptnavigation"
+      >
+        <div className="flex items-stretch h-[60px]">
+          {BOTTOM_LEFT.map((item) => (
+            <BottomTab key={item.to} item={item} pendingCount={pendingCount} />
+          ))}
+          <Link to="/new" aria-label="Artikel erfassen" className="flex-1 flex justify-center">
+            <span className="flex items-center justify-center w-14 h-14 rounded-full bg-accent text-accent-ink shadow-float -translate-y-4 ring-4 ring-bg active:scale-95 transition-transform">
+              <Icon name="camera" size={24} strokeWidth={2} />
+            </span>
+          </Link>
+          {BOTTOM_RIGHT.map((item) => (
+            <BottomTab key={item.to} item={item} pendingCount={pendingCount} />
+          ))}
+        </div>
+        <div className="h-[env(safe-area-inset-bottom,0px)]" />
       </nav>
     </div>
   );
 }
 
-function IconHome({ active }: { active: boolean }) {
+function BottomTab({ item, pendingCount }: { item: NavItem; pendingCount: number }) {
+  const { pathname } = useLocation();
+  const extraActive = item.alsoActive?.some((p) => pathname.startsWith(p)) ?? false;
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-    </svg>
+    <NavLink
+      to={item.to}
+      end={item.end}
+      className={({ isActive }) =>
+        `flex-1 flex flex-col items-center justify-center gap-1 text-micro normal-case tracking-normal transition-colors outline-none ${
+          isActive || extraActive ? 'text-accent' : 'text-ink-faint'
+        }`
+      }
+    >
+      {({ isActive }) => (
+        <>
+          <span className="relative">
+            <Icon name={item.icon} size={22} strokeWidth={isActive || extraActive ? 2.2 : 1.8} />
+            {item.badge && pendingCount > 0 && (
+              <span className="absolute -top-1.5 -right-2.5">
+                <CountBadge count={pendingCount} />
+              </span>
+            )}
+          </span>
+          {item.label}
+        </>
+      )}
+    </NavLink>
   );
 }
 
-function IconSearch({ active }: { active: boolean }) {
+function CountBadge({ count }: { count: number }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="11" cy="11" r="8" />
-      <path d="M21 21l-4.35-4.35" />
-    </svg>
-  );
-}
-
-function IconPackage({ active }: { active: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="21 8 21 21 3 21 3 8" />
-      <rect x="1" y="3" width="22" height="5" />
-      <line x1="10" y1="12" x2="14" y2="12" />
-    </svg>
-  );
-}
-
-function IconUser({ active }: { active: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  );
-}
-
-function IconPlus({ active }: { active: boolean }) {
-  return (
-    <span className={`flex items-center justify-center w-7 h-7 rounded-full border-2 transition-colors ${
-      active ? 'border-accent text-accent' : 'border-current'
-    }`} aria-hidden="true">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        strokeWidth={active ? 3 : 2.5} strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 5v14M5 12h14" />
-      </svg>
+    <span
+      className="tabular-nums text-micro tracking-normal min-w-5 h-5 px-1 flex items-center justify-center rounded-full bg-accent text-accent-ink ring-2 ring-surface"
+      aria-label={`${count} offene Aufgaben`}
+    >
+      {count > 99 ? '99+' : count}
     </span>
+  );
+}
+
+export function LogoMark({ className }: { className?: string }) {
+  return (
+    <svg className={`shrink-0 ${className ?? ''}`} viewBox="0 0 28 28" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="11" height="11" rx="3" fill="currentColor" />
+      <rect x="15" y="2" width="11" height="11" rx="3" fill="currentColor" opacity="0.35" />
+      <rect x="2" y="15" width="11" height="11" rx="3" fill="currentColor" opacity="0.35" />
+      <rect x="15" y="15" width="11" height="11" rx="3" fill="currentColor" />
+    </svg>
   );
 }

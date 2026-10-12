@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { itemsApi } from '../api/items';
 import type { PriceRecommendation, PriceResearchResult, PriceResearchSourceResult, SalesGoal } from '../api/types';
 import { SkeletonBlock } from './Skeleton';
+import { Button, Icon } from '../ui';
+import { ExpectedMarginFields } from './ExpectedMarginFields';
 
 /**
  * §9d/§9e: Preisvorschläge sind rein beratend, nie automatisch übernommen —
@@ -25,10 +27,12 @@ const CONFIDENCE_LABELS: Record<string, string> = {
 
 export function PriceResearchPanel({
   itemId,
+  purchasePriceEur,
   onSuggestPrice,
   onMedianAvailable,
 }: {
   itemId: string;
+  purchasePriceEur: number | null;
   onSuggestPrice: (price: number) => void;
   onMedianAvailable?: (median: number) => void;
 }) {
@@ -80,8 +84,8 @@ export function PriceResearchPanel({
   if (loading) return (
     <div className="space-y-2">
       <SkeletonBlock className="h-3 w-40" />
-      <SkeletonBlock className="h-20 rounded-xl" />
-      <SkeletonBlock className="h-14 rounded-xl" />
+      <SkeletonBlock className="h-20" />
+      <SkeletonBlock className="h-14" />
     </div>
   );
   // Rein beratend — ein Fehlschlag blockiert nie die manuelle Preiseingabe.
@@ -90,14 +94,14 @@ export function PriceResearchPanel({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">
+        <p className="text-micro uppercase text-ink-muted">
           Preisvorschläge (unverbindlich)
         </p>
         <div className="flex items-center gap-2">
           <select
             value={salesGoal}
             onChange={(e) => setSalesGoal(e.target.value as SalesGoal)}
-            className="text-[11px] border border-line rounded-lg px-1.5 py-1 bg-surface text-ink-muted outline-none focus:border-accent"
+            className="text-label font-normal border border-line rounded-control px-1.5 py-1 bg-surface text-ink-muted outline-none focus:border-accent"
           >
             <option value="BALANCED">Ausgewogen</option>
             <option value="FAST_SALE">Schnell verkaufen</option>
@@ -108,18 +112,32 @@ export function PriceResearchPanel({
             type="button"
             onClick={refresh}
             disabled={refreshing}
-            className="text-[11px] font-bold text-ink-faint hover:text-accent disabled:opacity-60 transition-colors shrink-0"
+            className="inline-flex items-center gap-1 text-label text-ink-faint hover:text-accent disabled:opacity-60 transition-colors shrink-0"
           >
-            {refreshing ? 'Aktualisiert…' : '↻ Neu abrufen'}
+            {refreshing ? (
+              'Aktualisiert…'
+            ) : (
+              <>
+                <Icon name="refresh" size={13} />
+                Neu abrufen
+              </>
+            )}
           </button>
         </div>
       </div>
-      <p className="text-[11px] text-ink-faint">
+      <p className="text-label font-normal text-ink-faint">
         Stand: {new Date(result.fetchedAt).toLocaleString('de-DE')}
       </p>
 
       {result.recommendation && (
-        <RecommendationCard recommendation={result.recommendation} onSuggestPrice={onSuggestPrice} />
+        <>
+          <RecommendationCard recommendation={result.recommendation} onSuggestPrice={onSuggestPrice} />
+          <ExpectedMarginFields
+            salePriceEur={result.recommendation.targetPrice}
+            purchasePriceEur={purchasePriceEur}
+            salePriceLabel="Zielpreis"
+          />
+        </>
       )}
 
       {result.sources.map((source) => (
@@ -137,44 +155,41 @@ function RecommendationCard({
   onSuggestPrice: (price: number) => void;
 }) {
   return (
-    <div className="bg-accent-soft border border-accent/20 rounded-xl p-3 space-y-2">
+    <div className="bg-accent-soft border border-accent/20 rounded-control p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-bold text-accent">Abgeleiteter Vorschlag</span>
-        <span className="text-[10px] font-bold text-accent/70 uppercase tracking-wide">
+        <span className="text-label text-accent">Abgeleiteter Vorschlag</span>
+        <span className="text-micro uppercase text-accent/70">
           {CONFIDENCE_LABELS[recommendation.confidence]}
         </span>
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-center">
         <div>
-          <p className="text-[10px] text-ink-faint uppercase font-bold">Startpreis</p>
-          <p className="font-bold text-ink text-sm">{recommendation.listPrice.toFixed(2)} €</p>
+          <p className="text-micro uppercase text-ink-faint">Startpreis</p>
+          <p className="font-bold text-ink text-body tabular-nums">{recommendation.listPrice.toFixed(2)} €</p>
         </div>
         <div>
-          <p className="text-[10px] text-ink-faint uppercase font-bold">Zielpreis</p>
-          <p className="font-bold text-ink text-sm">{recommendation.targetPrice.toFixed(2)} €</p>
+          <p className="text-micro uppercase text-ink-faint">Zielpreis</p>
+          <p className="font-bold text-ink text-body tabular-nums">{recommendation.targetPrice.toFixed(2)} €</p>
         </div>
         <div>
-          <p className="text-[10px] text-ink-faint uppercase font-bold">Schmerzgrenze</p>
-          <p className="font-bold text-ink text-sm">{recommendation.minPrice.toFixed(2)} €</p>
+          <p className="text-micro uppercase text-ink-faint">Schmerzgrenze</p>
+          <p className="font-bold text-ink text-body tabular-nums">{recommendation.minPrice.toFixed(2)} €</p>
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => onSuggestPrice(recommendation.listPrice)}
-        className="w-full text-[11px] font-bold px-2 py-1.5 rounded-lg bg-accent text-accent-ink hover:bg-accent-hover transition-colors"
-      >
+      <Button size="sm" block onClick={() => onSuggestPrice(recommendation.listPrice)}>
         Startpreis übernehmen
-      </button>
+      </Button>
 
       {recommendation.buybackRecommended && (
-        <p className="text-[11px] text-ink-muted">
-          💡 Der Ankaufpreis liegt nah am Zielpreis — ein Sofortverkauf ans Ankaufportal könnte einfacher sein.
+        <p className="flex items-start gap-1.5 text-label font-normal text-ink-muted">
+          <Icon name="sparkle" size={14} className="mt-px text-accent" />
+          Der Ankaufpreis liegt nah am Zielpreis — ein Sofortverkauf ans Ankaufportal könnte einfacher sein.
         </p>
       )}
 
-      <details className="text-[11px] text-ink-faint">
+      <details className="text-label font-normal text-ink-faint">
         <summary className="cursor-pointer">Begründung</summary>
         <ul className="mt-1 space-y-0.5 list-disc list-inside">
           {recommendation.reasoning.map((line, i) => (
@@ -186,6 +201,12 @@ function RecommendationCard({
   );
 }
 
+function isExampleBuyback(source: PriceResearchSourceResult): boolean {
+  if (source.source !== 'ANKAUF_PORTAL') return false;
+  if (source.detail?.illustrative === true) return true;
+  return /\(Mock\)/i.test(source.providerLabel);
+}
+
 function SourceCard({
   source,
   onSuggestPrice,
@@ -194,34 +215,34 @@ function SourceCard({
   onSuggestPrice: (price: number) => void;
 }) {
   const listings = source.detail?.comparableListings ?? [];
+  const example = isExampleBuyback(source);
 
   return (
-    <div className="bg-surface-hover border border-line rounded-xl p-3 space-y-1">
+    <div className="bg-surface-hover border border-line rounded-control p-3 space-y-1">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-bold text-ink-muted">
-          {SOURCE_LABELS[source.source] ?? source.source}
+        <span className="text-label text-ink-muted">
+          {example ? 'Ankaufportal (Beispiel)' : (SOURCE_LABELS[source.source] ?? source.source)}
         </span>
-        {source.median !== null && (
-          <button
-            type="button"
-            onClick={() => onSuggestPrice(source.median as number)}
-            className="text-[11px] font-bold px-2 py-1 rounded-lg bg-accent text-accent-ink hover:bg-accent-hover transition-colors shrink-0"
+        {source.median !== null && !example && (
+          <Button size="sm" className="shrink-0 tabular-nums" onClick={() => onSuggestPrice(source.median as number)}
           >
             {source.median.toFixed(2)} € übernehmen
-          </button>
+          </Button>
         )}
       </div>
 
       <p className="text-[11px] text-ink-faint">
-        {source.source === 'ANKAUF_PORTAL'
-          ? `${source.providerLabel}: Ankaufspreis ${Number(source.detail?.buybackPrice ?? 0).toFixed(2)} € → Richtwert (×${source.detail?.multiplier ?? '?'})`
-          : source.p25 !== null && source.p75 !== null
-            ? `${source.sampleSize} Angebote (${source.providerLabel}), Spanne ${source.p25.toFixed(2)}–${source.p75.toFixed(2)} € (Angebotspreise, keine Verkaufsgarantie)`
-            : source.providerLabel}
+        {example
+          ? `${source.providerLabel}: Beispiel, kein echtes Angebot (${Number(source.detail?.buybackPrice ?? 0).toFixed(2)} €). Hebt die Schmerzgrenze nicht an und lenkt nicht zum Ankauf.`
+          : source.source === 'ANKAUF_PORTAL'
+            ? `${source.providerLabel}: Ankaufspreis ${Number(source.detail?.buybackPrice ?? 0).toFixed(2)} € → Richtwert (×${source.detail?.multiplier ?? '?'})`
+            : source.p25 !== null && source.p75 !== null
+              ? `${source.sampleSize} Angebote (${source.providerLabel}), Spanne ${source.p25.toFixed(2)}–${source.p75.toFixed(2)} € (Angebotspreise, keine Verkaufsgarantie)`
+              : source.providerLabel}
       </p>
 
       {listings.length > 0 && (
-        <details className="text-[11px] text-ink-faint">
+        <details className="text-label font-normal text-ink-faint">
           <summary className="cursor-pointer">Vergleichstitel ({listings.length})</summary>
           <ul className="mt-1 space-y-0.5">
             {listings.map((listing, i) => (

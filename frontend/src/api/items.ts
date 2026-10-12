@@ -21,6 +21,24 @@ export const itemsApi = {
   list: (status?: ItemLifecycleState) =>
     api.get<ItemListEntry[]>(status ? `/items?status=${status}` : '/items'),
   create: (title?: string) => api.post<Item>('/items', { title }),
+  createFromPurchase: (body: {
+    title: string;
+    price: number;
+    portal: string;
+    date?: string;
+    condition?: string | null;
+    url?: string | null;
+  }) => api.post<Item>('/items/from-purchase', body),
+  updatePurchase: (
+    id: string,
+    body: {
+      price: number | null;
+      portal: string | null;
+      date: string | null;
+      condition: string | null;
+      url: string | null;
+    },
+  ) => api.patch<Item>(`/items/${id}/purchase`, body),
   get: (id: string) => api.get<ItemDetail>(`/items/${id}`),
   analyze: (id: string, files: File[], onProgress?: (fraction: number) => void) => {
     const form = new FormData();
@@ -55,6 +73,11 @@ export const itemsApi = {
   confirmTruth: (id: string, condition: string) =>
     api.post<Item>(`/items/${id}/confirm-truth`, { condition }),
   reanalyze: (id: string) => api.post<Item>(`/items/${id}/reanalyze`),
+  uploadMorePhotos: (id: string, files: File[], onProgress?: (fraction: number) => void) => {
+    const form = new FormData();
+    files.forEach((file) => form.append('files', file));
+    return api.postForm<Item>(`/items/${id}/upload-more-photos`, form, onProgress);
+  },
   discard: (id: string) => api.post<Item>(`/items/${id}/discard`),
   markSold: (id: string) => api.post<Item>(`/items/${id}/mark-sold`),
   confirmAttribute: (id: string, key: string, value?: string) =>
