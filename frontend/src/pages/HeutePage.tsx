@@ -3,7 +3,7 @@ import { ItemRow } from '../components/ItemRow';
 import { ListSkeleton } from '../components/Skeleton';
 import { useItems } from '../contexts/ItemsContext';
 import { ButtonLink, Card, EmptyState, Icon, Notice, PageHeader, SectionLabel, type IconName } from '../ui';
-import { formatEuro } from '../lib/format';
+import { formatEuro, realizedPrice } from '../lib/format';
 import { TODO_GROUPS } from '../lib/todo';
 
 export function HeutePage() {
@@ -20,7 +20,7 @@ export function HeutePage() {
   const listed = entries?.filter((e) => e.item.status === 'LISTED') ?? [];
   const pipeline = listed.reduce((s, e) => s + (e.listings[0]?.sellingPrice ?? 0), 0);
   const sold = entries?.filter((e) => e.item.status === 'SOLD') ?? [];
-  const revenue = sold.reduce((s, e) => s + (e.listings[0]?.sellingPrice ?? 0), 0);
+  const revenue = sold.reduce((s, e) => s + realizedPrice(e), 0);
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-6">
