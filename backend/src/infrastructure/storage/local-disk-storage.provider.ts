@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
-import { extname, join } from 'node:path';
+import { extname, join, resolve } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { StorageProvider, StoredFile, UploadInput } from '../../domain/storage/storage-provider.interface';
@@ -31,7 +31,7 @@ export class LocalDiskStorageProvider implements StorageProvider {
 
   constructor(private readonly config: ConfigService) {
     // Muss mit dem `useStaticAssets()`-Pfad in main.ts übereinstimmen.
-    this.uploadDir = join(process.cwd(), this.config.get<string>('UPLOAD_DIR') ?? 'uploads');
+    this.uploadDir = resolve(process.cwd(), this.config.get<string>('UPLOAD_DIR') ?? 'uploads');
   }
 
   async upload(input: UploadInput): Promise<StoredFile> {
