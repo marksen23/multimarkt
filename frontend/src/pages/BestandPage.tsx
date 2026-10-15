@@ -206,12 +206,13 @@ export function BestandPage() {
 function exportSoldCsv(entries: ItemListEntry[]) {
   const sold = entries.filter((e) => e.item.status === 'SOLD');
   if (sold.length === 0) return;
-  const rows: string[][] = [['Titel', 'Zustand', 'Listingpreis (€)', 'Erstellt', 'Aktualisiert']];
-  for (const { item, listings } of sold) {
+  const rows: string[][] = [['Titel', 'Zustand', 'Listingpreis (€)', 'Verkaufspreis (€)', 'Erstellt', 'Aktualisiert']];
+  for (const { item, listings, soldPrice } of sold) {
     rows.push([
       item.title ?? item.id,
       item.condition ?? '',
       listings[0]?.sellingPrice?.toFixed(2) ?? '',
+      soldPrice?.toFixed(2) ?? '',
       new Date(item.createdAt).toLocaleDateString('de-DE'),
       new Date(item.updatedAt).toLocaleDateString('de-DE'),
     ]);

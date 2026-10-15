@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { copyText } from '../lib/clipboard';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import { itemsApi } from '../api/items';
@@ -358,7 +359,7 @@ function CopyDescriptionButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(text);
+      await copyText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {

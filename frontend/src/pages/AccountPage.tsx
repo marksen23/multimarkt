@@ -6,7 +6,7 @@ import { clearAccessToken } from '../components/TokenGate';
 import { useTheme } from '../hooks/useTheme';
 import type { DeletionAuditLog, ItemListEntry } from '../api/types';
 import { Button, Card, Icon, PageHeader } from '../ui';
-import { formatEuro } from '../lib/format';
+import { formatEuro, realizedPrice } from '../lib/format';
 
 /** Doc 04 §16 / Doc 01 §15 — Hard-Delete-Lifecycle (T08-1). */
 export function AccountPage() {
@@ -60,7 +60,7 @@ export function AccountPage() {
   const revenue =
     entries
       ?.filter((e) => e.item.status === 'SOLD')
-      .reduce((sum, e) => sum + (e.listings[0]?.sellingPrice ?? 0), 0) ?? 0;
+      .reduce((sum, e) => sum + realizedPrice(e), 0) ?? 0;
   const lagerwert =
     entries
       ?.filter((e) => e.item.status === 'READY' || e.item.status === 'LISTED')

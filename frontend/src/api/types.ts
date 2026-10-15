@@ -86,6 +86,8 @@ export interface ItemListEntry {
   item: Item;
   listings: ListingSummary[];
   thumbnailUrl: string | null;
+  /** Tatsächlicher Verkaufspreis (Gewinner-Verkaufsmeldung), sonst null. */
+  soldPrice: number | null;
 }
 
 export interface Bundle {

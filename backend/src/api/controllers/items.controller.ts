@@ -160,7 +160,7 @@ export class ItemsController {
   async list(
     @CurrentActor() actor: ActorContext,
     @Query('status') status?: ItemLifecycleState,
-  ): Promise<{ item: ItemEntity; listings: ListingSummary[]; thumbnailUrl: string | null }[]> {
+  ): Promise<{ item: ItemEntity; listings: ListingSummary[]; thumbnailUrl: string | null; soldPrice: number | null }[]> {
     const items = await this.dataSource.manager.find(ItemEntity, {
       where: status ? { userId: actor.userId!, status } : { userId: actor.userId! },
       order: { createdAt: 'DESC' },
@@ -179,10 +179,24 @@ export class ItemsController {
     for (const photo of photos) {
       if (!thumbnailByItem.has(photo.itemId)) thumbnailByItem.set(photo.itemId, photo.url);
     }
+    // Tatsächlicher Verkaufspreis (Gewinner-SaleEvent) statt Listingpreis,
+    // damit Erlös-Statistiken nicht den Angebotspreis aufsummieren.
+    const winners: { itemId: string; price: string }[] = items.length
+      ? await this.dataSource.manager.query(
+          `SELECT cl.item_id AS "itemId", se.reported_price AS "price"
+             FROM sale_events se
+             JOIN marketplace_projections mp ON mp.id = se.projection_id
+             JOIN canonical_listings cl ON cl.id = mp.canonical_listing_id
+            WHERE se.is_winner = true AND cl.item_id = ANY($1)`,
+          [items.map((i) => i.id)],
+        )
+      : [];
+    const soldPriceByItem = new Map(winners.map((w) => [w.itemId, Number(w.price)]));
     return items.map((item) => ({
       item,
       listings: listingsByItem.get(item.id) ?? [],
       thumbnailUrl: thumbnailByItem.get(item.id) ?? null,
+      soldPrice: soldPriceByItem.get(item.id) ?? null,
     }));
   }
 
