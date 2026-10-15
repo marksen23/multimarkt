@@ -9,18 +9,24 @@ function makeProvider(
   return { search: jest.fn().mockResolvedValue(result) };
 }
 
+const PLACE = { postalCode: '50667', radiusKm: 20 };
+
 function makeService(provider: AnkaufSearchProvider) {
   return new AnkaufResearchService(provider);
+}
+
+function search(service: AnkaufResearchService, keywords: string) {
+  return service.search(keywords, PLACE);
 }
 
 describe('AnkaufResearchService', () => {
   it('returns empty listings and null median when provider returns null', async () => {
     const service = makeService(makeProvider(null));
-    const result = await service.search('Test');
+    const result = await search(service, 'Test');
     expect(result.listings).toEqual([]);
     expect(result.marketMedianEur).toBeNull();
     expect(result.keywords).toBe('Test');
-    expect(result.location).toBe('Berlin');
+    expect(result.location).toBe('PLZ 50667 (20 km Umkreis)');
   });
 
   it('computes SEHR_GUT deal score for price <= 70% of median', async () => {
@@ -30,7 +36,7 @@ describe('AnkaufResearchService', () => {
         listings: [{ title: 'A', price: 65, platform: 'KLEINANZEIGEN', url: null, condition: null }],
       }),
     );
-    const result = await service.search('Jacke');
+    const result = await search(service, 'Jacke');
     expect(result.listings[0].dealScore).toBe('SEHR_GUT');
   });
 
@@ -41,7 +47,7 @@ describe('AnkaufResearchService', () => {
         listings: [{ title: 'B', price: 80, platform: 'VINTED', url: null, condition: null }],
       }),
     );
-    const result = await service.search('Jacke');
+    const result = await search(service, 'Jacke');
     expect(result.listings[0].dealScore).toBe('GUT');
   });
 
@@ -52,7 +58,7 @@ describe('AnkaufResearchService', () => {
         listings: [{ title: 'C', price: 95, platform: 'EBAY', url: null, condition: null }],
       }),
     );
-    const result = await service.search('Jacke');
+    const result = await search(service, 'Jacke');
     expect(result.listings[0].dealScore).toBe('FAIR');
   });
 
@@ -63,7 +69,7 @@ describe('AnkaufResearchService', () => {
         listings: [{ title: 'D', price: 120, platform: 'EBAY', url: null, condition: null }],
       }),
     );
-    const result = await service.search('Jacke');
+    const result = await search(service, 'Jacke');
     expect(result.listings[0].dealScore).toBe('TEUER');
   });
 
@@ -74,7 +80,7 @@ describe('AnkaufResearchService', () => {
         listings: [{ title: 'E', price: 50, platform: 'VINTED', url: null, condition: null }],
       }),
     );
-    const result = await service.search('Jacke');
+    const result = await search(service, 'Jacke');
     expect(result.listings[0].dealScore).toBeNull();
     expect(result.listings[0].priceVsMarketPct).toBeNull();
   });
@@ -91,7 +97,7 @@ describe('AnkaufResearchService', () => {
         ],
       }),
     );
-    const result = await service.search('Test');
+    const result = await search(service, 'Test');
     const scores = result.listings.map((l) => l.dealScore);
     expect(scores).toEqual(['SEHR_GUT', 'GUT', 'FAIR', 'TEUER']);
   });
@@ -103,7 +109,7 @@ describe('AnkaufResearchService', () => {
         listings: [{ title: 'F', price: 60, platform: 'KLEINANZEIGEN', url: null, condition: null }],
       }),
     );
-    const result = await service.search('Test');
+    const result = await search(service, 'Test');
     // (60 - 80) / 80 * 100 = -25
     expect(result.listings[0].priceVsMarketPct).toBe(-25);
   });
@@ -118,19 +124,89 @@ describe('AnkaufResearchService', () => {
         ],
       }),
     );
-    const result = await service.search('Test');
+    const result = await search(service, 'Test');
     expect(result.listings).toHaveLength(1);
     expect(result.listings[0].title).toBe('Valid');
   });
 
   it('returns conditionPriceImpact with all four conditions', async () => {
     const service = makeService(makeProvider(null));
-    const result = await service.search('Test');
+    const result = await search(service, 'Test');
     expect(Object.keys(result.conditionPriceImpact)).toContain('wie_neu');
     expect(Object.keys(result.conditionPriceImpact)).toContain('gut');
     expect(Object.keys(result.conditionPriceImpact)).toContain('gebraucht');
     expect(Object.keys(result.conditionPriceImpact)).toContain('defekt');
     expect(result.conditionPriceImpact['wie_neu'].factor).toBeGreaterThan(1);
     expect(result.conditionPriceImpact['defekt'].factor).toBeLessThan(0.6);
+  });
+
+  it('asks the source for the profile place, not a fixed city', async () => {
+    const searchFn = jest.fn().mockResolvedValue(null);
+    const service = new AnkaufResearchService({ search: searchFn });
+    const result = await service.search('Jacke', { postalCode: '80331', radiusKm: 50 });
+    expect(searchFn).toHaveBeenCalledWith({
+      keywords: 'Jacke',
+      location: 'PLZ 80331 (50 km Umkreis)',
+    });
+    expect(result.location).toBe('PLZ 80331 (50 km Umkreis)');
+  });
+
+  it('reads the source condition and marks a title-only hint uncertain', async () => {
+    const service = makeService(
+      makeProvider({
+        marketMedian: 100,
+        listings: [
+          {
+            title: 'Jacke wie neu OVP defekt',
+            price: 40,
+            platform: 'EBAY',
+            url: null,
+            condition: null,
+          },
+          {
+            title: 'Jacke defekt kaputt',
+            price: 90,
+            platform: 'VINTED',
+            url: null,
+            condition: 'Gut erhalten',
+          },
+          {
+            title: 'Jacke',
+            price: 30,
+            platform: 'KLEINANZEIGEN',
+            url: null,
+            condition: 'Defekt — Sohle löst sich',
+          },
+          {
+            title: 'Jacke siehe Text',
+            price: 70,
+            platform: 'FACEBOOK',
+            url: null,
+            condition: 'siehe Beschreibung',
+          },
+        ],
+      }),
+    );
+    const result = await search(service, 'Jacke');
+    const byPrice = (price: number) => result.listings.find((listing) => listing.price === price);
+    expect(byPrice(40)).toMatchObject({
+      condition: null,
+      conditionKey: null,
+      conditionUncertain: true,
+    });
+    expect(byPrice(90)).toMatchObject({
+      condition: 'Gut erhalten',
+      conditionKey: 'gut',
+      conditionUncertain: false,
+    });
+    expect(byPrice(30)).toMatchObject({
+      conditionKey: 'defekt',
+      conditionUncertain: false,
+    });
+    expect(byPrice(70)).toMatchObject({
+      condition: 'siehe Beschreibung',
+      conditionKey: null,
+      conditionUncertain: true,
+    });
   });
 });

@@ -61,7 +61,7 @@ export class RealAnkaufGeminiProvider implements AnkaufSearchProvider {
 
   private buildPrompt(query: AnkaufSearchQuery): string {
     return `Du bist ein Gebrauchtwarenkauf-Assistent.
-Suche über Google nach AKTUELLEN Privatverkauf-Angeboten für: "${query.keywords}" im Raum ${query.location}, Deutschland.
+Suche über Google nach AKTUELLEN Privatverkauf-Angeboten für: "${query.keywords}" in ${query.location}, Deutschland.
 Durchsuche Kleinanzeigen.de, eBay.de, Vinted.de und Facebook Marketplace.
 
 Antworte AUSSCHLIESSLICH mit validem JSON, kein Markdown, kein Erklärtext:
@@ -82,7 +82,8 @@ Regeln:
 - Gib bis zu 12 aktuelle Listings zurück.
 - Erfinde KEINE URLs, Preise oder Titel — nur belegte Suchergebnisse.
 - marketMedian: Schätze den fairen Marktpreis für diesen Artikel im beschriebenen Zustand auf Basis der Suchergebnisse, oder null wenn keine Datenbasis.
-- Preis immer als Zahl (keine Einheit, kein "€").`;
+- Preis immer als Zahl (keine Einheit, kein "€").
+- condition: die Zustandsangabe der Quelle, wörtlich. null, wenn die Anzeige keinen Zustand nennt. Den Zustand nicht aus dem Titel ableiten.`;
   }
 
   private parseResponse(text: string | undefined): AnkaufSearchProviderResult | null {

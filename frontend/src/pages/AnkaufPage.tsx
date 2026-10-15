@@ -1,10 +1,19 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ankaufApi } from '../api/ankauf';
+import { ApiRequestError } from '../api/client';
 import { itemsApi } from '../api/items';
-import type { AnkaufListing, AnkaufResearchResult, DealScore } from '../api/types';
+import type {
+  AnkaufListing,
+  AnkaufResearchResult,
+  AnkaufSearchProfile,
+  AnkaufSearchSummary,
+  DealScore,
+} from '../api/types';
 
-type ConditionKey = 'alle' | 'wie_neu' | 'gut' | 'gebraucht' | 'defekt';
+type ConditionKey = 'alle' | 'wie_neu' | 'gut' | 'gebraucht' | 'defekt' | 'unsicher';
+
+const RADIUS_OPTIONS_KM = [5, 10, 20, 30, 50, 100, 150, 200];
 
 const CONDITION_LABELS: Record<ConditionKey, string> = {
   alle: 'Alle',
@@ -12,14 +21,7 @@ const CONDITION_LABELS: Record<ConditionKey, string> = {
   gut: 'Gut erhalten',
   gebraucht: 'Gebraucht',
   defekt: 'Defekt',
-};
-
-const CONDITION_KEYWORDS: Record<ConditionKey, string[]> = {
-  alle: [],
-  wie_neu: ['wie neu', 'neuwertig', 'ovp', 'unbenutzt', 'ungetragen', 'kaum getragen', 'originalrechnung'],
-  gut: ['sehr guter', 'sehr gut', 'guter zustand', 'gut erhalten', 'gut'],
-  gebraucht: ['gebraucht', 'gebrauchsspuren', 'kratzer', 'kleine mängel'],
-  defekt: ['defekt', 'bastler', 'kaputt', 'reparatur', 'löst sich'],
+  unsicher: 'Unsicher',
 };
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -47,9 +49,8 @@ const SCORE_CONFIG: Record<DealScore, { label: string; color: string }> = {
 
 function matchesCondition(listing: AnkaufListing, condition: ConditionKey): boolean {
   if (condition === 'alle') return true;
-  const keywords = CONDITION_KEYWORDS[condition];
-  const text = ((listing.condition ?? '') + ' ' + listing.title).toLowerCase();
-  return keywords.some((kw) => text.includes(kw));
+  if (condition === 'unsicher') return listing.conditionUncertain;
+  return listing.conditionKey === condition;
 }
 
 function todayLocal(): string {
@@ -59,15 +60,58 @@ function todayLocal(): string {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof ApiRequestError ? error.body.message : fallback;
+}
+
+function formatSearchedAt(iso: string): string {
+  return new Date(iso).toLocaleString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export function AnkaufPage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [radiusKm, setRadiusKm] = useState(20);
+  const [savedProfile, setSavedProfile] = useState<AnkaufSearchProfile | null>(null);
+  const [searches, setSearches] = useState<AnkaufSearchSummary[]>([]);
+  const [activeSearchId, setActiveSearchId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [result, setResult] = useState<AnkaufResearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeCondition, setActiveCondition] = useState<ConditionKey>('alle');
   const [adoptingKey, setAdoptingKey] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([ankaufApi.profile(), ankaufApi.searches()])
+      .then(([profile, history]) => {
+        if (!active) return;
+        setSavedProfile(profile);
+        setPostalCode(profile.postalCode ?? '');
+        setRadiusKm(profile.radiusKm);
+        setSearches(history);
+      })
+      .catch((e) => {
+        if (!active) return;
+        setError(errorMessage(e, 'Suchprofil konnte nicht geladen werden.'));
+      })
+      .finally(() => {
+        if (active) setProfileLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const postalOk = /^\d{5}$/.test(postalCode.trim());
 
   const adopt = async (listing: AnkaufListing, key: string) => {
     setAdoptingKey(key);
@@ -88,16 +132,57 @@ export function AnkaufPage() {
     }
   };
 
+  const ensureProfile = async (): Promise<boolean> => {
+    const plz = postalCode.trim();
+    if (!/^\d{5}$/.test(plz)) {
+      setError('Die PLZ braucht fünf Ziffern.');
+      return false;
+    }
+    if (savedProfile?.postalCode === plz && savedProfile.radiusKm === radiusKm) return true;
+    const profile = await ankaufApi.updateProfile({ postalCode: plz, radiusKm });
+    setSavedProfile(profile);
+    setPostalCode(profile.postalCode ?? plz);
+    setRadiusKm(profile.radiusKm);
+    return true;
+  };
+
   const search = async (kw: string) => {
     if (!kw.trim()) return;
     setLoading(true);
     setError(null);
     setResult(null);
     setActiveCondition('alle');
+    setActiveSearchId(null);
     try {
-      setResult(await ankaufApi.search(kw.trim()));
-    } catch {
-      setError('Suche fehlgeschlagen. Bitte erneut versuchen.');
+      const ready = await ensureProfile();
+      if (!ready) return;
+      const next = await ankaufApi.search(kw.trim());
+      setResult(next);
+      setQuery(kw.trim());
+      try {
+        const history = await ankaufApi.searches();
+        setSearches(history);
+        setActiveSearchId(history[0]?.id ?? null);
+      } catch {
+        // Die Treffer bleiben sichtbar, auch wenn die Liste gerade nicht lädt.
+      }
+    } catch (e) {
+      setError(errorMessage(e, 'Suche fehlgeschlagen. Bitte erneut versuchen.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openSaved = async (item: AnkaufSearchSummary) => {
+    setLoading(true);
+    setError(null);
+    setActiveCondition('alle');
+    setQuery(item.keywords);
+    try {
+      setResult(await ankaufApi.openSearch(item.id));
+      setActiveSearchId(item.id);
+    } catch (e) {
+      setError(errorMessage(e, 'Diese Suche ließ sich nicht öffnen.'));
     } finally {
       setLoading(false);
     }
@@ -107,14 +192,56 @@ export function AnkaufPage() {
     result?.listings.filter((l) => matchesCondition(l, activeCondition)) ?? [];
 
   const conditionImpact = result?.conditionPriceImpact ?? {};
+  const placeLabel = savedProfile?.postalCode
+    ? `PLZ ${savedProfile.postalCode} · ${savedProfile.radiusKm} km`
+    : null;
 
   return (
     <div className="max-w-md mx-auto pb-12">
       <div className="p-4">
         <h1 className="text-lg font-bold text-ink mb-1">Ankauf-Recherche</h1>
-        <p className="text-xs text-ink-muted mb-4">Gebrauchtangebote in Berlin — Kleinanzeigen, eBay, Vinted & mehr</p>
+        <p className="text-xs text-ink-muted mb-4">
+          Gebrauchtangebote rund um deine PLZ — Kleinanzeigen, eBay, Vinted und mehr
+        </p>
 
-        {/* Search bar */}
+        <div className="mb-3 grid grid-cols-[minmax(0,1fr)_9rem] gap-2">
+          <label className="block">
+            <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wide">PLZ</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="postal-code"
+              maxLength={5}
+              placeholder="z. B. 50667"
+              value={postalCode}
+              onChange={(e) => setPostalCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
+              className="mt-1 w-full px-4 py-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft bg-transparent text-ink"
+            />
+          </label>
+          <label className="block">
+            <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wide">Umkreis</span>
+            <select
+              value={radiusKm}
+              onChange={(e) => setRadiusKm(Number(e.target.value))}
+              className="mt-1 w-full px-3 py-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft bg-transparent text-ink"
+            >
+              {RADIUS_OPTIONS_KM.map((km) => (
+                <option key={km} value={km}>
+                  {km} km
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <p className="text-[11px] text-ink-faint mb-4">
+          {profileLoading
+            ? 'Suchprofil wird geladen…'
+            : placeLabel
+              ? `Suchprofil: ${placeLabel}`
+              : 'Die Suche startet, sobald die PLZ steht.'}
+          {postalCode.length > 0 && !postalOk ? ' · PLZ mit fünf Ziffern.' : ''}
+        </p>
+
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -132,12 +259,40 @@ export function AnkaufPage() {
           />
           <button
             type="submit"
-            disabled={loading || !query.trim()}
+            disabled={loading || profileLoading || !query.trim() || !postalOk}
             className="px-5 py-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors whitespace-nowrap"
           >
             {loading ? '…' : 'Suchen'}
           </button>
         </form>
+
+        {searches.length > 0 && (
+          <div className="mt-4">
+            <p className="text-[11px] font-bold text-ink-muted uppercase tracking-wide mb-2">
+              Letzte Suchen
+            </p>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {searches.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => void openSaved(item)}
+                  className={`flex-shrink-0 text-left px-3 py-2 rounded-xl border text-xs transition-colors ${
+                    activeSearchId === item.id
+                      ? 'bg-accent text-accent-ink border-accent'
+                      : 'bg-surface text-ink-muted border-line hover:border-accent hover:text-accent'
+                  }`}
+                >
+                  <span className="block font-bold">{item.keywords}</span>
+                  <span className={`block mt-0.5 ${activeSearchId === item.id ? 'opacity-80' : 'text-ink-faint'}`}>
+                    {item.postalCode} · {item.radiusKm} km · {item.listingCount} Angebote ·{' '}
+                    {formatSearchedAt(item.searchedAt)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="mt-3 bg-danger-soft border border-danger/20 rounded-xl p-3 text-xs text-danger">
@@ -160,13 +315,12 @@ export function AnkaufPage() {
 
       {result && !loading && (
         <>
-          {/* Market median banner */}
           {result.marketMedianEur !== null && (
             <div className="mx-4 mb-4 bg-accent-soft border border-accent/20 rounded-xl px-4 py-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-bold text-ink-muted uppercase tracking-wide">
-                    Fairer Marktpreis (Berlin)
+                    Fairer Marktpreis
                   </p>
                   <p className="text-xl font-bold text-accent mt-0.5">
                     {result.marketMedianEur.toFixed(2)} €
@@ -180,13 +334,9 @@ export function AnkaufPage() {
             </div>
           )}
 
-          {/* Condition filter tabs */}
           <div className="px-4 mb-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {(Object.keys(CONDITION_LABELS) as ConditionKey[]).map((key) => {
-              const count =
-                key === 'alle'
-                  ? result.listings.length
-                  : result.listings.filter((l) => matchesCondition(l, key)).length;
+              const count = result.listings.filter((l) => matchesCondition(l, key)).length;
               return (
                 <button
                   key={key}
@@ -199,32 +349,36 @@ export function AnkaufPage() {
                   }`}
                 >
                   {CONDITION_LABELS[key]}
-                  {count > 0 && (
-                    <span className="ml-1 opacity-70">({count})</span>
-                  )}
+                  {count > 0 && <span className="ml-1 opacity-70">({count})</span>}
                 </button>
               );
             })}
           </div>
 
-          {/* Condition price impact info */}
-          {activeCondition !== 'alle' && conditionImpact[activeCondition] && (
+          {activeCondition !== 'alle' &&
+            activeCondition !== 'unsicher' &&
+            conditionImpact[activeCondition] && (
+              <div className="mx-4 mb-4 px-3 py-2 bg-surface border border-line rounded-xl">
+                <p className="text-xs text-ink-muted">
+                  <span className="font-bold text-ink">{CONDITION_LABELS[activeCondition]}:</span>{' '}
+                  {conditionImpact[activeCondition].label}
+                  {result.marketMedianEur !== null && (
+                    <span className="ml-1 text-ink-faint">
+                      (≈ {(result.marketMedianEur * conditionImpact[activeCondition].factor).toFixed(0)} €)
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+
+          {activeCondition === 'unsicher' && (
             <div className="mx-4 mb-4 px-3 py-2 bg-surface border border-line rounded-xl">
               <p className="text-xs text-ink-muted">
-                <span className="font-bold text-ink">{CONDITION_LABELS[activeCondition]}:</span>{' '}
-                {conditionImpact[activeCondition].label}
-                {result.marketMedianEur !== null && (
-                  <span className="ml-1 text-ink-faint">
-                    (≈{' '}
-                    {(result.marketMedianEur * conditionImpact[activeCondition].factor).toFixed(0)}{' '}
-                    €)
-                  </span>
-                )}
+                Die Quelle nennt keinen eindeutigen Zustand. Angezeigt wird die Angabe aus der Anzeige.
               </p>
             </div>
           )}
 
-          {/* Listings */}
           <div className="px-4 space-y-3">
             {visibleListings.length === 0 && (
               <p className="text-sm text-ink-muted text-center py-8">
@@ -251,7 +405,9 @@ export function AnkaufPage() {
           <p className="text-sm text-ink-faint">
             Gib einen Suchbegriff ein — z. B. „iPhone 14 128GB" oder „Lederjacke Gr. M".
           </p>
-          <p className="text-xs text-ink-faint mt-2">Standort: Berlin</p>
+          <p className="text-xs text-ink-faint mt-2">
+            {placeLabel ? `Standort: ${placeLabel}` : 'Standort: deine PLZ'}
+          </p>
         </div>
       )}
     </div>
@@ -276,21 +432,24 @@ function ListingCard({
     <div className="bg-surface border border-line rounded-2xl p-4 space-y-2">
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-bold text-ink leading-snug flex-1">{listing.title}</p>
-        {scoreConfig && (
-          <span
-            className={`flex-shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full border ${scoreConfig.color}`}
-          >
-            {scoreConfig.label}
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          {listing.conditionUncertain && (
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border text-orange-700 bg-orange-50 border-orange-200 dark:text-orange-300 dark:bg-orange-950/40 dark:border-orange-800">
+              Zustand unsicher
+            </span>
+          )}
+          {scoreConfig && (
+            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${scoreConfig.color}`}>
+              {scoreConfig.label}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-3">
         <span className="text-lg font-bold text-ink">{listing.price.toFixed(2)} €</span>
         {listing.priceVsMarketPct !== null && (
-          <span
-            className={`text-xs font-bold ${listing.priceVsMarketPct < 0 ? 'text-accent' : 'text-danger'}`}
-          >
+          <span className={`text-xs font-bold ${listing.priceVsMarketPct < 0 ? 'text-accent' : 'text-danger'}`}>
             {listing.priceVsMarketPct > 0 ? '+' : ''}
             {listing.priceVsMarketPct} % zum Marktpreis
           </span>
@@ -301,12 +460,10 @@ function ListingCard({
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: platformColor }} />
           <span className="text-xs text-ink-muted">{platformLabel}</span>
-          {listing.condition && (
-            <>
-              <span className="text-ink-faint">·</span>
-              <span className="text-xs text-ink-faint truncate">{listing.condition}</span>
-            </>
-          )}
+          <span className="text-ink-faint">·</span>
+          <span className="text-xs text-ink-faint truncate">
+            {listing.condition ?? 'Keine Zustandsangabe'}
+          </span>
         </div>
         {listing.url ? (
           <a
