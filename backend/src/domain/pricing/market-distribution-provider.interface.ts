@@ -22,6 +22,8 @@ export interface MarketDistributionQuery {
 export interface ComparableListing {
   title: string;
   price: number;
+  /** Direkte Anzeigen-URL — nur eBay Browse API liefert das zuverlässig. */
+  url?: string | null;
 }
 
 export interface MarketDistributionResult {

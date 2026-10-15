@@ -1,0 +1,39 @@
+# Lokale Datenbanken für den Betrieb auf dem eigenen Rechner (siehe
+# setup.ps1 / start.ps1). Ports bewusst 5433/6380 statt Standard, damit sie
+# nicht mit einer bereits installierten PostgreSQL/Redis-Instanz kollidieren.
+# Daten liegen in benannten Docker-Volumes und überleben Neustarts.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: resale
+      POSTGRES_PASSWORD: resale
+      POSTGRES_DB: resale_os
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - resale-os-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resale -d resale_os"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - resale-os-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  resale-os-pg:
+  resale-os-redis:

@@ -22,14 +22,17 @@ export class MockGeminiVisionProvider implements AiVisionProvider {
       // macht daraus Lücken, wenn die Kategorie sie verlangt.
       attributes: hasImages
         ? [
-            { key: 'category', value: 'Bekleidung > Herren > Jacken', confidence: 0.91 },
+            { key: 'category', value: 'Bekleidung > Herren > Jacken & Mäntel', confidence: 0.91 },
             { key: 'color', value: 'Schwarz', confidence: 0.87 },
             { key: 'brand', value: null, confidence: 0.22 },
             { key: 'material', value: 'Polyester', confidence: 0.58 },
+            // Größe, Maße und Funktion nicht raten — die Taxonomie macht daraus Lücken.
             { key: 'size', value: null, confidence: 0 },
             { key: 'measurements', value: null, confidence: 0 },
             { key: 'functionChecked', value: null, confidence: 0 },
             { key: 'condition', value: 'good', confidence: 0.64 },
+            { key: 'notable_features', value: null, confidence: 0.1 },
+            { key: 'visible_defects', value: null, confidence: 0.8 },
           ]
         : [
             { key: 'category', value: null, confidence: 0 },
@@ -40,6 +43,8 @@ export class MockGeminiVisionProvider implements AiVisionProvider {
             { key: 'measurements', value: null, confidence: 0 },
             { key: 'functionChecked', value: null, confidence: 0 },
             { key: 'condition', value: null, confidence: 0 },
+            { key: 'notable_features', value: null, confidence: 0 },
+            { key: 'visible_defects', value: null, confidence: 0 },
           ],
     };
   }

@@ -4,7 +4,7 @@ import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import type { ItemListEntry } from '../api/types';
 import { ListSkeleton } from '../components/Skeleton';
-import { StatusBadge } from '../components/StatusBadge';
+import { PhaseBadge } from '../ui';
 
 /**
  * Einstieg ohne Artikel-ID. Es gibt keine Beispielnachricht und keinen Chat.
@@ -47,7 +47,7 @@ export function NegotiationDemoPage() {
                   <span className="text-sm font-bold text-ink line-clamp-1">
                     {entry.item.title?.trim() || 'Ohne Titel'}
                   </span>
-                  <StatusBadge status={entry.item.status} />
+                  <PhaseBadge status={entry.item.status} />
                 </div>
               </Link>
             </li>

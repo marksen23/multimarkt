@@ -3,6 +3,7 @@ import type { SaleCloseoutDraft } from '../margin/sale-closeout';
 import { api } from './client';
 import type {
   CanonicalListing,
+  DescriptionChannel,
   DescriptionSuggestion,
   Item,
   ItemAttribute,
@@ -11,6 +12,7 @@ import type {
   ItemPhoto,
   ItemLifecycleState,
   ListingChannel,
+  MarketplaceRecommendationResult,
   PhotoQualityReport,
   PriceResearchResult,
   SaleEvent,
@@ -67,10 +69,15 @@ export const itemsApi = {
   generateTitle: (id: string, channel: ListingChannel) =>
     api.get<TitleSuggestion>(`/items/${id}/generate-title?channel=${channel}`),
   updateTitle: (id: string, title: string) => api.patch<Item>(`/items/${id}/title`, { title }),
-  generateDescription: (id: string, salesGoal?: string) =>
-    api.get<DescriptionSuggestion>(
-      `/items/${id}/generate-description${salesGoal ? `?salesGoal=${salesGoal}` : ''}`,
-    ),
+  generateDescription: (id: string, salesGoal?: string, channel?: DescriptionChannel) => {
+    const params = new URLSearchParams();
+    if (salesGoal) params.set('salesGoal', salesGoal);
+    if (channel) params.set('channel', channel);
+    const query = params.toString();
+    return api.get<DescriptionSuggestion>(
+      `/items/${id}/generate-description${query ? `?${query}` : ''}`,
+    );
+  },
   optimizePhoto: (id: string, file: File) => {
     const form = new FormData();
     form.append('file', file);
@@ -78,7 +85,14 @@ export const itemsApi = {
   },
   confirmTruth: (id: string, condition: string) =>
     api.post<Item>(`/items/${id}/confirm-truth`, { condition }),
+  reanalyze: (id: string) => api.post<Item>(`/items/${id}/reanalyze`),
+  uploadMorePhotos: (id: string, files: File[], onProgress?: (fraction: number) => void) => {
+    const form = new FormData();
+    files.forEach((file) => form.append('files', file));
+    return api.postForm<Item>(`/items/${id}/upload-more-photos`, form, onProgress);
+  },
   discard: (id: string) => api.post<Item>(`/items/${id}/discard`),
+  markSold: (id: string) => api.post<Item>(`/items/${id}/mark-sold`),
   confirmAttribute: (id: string, key: string, value?: string) =>
     api.post<ItemAttribute>(`/items/${id}/attributes/${key}/confirm`, { value }),
   prepareListing: (id: string, sellingPrice: number, descriptionText?: string) =>
@@ -93,4 +107,8 @@ export const itemsApi = {
   saleEvents: (id: string) => api.get<SaleEvent[]>(`/items/${id}/sale-events`),
   resolveConflict: (id: string, winningSaleEventId: string) =>
     api.post<Item>(`/items/${id}/resolve-conflict`, { winningSaleEventId }),
+  marketplaceRecommendations: (id: string, salesGoal?: SalesGoal) => {
+    const query = salesGoal ? `?salesGoal=${salesGoal}` : '';
+    return api.get<MarketplaceRecommendationResult>(`/items/${id}/marketplace-recommendations${query}`);
+  },
 };

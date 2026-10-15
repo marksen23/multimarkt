@@ -9,7 +9,7 @@ import {
   type SoldSaleItem,
 } from "../api/sales";
 import { ListSkeleton } from "../components/Skeleton";
-import { StatusBadge } from "../components/StatusBadge";
+import { PhaseBadge } from "../ui";
 import { formatEur } from "../margin/sale-closeout";
 
 function itemTitle(title: string | null, id: string): string {
@@ -256,7 +256,7 @@ function OpenRow({
         )}
       </td>
       <td className="py-2 pr-3">
-        <StatusBadge status={item.status} />
+        <PhaseBadge status={item.status} />
       </td>
       <td className="py-2 pr-3 text-right tabular-nums text-ink">
         {formatEur(item.purchasePriceEur)}
