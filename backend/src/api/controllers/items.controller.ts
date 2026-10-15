@@ -38,8 +38,8 @@ import { RecordPriceDropDto } from '../dto/price-drop.dto';
 import { RecordSaleCloseoutDto } from '../dto/sale-closeout.dto';
 import { EvaluateDispositionDto } from '../dto/disposition.dto';
 import { ActorContext } from '../../domain/actor-context';
+import { DescriptionChannel, SalesGoal } from '../../domain/ai/description-generation-provider.interface';
 import { HumanGateBypassException } from '../../domain/errors/state-transition.errors';
-import { SalesGoal } from '../../domain/ai/description-generation-provider.interface';
 import { ItemLifecycleState } from '../../domain/state-vocabulary';
 import { BundleAssignmentService } from '../../application/bundle/bundle-assignment.service';
 import {
@@ -51,6 +51,10 @@ import {
   ItemFollowUp,
   PriceDropResult,
 } from '../../application/listing/follow-up.service';
+import {
+  MarketplaceRecommendationResult,
+  MarketplaceRecommenderService,
+} from '../../application/listing/marketplace-recommender.service';
 import {
   ListingSummary,
   ListingSummaryService,
@@ -110,18 +114,9 @@ import { ResolveConflictDto } from '../dto/sale-events.dto';
 
 const MAX_PHOTOS_PER_UPLOAD = 10;
 const MAX_PHOTO_SIZE_BYTES = 15 * 1024 * 1024;
-const ALLOWED_PHOTO_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/heic',
-]);
-const SALES_GOALS: SalesGoal[] = [
-  'MAX_PROFIT',
-  'BALANCED',
-  'FAST_SALE',
-  'MINIMAL_EFFORT',
-];
+const ALLOWED_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic']);
+const SALES_GOALS: SalesGoal[] = ['MAX_PROFIT', 'BALANCED', 'FAST_SALE', 'MINIMAL_EFFORT'];
+const DESCRIPTION_CHANNELS: DescriptionChannel[] = ['KLEINANZEIGEN', 'EBAY', 'VINTED', 'GENERIC'];
 const LISTING_CHANNELS: ListingChannel[] = ['KLEINANZEIGEN', 'EBAY', 'VINTED'];
 
 /** Doc 04 §7/§8/§12 — Item-Aggregat. */
@@ -147,6 +142,7 @@ export class ItemsController {
     private readonly followUps: FollowUpService,
     private readonly negotiation: NegotiationService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
+    private readonly marketplaceRecommender: MarketplaceRecommenderService,
   ) {}
 
   @Post()
@@ -195,13 +191,7 @@ export class ItemsController {
   async list(
     @CurrentActor() actor: ActorContext,
     @Query('status') status?: ItemLifecycleState,
-  ): Promise<
-    {
-      item: ItemEntity;
-      listings: ListingSummary[];
-      thumbnailUrl: string | null;
-    }[]
-  > {
+  ): Promise<{ item: ItemEntity; listings: ListingSummary[]; thumbnailUrl: string | null; soldPrice: number | null }[]> {
     const items = await this.dataSource.manager.find(ItemEntity, {
       where: status
         ? { userId: actor.userId!, status }
@@ -225,10 +215,24 @@ export class ItemsController {
       if (!thumbnailByItem.has(photo.itemId))
         thumbnailByItem.set(photo.itemId, photo.url);
     }
+    // Tatsächlicher Verkaufspreis (Gewinner-SaleEvent) statt Listingpreis,
+    // damit Erlös-Statistiken nicht den Angebotspreis aufsummieren.
+    const winners: { itemId: string; price: string }[] = items.length
+      ? await this.dataSource.manager.query(
+          `SELECT cl.item_id AS "itemId", se.reported_price AS "price"
+             FROM sale_events se
+             JOIN marketplace_projections mp ON mp.id = se.projection_id
+             JOIN canonical_listings cl ON cl.id = mp.canonical_listing_id
+            WHERE se.is_winner = true AND cl.item_id = ANY($1)`,
+          [items.map((i) => i.id)],
+        )
+      : [];
+    const soldPriceByItem = new Map(winners.map((w) => [w.itemId, Number(w.price)]));
     return items.map((item) => ({
       item,
       listings: listingsByItem.get(item.id) ?? [],
       thumbnailUrl: thumbnailByItem.get(item.id) ?? null,
+      soldPrice: soldPriceByItem.get(item.id) ?? null,
     }));
   }
 
@@ -311,6 +315,61 @@ export class ItemsController {
   }
 
   /**
+   * Re-Analyse auf vorhandenen Fotos (REVIEW_REQUIRED only).
+   * Aktualisiert UNKNOWN/INFERRED-Attribute ohne State-Transition.
+   * USER_CONFIRMED-Attribute werden nicht überschrieben.
+   */
+  @Post(':id/reanalyze')
+  async reanalyze(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ItemEntity> {
+    return this.productAnalysis.reanalyzeInPlace(id);
+  }
+
+  /**
+   * Neue Fotos hinzufügen + sofort neu analysieren (REVIEW_REQUIRED only).
+   * Speichert die Fotos dauerhaft und ruft dann reanalyzeInPlace auf,
+   * sodass alle Fotos (alt + neu) in die KI-Analyse einfließen.
+   */
+  @Post(':id/upload-more-photos')
+  @UseInterceptors(
+    FilesInterceptor('files', MAX_PHOTOS_PER_UPLOAD, {
+      storage: memoryStorage(),
+      limits: { fileSize: MAX_PHOTO_SIZE_BYTES },
+    }),
+  )
+  async uploadMorePhotos(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+  ): Promise<ItemEntity> {
+    if (!files?.length) {
+      throw new BadRequestException('At least one photo is required (field "files")');
+    }
+    for (const file of files) {
+      if (!ALLOWED_PHOTO_MIME_TYPES.has(file.mimetype)) {
+        throw new BadRequestException(`Unsupported image type: ${file.mimetype}`);
+      }
+    }
+
+    const uploaded = await Promise.all(
+      files.map((file) =>
+        this.storage.upload({
+          buffer: file.buffer,
+          mimeType: file.mimetype,
+          originalName: file.originalname,
+        }),
+      ),
+    );
+
+    await this.dataSource.manager.insert(
+      ItemPhotoEntity,
+      uploaded.map((f) => ({ itemId: id, url: f.url, storageKey: f.key })),
+    );
+
+    return this.productAnalysis.reanalyzeInPlace(id);
+  }
+
+  /**
    * §9e-Ergänzung (September 2026): Bildoptimierung ("Nano Banana") als
    * eigenständige, opt-in Aktion — liefert ein ZUSÄTZLICHES Bild, ersetzt
    * nie das Original. Kein StateGuard-Transition (verändert den
@@ -358,17 +417,31 @@ export class ItemsController {
     return this.stateGuard.transitionItem(id, { type: 'DISCARD', actor });
   }
 
+  @Post(':id/mark-sold')
+  async markSold(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<ItemEntity> {
+    return this.stateGuard.transitionItem(id, { type: 'MARK_SOLD_MANUALLY', actor });
+  }
+
   @Post(':id/confirm-truth')
   async confirmTruth(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ConfirmTruthDto,
     @CurrentActor() actor: ActorContext,
   ): Promise<ItemEntity> {
-    return this.stateGuard.transitionItem(id, {
+    const item = await this.stateGuard.transitionItem(id, {
       type: 'CONFIRM_TRUTH',
       actor,
       condition: dto.condition,
     });
+    // Pre-warm price research cache so the first PrepareListingStep load is instant.
+    // Fire-and-forget — never blocks the response.
+    if (item.status === 'READY') {
+      void this.priceTriangulation.research(id, {}).catch(() => {});
+    }
+    return item;
   }
 
   /**
@@ -397,11 +470,13 @@ export class ItemsController {
   async generateDescription(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('salesGoal') salesGoal?: string,
+    @Query('channel') channel?: string,
   ): Promise<DescriptionSuggestion> {
-    const goal = SALES_GOALS.includes(salesGoal as SalesGoal)
-      ? (salesGoal as SalesGoal)
+    const goal = SALES_GOALS.includes(salesGoal as SalesGoal) ? (salesGoal as SalesGoal) : null;
+    const resolvedChannel = DESCRIPTION_CHANNELS.includes(channel as DescriptionChannel)
+      ? (channel as DescriptionChannel)
       : null;
-    return this.canonicalListing.generateDescription(id, goal);
+    return this.canonicalListing.generateDescription(id, goal, resolvedChannel);
   }
 
   // Pixel-Check (Schärfe/Belichtung/Auflösung/Duplikate) plus Foto-Briefing.
@@ -506,6 +581,17 @@ export class ItemsController {
       ? (channel as ListingChannel)
       : 'KLEINANZEIGEN';
     return this.titleGeneration.generateTitle(id, resolvedChannel);
+  }
+
+  @Get(':id/marketplace-recommendations')
+  async marketplaceRecommendations(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('salesGoal') salesGoal?: string,
+  ): Promise<MarketplaceRecommendationResult> {
+    const goal = SALES_GOALS.includes(salesGoal as (typeof SALES_GOALS)[number])
+      ? (salesGoal as (typeof SALES_GOALS)[number])
+      : null;
+    return this.marketplaceRecommender.recommend(id, goal);
   }
 
   // Bislang gab es keinen Weg, den bei der Item-Anlage gesetzten Titel

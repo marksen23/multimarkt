@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { copyText } from "../lib/clipboard";
 import {
   followUpsApi,
   type FollowUpCard,
@@ -84,7 +85,7 @@ function FollowUpForm({
   const copy = async () => {
     if (timer.current) clearTimeout(timer.current);
     try {
-      await navigator.clipboard.writeText(card.copyText);
+      await copyText(card.copyText);
       setCopyState("copied");
     } catch {
       setCopyState("error");

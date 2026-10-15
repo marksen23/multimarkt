@@ -35,6 +35,7 @@ import { ItemsController } from './controllers/items.controller';
 import { ListingsController } from './controllers/listings.controller';
 import { SaleEventsController } from './controllers/sale-events.controller';
 import { SalesController } from './controllers/sales.controller';
+import { StorageController } from './controllers/storage.controller';
 import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
@@ -75,6 +76,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     SaleEventsController,
     SalesController,
     ExportController,
+    StorageController,
     AccountController,
     AnkaufController,
   ],

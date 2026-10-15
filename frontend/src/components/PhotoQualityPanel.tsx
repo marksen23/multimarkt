@@ -1,12 +1,56 @@
 import { useEffect, useState } from 'react';
 import { itemsApi } from '../api/items';
-import type { PhotoQualityReport } from '../api/types';
+import { Card } from '../ui';
+import type { PhotoQualityIssue, PhotoQualityIssueType, PhotoQualityReport } from '../api/types';
 import type { PhotoBriefing } from '../category/photo-briefing';
 
 /**
- * Foto-Check (unscharf, zu dunkel, zu klein, doppelt) plus Foto-Briefing.
- * Beides ist ein Hinweis. Fehlende Aufnahmen blockieren das Speichern nicht.
+ * Rein technischer Hinweis (Schärfe/Belichtung/Auflösung/Duplikate) über
+ * die eigenen Fotos — keine KI, keine Konkurrenzdaten. Blockiert nie das
+ * Anlegen des Listings, ist nur ein Hinweis vor dem Veröffentlichen.
  */
+
+const ISSUE_CONFIG: Record<
+  PhotoQualityIssueType,
+  { label: string; tip: string; critical: boolean }
+> = {
+  BLURRY: {
+    label: 'Unscharf',
+    tip: 'Kamera stabilisieren, ggf. Stativ nutzen.',
+    critical: true,
+  },
+  TOO_DARK: {
+    label: 'Zu dunkel',
+    tip: 'Helleren Hintergrund oder zusätzliches Licht nutzen.',
+    critical: true,
+  },
+  TOO_BRIGHT: {
+    label: 'Überbelichtet',
+    tip: 'Direktes Sonnenlicht vermeiden, indirektes Licht verwenden.',
+    critical: true,
+  },
+  LOW_RESOLUTION: {
+    label: 'Niedrige Auflösung',
+    tip: 'Foto in höherer Auflösung aufnehmen.',
+    critical: false,
+  },
+  DUPLICATE: {
+    label: 'Duplikat',
+    tip: 'Ähnliches Foto entfernen.',
+    critical: false,
+  },
+};
+
+function groupByPhoto(issues: PhotoQualityIssue[]): Map<number, PhotoQualityIssue[]> {
+  const map = new Map<number, PhotoQualityIssue[]>();
+  for (const issue of issues) {
+    const list = map.get(issue.photoIndex) ?? [];
+    list.push(issue);
+    map.set(issue.photoIndex, list);
+  }
+  return map;
+}
+
 export function PhotoQualityPanel({
   itemId,
   photoCount,
@@ -14,7 +58,7 @@ export function PhotoQualityPanel({
 }: {
   itemId: string;
   photoCount: number;
-  briefing: PhotoBriefing;
+  briefing?: PhotoBriefing;
 }) {
   const [report, setReport] = useState<PhotoQualityReport | null>(null);
 
@@ -23,45 +67,93 @@ export function PhotoQualityPanel({
     itemsApi.photoQuality(itemId).then(setReport).catch(() => setReport(null));
   }, [itemId, photoCount]);
 
-  const issues = report?.issues ?? [];
-  const showBriefing = briefing.category != null;
-  if (issues.length === 0 && !showBriefing) return null;
+  const showBriefing = briefing?.category != null;
+  if ((!report || report.issues.length === 0) && !showBriefing) return null;
+  if (!report || report.issues.length === 0) {
+    return <PhotoBriefingCard briefing={briefing!} />;
+  }
+
+  const criticalCount = report.issues.filter((i) => ISSUE_CONFIG[i.type]?.critical).length;
+  const byPhoto = groupByPhoto(report.issues);
 
   return (
-    <div className="bg-surface border border-line rounded-xl p-3 space-y-3">
-      {issues.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">Foto-Check</p>
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
+        <h2 className="text-micro uppercase text-ink-faint">Foto-Check</h2>
+        <span
+          className={`text-label tabular-nums px-2 py-0.5 rounded-full ${
+            criticalCount > 0 ? 'bg-warning-soft text-warning' : 'bg-phase-archive-soft text-ink-faint'
+          }`}
+        >
+          {report.issues.length} {report.issues.length === 1 ? 'Hinweis' : 'Hinweise'}
+        </span>
+      </div>
+
+      <ul className="px-4 pb-1 divide-y divide-line">
+        {Array.from(byPhoto.entries()).map(([photoIndex, issues]) => (
+          <li key={photoIndex} className="py-2.5 flex gap-3">
+            <p className="text-label text-ink-faint tabular-nums w-14 shrink-0">Foto {photoIndex + 1}</p>
+            <ul className="min-w-0 flex-1 space-y-1.5">
+              {issues.map((issue, i) => {
+                const cfg = ISSUE_CONFIG[issue.type];
+                return (
+                  <li key={i} className="flex items-start gap-2">
+                    <span
+                      className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${
+                        cfg?.critical ? 'bg-warning' : 'bg-ink-faint/50'
+                      }`}
+                      aria-hidden="true"
+                    />
+                    <p className="min-w-0 text-label font-normal text-ink-muted">
+                      <span className={`font-semibold ${cfg?.critical ? 'text-ink' : 'text-ink-muted'}`}>
+                        {cfg?.label ?? issue.type}
+                      </span>
+                      {' · '}
+                      <span className="text-ink-faint">{cfg?.tip ?? issue.message}</span>
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          </li>
+        ))}
+      </ul>
+
+      {showBriefing && <PhotoBriefingBody briefing={briefing!} />}
+      <p className="px-4 py-2.5 text-label font-normal text-ink-faint border-t border-line">
+        Hinweise sind rein informativ — Listing kann trotzdem erstellt werden.
+      </p>
+    </Card>
+  );
+}
+
+function PhotoBriefingCard({ briefing }: { briefing: PhotoBriefing }) {
+  return (
+    <Card className="overflow-hidden">
+      <PhotoBriefingBody briefing={briefing} />
+    </Card>
+  );
+}
+
+function PhotoBriefingBody({ briefing }: { briefing: PhotoBriefing }) {
+  return (
+    <div className="px-4 py-3 space-y-1">
+      <h2 className="text-micro uppercase text-ink-faint">Foto-Briefing</h2>
+      {briefing.missingShots.length === 0 ? (
+        <p className="text-label font-normal text-ink-muted">Für {briefing.category} sind alle Aufnahmen da.</p>
+      ) : (
+        <>
+          <p className="text-label font-normal text-ink-muted">
+            Für {briefing.category} fehlt noch. Speichern bleibt möglich.
+          </p>
           <ul className="space-y-1">
-            {issues.map((issue, i) => (
-              <li key={i} className="text-xs text-ink-muted">
-                ⚠️ {issue.message}
+            {briefing.missingShots.map((shot) => (
+              <li key={shot.shot} className="text-label font-normal text-ink">
+                {shot.message}
               </li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {showBriefing && (
-        <div className="space-y-1">
-          <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">Foto-Briefing</p>
-          {briefing.missingShots.length === 0 ? (
-            <p className="text-xs text-ink-muted">Für {briefing.category} sind alle Aufnahmen da.</p>
-          ) : (
-            <>
-              <p className="text-xs text-ink-muted">
-                Für {briefing.category} fehlt noch. Speichern bleibt möglich.
-              </p>
-              <ul className="space-y-1">
-                {briefing.missingShots.map((shot) => (
-                  <li key={shot.shot} className="text-xs text-ink">
-                    {shot.message}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
+        </>
       )}
     </div>
   );

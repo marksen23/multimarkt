@@ -1,7 +1,11 @@
 import { Route, Routes } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
 import { TokenGate } from './components/TokenGate';
-import { DashboardPage } from './pages/DashboardPage';
+import { ToastProvider } from './components/Toast';
+import { ItemsProvider } from './contexts/ItemsContext';
+import { HeutePage } from './pages/HeutePage';
+import { BestandPage } from './pages/BestandPage';
+import { MehrPage } from './pages/MehrPage';
 import { NewItemPage } from './pages/NewItemPage';
 import { ItemDetailPage } from './pages/ItemDetailPage';
 import { BundlesPage } from './pages/BundlesPage';
@@ -9,35 +13,41 @@ import { NewBundlePage } from './pages/NewBundlePage';
 import { BundleDetailPage } from './pages/BundleDetailPage';
 import { AccountPage } from './pages/AccountPage';
 import { NegotiationDemoPage } from './pages/NegotiationDemoPage';
-import { NegotiationPage } from './pages/NegotiationPage';
 import { ConfidenceCenterDemoPage } from './pages/ConfidenceCenterDemoPage';
-import { AngebotspaketPage } from './pages/AngebotspaketPage';
 import { AnkaufPage } from './pages/AnkaufPage';
+import { NegotiationPage } from './pages/NegotiationPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { SalesPage } from './pages/SalesPage';
 import { SicherungPage } from './pages/SicherungPage';
 
 function App() {
   return (
-    <TokenGate>
-      <AppShell>
-        <Routes>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/verkaeufe" element={<SalesPage />} />
-          <Route path="/sicherung" element={<SicherungPage />} />
-          <Route path="/new" element={<NewItemPage />} />
-          <Route path="/items/:id" element={<ItemDetailPage />} />
-          <Route path="/items/:id/angebotspaket" element={<AngebotspaketPage />} />
-          <Route path="/ankauf" element={<AnkaufPage />} />
-          <Route path="/bundles" element={<BundlesPage />} />
-          <Route path="/bundles/new" element={<NewBundlePage />} />
-          <Route path="/bundles/:id" element={<BundleDetailPage />} />
-          <Route path="/account" element={<AccountPage />} />
-          <Route path="/items/:id/verhandlung" element={<NegotiationPage />} />
-          <Route path="/demo/negotiation" element={<NegotiationDemoPage />} />
-          <Route path="/demo/confidence-center" element={<ConfidenceCenterDemoPage />} />
-        </Routes>
-      </AppShell>
-    </TokenGate>
+    <ToastProvider>
+      <TokenGate>
+        <ItemsProvider>
+          <AppShell>
+            <Routes>
+              <Route path="/" element={<HeutePage />} />
+              <Route path="/bestand" element={<BestandPage />} />
+              <Route path="/mehr" element={<MehrPage />} />
+              <Route path="/new" element={<NewItemPage />} />
+              <Route path="/items/:id" element={<ItemDetailPage />} />
+              <Route path="/items/:id/verhandlung" element={<NegotiationPage />} />
+              <Route path="/verkaeufe" element={<SalesPage />} />
+              <Route path="/sicherung" element={<SicherungPage />} />
+              <Route path="/ankauf" element={<AnkaufPage />} />
+              <Route path="/bundles" element={<BundlesPage />} />
+              <Route path="/bundles/new" element={<NewBundlePage />} />
+              <Route path="/bundles/:id" element={<BundleDetailPage />} />
+              <Route path="/account" element={<AccountPage />} />
+              {import.meta.env.DEV && <Route path="/demo/negotiation" element={<NegotiationDemoPage />} />}
+              {import.meta.env.DEV && <Route path="/demo/confidence-center" element={<ConfidenceCenterDemoPage />} />}
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </AppShell>
+        </ItemsProvider>
+      </TokenGate>
+    </ToastProvider>
   );
 }
 

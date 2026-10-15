@@ -1,5 +1,6 @@
 import { AnkaufResearchService } from './ankauf-research.service';
 import type { AnkaufSearchProvider } from '../../domain/ankauf/ankauf-search-provider.interface';
+import type { MarketDistributionProvider } from '../../domain/pricing/market-distribution-provider.interface';
 
 function makeProvider(
   result: Parameters<AnkaufSearchProvider['search']>[0] extends infer _
@@ -9,8 +10,10 @@ function makeProvider(
   return { search: jest.fn().mockResolvedValue(result) };
 }
 
-function makeService(provider: AnkaufSearchProvider) {
-  return new AnkaufResearchService(provider);
+const nullEbayProvider: MarketDistributionProvider = { search: jest.fn().mockResolvedValue(null) };
+
+function makeService(provider: AnkaufSearchProvider, ebayProvider: MarketDistributionProvider = nullEbayProvider) {
+  return new AnkaufResearchService(provider, ebayProvider);
 }
 
 describe('AnkaufResearchService', () => {

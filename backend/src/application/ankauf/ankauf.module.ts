@@ -4,12 +4,13 @@ import { ANKAUF_SEARCH_PROVIDER } from '../../domain/ankauf/ankauf-search-provid
 import type { AnkaufSearchProvider } from '../../domain/ankauf/ankauf-search-provider.interface';
 import { MockAnkaufSearchProvider } from '../../infrastructure/ankauf/mock-ankauf-search.provider';
 import { RealAnkaufGeminiProvider } from '../../infrastructure/ankauf/real-ankauf-gemini.provider';
+import { PriceTriangulationModule } from '../pricing/price-triangulation.module';
 import { AnkaufResearchService } from './ankauf-research.service';
 
 const GEMINI_PLACEHOLDER_KEY = 'unused-mock-provider-active';
 
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, PriceTriangulationModule],
   providers: [
     AnkaufResearchService,
     {

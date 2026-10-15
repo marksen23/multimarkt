@@ -44,6 +44,7 @@ const initialDetail: ItemDetail = {
       attributeValue: 'Kleidung',
       truthState: 'INFERRED',
       source: 'mock-gemini-vision-stub-v1',
+      confidence: null,
       createdAt: new Date().toISOString(),
     },
     {
@@ -53,6 +54,7 @@ const initialDetail: ItemDetail = {
       attributeValue: 'Bekleidung > Herren > Jacken',
       truthState: 'INFERRED',
       source: 'mock-gemini-vision-stub-v1',
+      confidence: null,
       createdAt: new Date().toISOString(),
     },
     {
@@ -62,6 +64,7 @@ const initialDetail: ItemDetail = {
       attributeValue: 'Schwarz',
       truthState: 'INFERRED',
       source: 'mock-gemini-vision-stub-v1',
+      confidence: null,
       createdAt: new Date().toISOString(),
     },
     {
@@ -71,6 +74,7 @@ const initialDetail: ItemDetail = {
       attributeValue: 'Polyester',
       truthState: 'INFERRED',
       source: 'mock-gemini-vision-stub-v1',
+      confidence: null,
       createdAt: new Date().toISOString(),
     },
     {
@@ -80,6 +84,7 @@ const initialDetail: ItemDetail = {
       attributeValue: null,
       truthState: 'UNKNOWN',
       source: 'mock-gemini-vision-stub-v1',
+      confidence: null,
       createdAt: new Date().toISOString(),
     },
     {
@@ -89,6 +94,7 @@ const initialDetail: ItemDetail = {
       attributeValue: null,
       truthState: 'UNKNOWN',
       source: 'mock-gemini-vision-stub-v1',
+      confidence: null,
       createdAt: new Date().toISOString(),
     },
   ],
@@ -126,6 +132,7 @@ export function ConfidenceCenterDemoPage() {
             attributeValue: nextValue,
             truthState: 'USER_CONFIRMED' as const,
             source: 'USER_INPUT',
+            confidence: null,
             createdAt: new Date().toISOString(),
           };
           return {

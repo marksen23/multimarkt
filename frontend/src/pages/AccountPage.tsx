@@ -1,14 +1,35 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { accountApi } from '../api/account';
+import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
-import type { DeletionAuditLog } from '../api/types';
+import { clearAccessToken } from '../components/TokenGate';
+import { useTheme } from '../hooks/useTheme';
+import type { DeletionAuditLog, ItemListEntry } from '../api/types';
+import { Button, Card, Icon, PageHeader } from '../ui';
+import { formatEuro, realizedPrice } from '../lib/format';
 
 /** Doc 04 §16 / Doc 01 §15 — Hard-Delete-Lifecycle (T08-1). */
 export function AccountPage() {
   const [confirming, setConfirming] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DeletionAuditLog | null>(null);
+  const [entries, setEntries] = useState<ItemListEntry[] | null>(null);
+
+  const handleLogout = () => {
+    if (confirmLogout) {
+      clearAccessToken();
+    } else {
+      setConfirmLogout(true);
+      setTimeout(() => setConfirmLogout(false), 3000);
+    }
+  };
+  const { pref: themePref, setPref: setThemePref } = useTheme();
+
+  useEffect(() => {
+    itemsApi.list().then(setEntries).catch(() => setEntries([]));
+  }, []);
 
   const requestDeletion = async () => {
     setBusy(true);
@@ -23,73 +44,208 @@ export function AccountPage() {
   };
 
   if (result) {
-    return (
-      <div className="max-w-md mx-auto p-6">
-        <div className="bg-surface border border-line rounded-2xl p-6 space-y-3 text-center">
-          <h1 className="text-lg font-bold text-ink">Löschung abgeschlossen</h1>
-          <p className="text-sm text-ink-muted">
-            Alle personenbezogenen Daten wurden kaskadierend aus der Datenbank entfernt.
-          </p>
-          <div className="text-left text-xs bg-surface-hover rounded-xl p-3 space-y-1 font-mono text-ink-muted">
-            <p>db_records_deleted: {String(result.dbRecordsDeleted)}</p>
-            <p>media_hard_deleted: {String(result.mediaHardDeleted)}</p>
-            <p>hash: {result.anonymizedUserHash.slice(0, 16)}…</p>
-          </div>
-          {!result.mediaHardDeleted && (
-            <p className="text-[11px] text-orange-600 dark:text-orange-400">
-              Medien-Löschung läuft noch nicht automatisch mit: der S3-Adapter existiert (siehe
-              S3StorageProvider), aber der Job, der pro gelöschtem Foto tatsächlich
-              `storage.delete()` aufruft, ist noch nicht an diesen Lösch-Flow angebunden.
-            </p>
-          )}
-        </div>
-      </div>
-    );
+    return <DeletionSuccessScreen mediaDeleted={result.mediaHardDeleted} />;
   }
 
-  return (
-    <div className="max-w-md mx-auto p-6 space-y-4">
-      <h1 className="text-xl font-extrabold text-ink tracking-tight">Konto</h1>
+  const total = entries?.length ?? 0;
+  const pending =
+    entries?.filter((e) =>
+      ['NEW', 'ANALYZING', 'REVIEW_REQUIRED', 'READY'].includes(e.item.status),
+    ).length ?? 0;
+  const active =
+    entries?.filter((e) =>
+      ['LISTED', 'SALE_CONFLICT', 'BUNDLED'].includes(e.item.status),
+    ).length ?? 0;
+  const sold = entries?.filter((e) => e.item.status === 'SOLD').length ?? 0;
+  const revenue =
+    entries
+      ?.filter((e) => e.item.status === 'SOLD')
+      .reduce((sum, e) => sum + realizedPrice(e), 0) ?? 0;
+  const lagerwert =
+    entries
+      ?.filter((e) => e.item.status === 'READY' || e.item.status === 'LISTED')
+      .reduce((sum, e) => sum + (e.listings[0]?.sellingPrice ?? 0), 0) ?? 0;
 
-      <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6 space-y-3">
-        <h2 className="font-bold text-red-700 dark:text-red-400">Account löschen</h2>
-        <p className="text-xs text-red-700/90 dark:text-red-400/90">
+  return (
+    <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-5">
+      <PageHeader title="Konto" />
+
+      {entries === null ? (
+        <div className="grid grid-cols-2 gap-2">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="p-4 h-16 animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <StatCard label="Artikel gesamt" value={String(total)} />
+            <StatCard label="Handlung nötig" value={String(pending)} highlight={pending > 0} />
+            <StatCard label="Aktiv" value={String(active)} highlight={active > 0} />
+            <StatCard label="Verkauft" value={String(sold)} />
+            <StatCard
+              label="Erlös"
+              value={revenue > 0 ? formatEuro(revenue, 0) : '—'}
+              highlight={revenue > 0}
+            />
+          </div>
+          {lagerwert > 0 && (
+            <Card className="px-4 py-3 flex items-center justify-between">
+              <span className="text-micro uppercase text-ink-muted">Lagerwert</span>
+              <span className="text-title tabular-nums text-accent">{formatEuro(lagerwert, 0)}</span>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Darstellung */}
+      <Card className="p-4 space-y-3">
+        <p className="text-body font-semibold text-ink">Darstellung</p>
+        <div className="flex gap-2">
+          {(['auto', 'light', 'dark'] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setThemePref(t)}
+              className={`flex-1 h-9 inline-flex items-center justify-center gap-1.5 rounded-control text-label border transition-colors ${
+                themePref === t
+                  ? 'bg-accent text-accent-ink border-accent'
+                  : 'bg-surface-hover text-ink-muted border-line hover:border-accent hover:text-accent'
+              }`}
+            >
+              <Icon name={t === 'auto' ? 'auto' : t === 'light' ? 'sun' : 'moon'} size={15} />
+              {t === 'auto' ? 'Auto' : t === 'light' ? 'Hell' : 'Dunkel'}
+            </button>
+          ))}
+        </div>
+        <p className="text-label font-normal text-ink-faint">
+          {themePref === 'auto'
+            ? 'Folgt dem Systemdesign.'
+            : themePref === 'light'
+            ? 'Helles Design erzwungen.'
+            : 'Dunkles Design erzwungen.'}
+        </p>
+      </Card>
+
+      {/* Abmelden */}
+      <Card className="p-4 space-y-2">
+        <p className="text-body font-semibold text-ink">Sitzung</p>
+        <p className="text-label font-normal text-ink-faint">
+          Personal Resale OS — Einzelnutzer-Modus. Kein Passwort, nur ein Zugriffstoken.
+        </p>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className={`w-full mt-1 h-11 px-3 rounded-control border text-body font-semibold transition-colors text-left flex items-center gap-2 ${
+            confirmLogout
+              ? 'bg-danger-soft border-danger/30 text-danger'
+              : 'border-line text-ink-muted hover:bg-surface-hover hover:text-ink'
+          }`}
+        >
+          <Icon name="logout" size={17} />
+          {confirmLogout ? 'Wirklich abmelden?' : 'Abmelden (Token entfernen)'}
+        </button>
+      </Card>
+
+      {/* Danger zone */}
+      <div className="bg-danger-soft/40 border border-danger/20 rounded-card p-4 space-y-3">
+        <h2 className="text-title text-danger">Account löschen</h2>
+        <p className="text-label font-normal text-danger/90">
           Löscht unwiderruflich alle Items, Listings, Bundles und Verkaufsdaten (DB-Kaskade). Diese
           Aktion kann nicht rückgängig gemacht werden.
         </p>
-        {error && <p className="text-xs text-red-800 dark:text-red-300 font-bold">{error}</p>}
+        {error && <p className="text-label text-danger">{error}</p>}
         {!confirming ? (
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="text-sm font-bold text-red-700 dark:text-red-400 underline"
+            className="text-body font-semibold text-danger underline"
           >
             Löschung starten
           </button>
         ) : (
           <div className="space-y-2">
-            <p className="text-xs font-bold text-red-700 dark:text-red-400">Bist du sicher?</p>
+            <p className="text-label text-danger">Bist du sicher?</p>
             <div className="flex gap-2">
-              <button
-                type="button"
+              <Button
+                variant="danger"
                 disabled={busy}
                 onClick={requestDeletion}
-                className="flex-1 p-2 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:bg-line disabled:text-ink-faint transition-colors"
+                className="flex-1"
               >
                 {busy ? 'Löscht…' : 'Ja, endgültig löschen'}
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="secondary"
                 disabled={busy}
                 onClick={() => setConfirming(false)}
-                className="flex-1 p-2 rounded-xl border border-line text-sm font-bold text-ink-muted hover:bg-surface-hover disabled:opacity-50 transition-colors"
+                className="flex-1"
               >
                 Abbrechen
-              </button>
+              </Button>
             </div>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+function DeletionSuccessScreen({ mediaDeleted }: { mediaDeleted: boolean }) {
+  const [countdown, setCountdown] = useState(4);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdown((c) => {
+        if (c <= 1) {
+          clearInterval(interval);
+          clearAccessToken();
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 flex items-center justify-center min-h-[60vh]">
+      <Card className="p-8 space-y-4 text-center w-full">
+        <div className="w-12 h-12 rounded-full bg-accent-soft text-accent flex items-center justify-center mx-auto">
+          <Icon name="check" size={22} strokeWidth={2.4} />
+        </div>
+        <div>
+          <h1 className="text-title text-ink">Konto gelöscht</h1>
+          <p className="text-body text-ink-muted mt-1">
+            Alle deine Daten wurden dauerhaft entfernt.
+          </p>
+        </div>
+        {!mediaDeleted && (
+          <p className="text-label font-normal text-warning">
+            Hochgeladene Fotos werden separat verwaltet und können noch einen Moment verfügbar sein.
+          </p>
+        )}
+        <p className="text-label font-normal text-ink-faint">
+          Abmeldung in {countdown} Sekunde{countdown !== 1 ? 'n' : ''}…
+        </p>
+      </Card>
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <Card className="p-4 space-y-1">
+      <p className={`text-display tabular-nums ${highlight ? 'text-accent' : 'text-ink'}`}>{value}</p>
+      <p className="text-micro uppercase text-ink-muted">{label}</p>
+    </Card>
   );
 }

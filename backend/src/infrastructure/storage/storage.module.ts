@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { STORAGE_PROVIDER, StorageProvider } from '../../domain/storage/storage-provider.interface';
+import { isDurablePhotoStorage } from './durable-photo-storage';
 import { LocalDiskStorageProvider } from './local-disk-storage.provider';
 import { S3StorageProvider } from './s3-storage.provider';
 
@@ -18,10 +19,10 @@ import { S3StorageProvider } from './s3-storage.provider';
     {
       provide: STORAGE_PROVIDER,
       inject: [ConfigService],
-      useFactory: (config: ConfigService): StorageProvider => {
-        const bucket = config.get<string>('S3_BUCKET');
-        return bucket ? new S3StorageProvider(config) : new LocalDiskStorageProvider(config);
-      },
+      useFactory: (config: ConfigService): StorageProvider =>
+        isDurablePhotoStorage(config)
+          ? new S3StorageProvider(config)
+          : new LocalDiskStorageProvider(config),
     },
   ],
   exports: [STORAGE_PROVIDER],

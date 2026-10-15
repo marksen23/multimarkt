@@ -4,36 +4,41 @@ import { GoogleGenAI } from '@google/genai';
 import { AiAnalysisResult, AiVisionProvider } from '../../domain/ai/ai-vision-provider.interface';
 
 const MODEL_ID = 'gemini-flash-latest';
-const PROMPT_VERSION = '2026-10-06';
+const PROMPT_VERSION = '2026-10-15';
 
-// ProductAnalysisService mappt category auf die kleine Taxonomie und legt
-// Lücken nur für die Pflichtangaben dieser Kategorie an. Der Provider
-// selbst erfindet nichts: null heißt "nicht gesehen".
+// Taxonomie-Felder plus Marktplatz-Merkmale. ProductAnalysisService legt die
+// Kategorie auf die kleine Taxonomie und behält notable_features/visible_defects.
 const ATTRIBUTE_KEYS = [
   'category',
   'categoryDetail',
   'color',
   'brand',
   'material',
+  'condition',
   'size',
   'measurements',
   'functionChecked',
-  'condition',
+  'notable_features',
+  'visible_defects',
 ] as const;
 
-const PROMPT = `Analysiere die angehängten Fotos eines gebrauchten Gegenstands, der weiterverkauft werden soll.
+const PROMPT = `Analysiere die angehängten Fotos eines gebrauchten Gegenstands, der auf deutschen Wiederverkaufsplattformen (Kleinanzeigen, eBay, Vinted) inseriert werden soll.
 Fülle ausschließlich, was auf den Fotos sichtbar ist.
 
 Felder:
-- category: genau eine von Kleidung, Schuhe, Elektronik, Medien, Haushalt, Möbel, Sonstiges — oder null, wenn der Gegenstand nicht erkennbar ist.
-- categoryDetail: kurze sichtbare Artikelart (z.B. "Herrenjacke"), oder null.
-- color, brand, material: nur wenn sichtbar, sonst null.
+- category: genau eine von Kleidung, Schuhe, Elektronik, Medien, Haushalt, Möbel, Sonstiges — oder null, wenn der Gegenstand nicht erkennbar ist. Eine feinere Pfadangabe wie "Bekleidung > Damen > Jacken" ist erlaubt; sie wird auf diese Liste gelegt.
+- categoryDetail: kurze sichtbare Artikelart (z.B. "Herrenjacke", "iPhone"), oder null.
+- color: Hauptfarbe auf Deutsch, nur wenn sichtbar, sonst null.
+- brand: Marke/Hersteller — nur wenn eindeutig erkennbar (Logo, Aufschrift, typisches Design), sonst null.
+- material: Hauptmaterial nur wenn sichtbar, sonst null.
+- condition: eine von new, like_new, good, fair, defective, oder null.
 - size: Größe nur wenn ein Etikett oder eine Größenangabe sichtbar ist, sonst null. Nicht aus dem Schnitt raten.
 - measurements: Maße nur wenn eine Zahl sichtbar ist, sonst null.
 - functionChecked: "ja" oder "nein" nur wenn der Betrieb sichtbar ist (z.B. eingeschaltetes Display). Sonst null. Nicht raten.
-- condition: eine von new, like_new, good, fair, defective, oder null.
+- notable_features: Besonderheiten die den Verkaufswert erhöhen — z.B. "Mit Originalverpackung", "Rechnung vorhanden". Null wenn keine auffälligen Besonderheiten.
+- visible_defects: Sichtbare Mängel kurz beschreiben. Null wenn keine sichtbaren Mängel.
 
-WICHTIG: Wenn du dir bei einem Feld nicht ausreichend sicher bist, gib value=null zurück — rate NICHT. Ein falscher Wert ist schlimmer als kein Wert.`;
+WICHTIG: Wenn du dir bei einem Feld nicht ausreichend sicher bist, gib value=null zurück — rate NICHT. Ein falscher Wert ist schlimmer als kein Wert. "visible_defects: null" bedeutet explizit "keine erkennbaren Mängel auf den Fotos".`;
 
 const RESPONSE_SCHEMA = {
   type: 'object',
