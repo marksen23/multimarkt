@@ -9,6 +9,7 @@ import {
   MarketplaceProjectionEntity,
   SaleEventEntity,
 } from '../../infrastructure/database/entities';
+import { flagSiblingChannelCards } from '../listing/flag-sibling-channel-cards';
 import { StateGuardService } from '../state-guard/state-guard.service';
 
 export interface ReportSaleInput {
@@ -205,6 +206,7 @@ export class SaleIngestionService {
       type: 'SOLD_HERE',
       actor: { type: 'SYSTEM' },
     });
+    await flagSiblingChannelCards(manager, this.stateGuard, winningReport.projectionId);
   }
 
   private async loadOpenReports(

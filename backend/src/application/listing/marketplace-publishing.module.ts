@@ -11,13 +11,11 @@ import { StateGuardModule } from '../state-guard/state-guard.module';
 import { MarketplacePublishingService } from './marketplace-publishing.service';
 
 /**
- * Vertriebskanal-Entscheidung (docs/README.md §4e-Ergänzung, September
- * 2026): Kleinanzeigen ist der EINZIGE Verkaufskanal der App.
- * `MockEbayAdapter` (`marketplaces/ebay/mock-ebay.adapter.ts`) bleibt im
- * Repo, wird hier aber bewusst NICHT mehr registriert — eBay dient nur
- * noch als Recherche-Quelle (`PriceTriangulationModule`), nicht als
- * Publish-Ziel. Siehe auch `marketplace-capabilities.registry.ts` und
- * `disposition-engine.service.ts`, die dieselbe Entscheidung spiegeln.
+ * Kanal-Karten (Kleinanzeigen, Vinted, eBay) sind Kopierwege und rufen
+ * diesen Publish-Pfad nicht auf. `MockEbayAdapter` bleibt unregistriert:
+ * eine erfundene eBay-ID gilt nicht als veröffentlicht. Der Adapter-Eintrag
+ * hier ist nur noch die Kleinanzeigen-Formatierungshilfe für den älteren
+ * Publish-Endpunkt.
  */
 @Module({
   imports: [

@@ -25,4 +25,8 @@ export const listingsApi = {
       shippingEur: draft.shippingEur,
       paymentMethod: draft.paymentMethod,
     }),
+  markCopied: (projectionId: string) =>
+    api.post<MarketplaceProjectionSummary>(`/listings/${projectionId}/mark-copied`),
+  confirmOnline: (projectionId: string) =>
+    api.post<MarketplaceProjectionSummary>(`/listings/${projectionId}/confirm-online`),
 };

@@ -17,6 +17,8 @@ const isUserOrSystem = (actor: ActorContext) =>
 
 export type ListingMachineEvent =
   | { type: 'MARK_READY'; actor: ActorContext }
+  | { type: 'MARK_COPIED'; actor: ActorContext }
+  | { type: 'CONFIRM_ONLINE'; actor: ActorContext }
   | { type: 'PUBLISH'; actor: ActorContext }
   | { type: 'PUBLISH_SUCCESS'; actor: ActorContext }
   | { type: 'PUBLISH_FAILED'; actor: ActorContext }
@@ -32,7 +34,17 @@ export const listingMachine = createMachine({
     DRAFT: {
       // Kein Human-Gate: "Config komplett" ist eine automatische Ableitung
       // aus vollständigen Pflichtfeldern (CapabilityCheckService, Schritt 4).
-      on: { MARK_READY: { target: 'READY' } },
+      on: {
+        MARK_READY: { target: 'READY' },
+        // Kanal-Karte: der Mensch hat Titel, Text und Preis kopiert.
+        // Kein Adapter-Call — Kleinanzeigen, Vinted und eBay bleiben
+        // Kopierwege.
+        MARK_COPIED: {
+          target: 'COPIED',
+          guard: ({ event }) => isUser(event.actor),
+        },
+        CANCEL_PENDING_TRIGGERED: { target: 'CANCEL_PENDING' },
+      },
     },
     READY: {
       // Human-Gate (Doc 04 §9: "[Human-Gate] Triggert API-Publish oder
@@ -42,6 +54,18 @@ export const listingMachine = createMachine({
           target: 'PUBLISHING',
           guard: ({ event }) => isUser(event.actor),
         },
+        CANCEL_PENDING_TRIGGERED: { target: 'CANCEL_PENDING' },
+      },
+    },
+    // „kopiert“: Text liegt in der Zwischenablage, die Anzeige ist noch
+    // nicht als online bestätigt.
+    COPIED: {
+      on: {
+        CONFIRM_ONLINE: {
+          target: 'ONLINE',
+          guard: ({ event }) => isUser(event.actor),
+        },
+        CANCEL_PENDING_TRIGGERED: { target: 'CANCEL_PENDING' },
       },
     },
     PUBLISHING: {
@@ -62,6 +86,7 @@ export const listingMachine = createMachine({
         // DRAFT — die CapabilityCheck-Daten bleiben gültig, nur der
         // eigentliche Publish-Versuch ist erneut nötig.
         PUBLISH_FAILED: { target: 'READY' },
+        CANCEL_PENDING_TRIGGERED: { target: 'CANCEL_PENDING' },
       },
     },
     ONLINE: {

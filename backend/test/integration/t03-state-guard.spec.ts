@@ -11,7 +11,7 @@ import {
   SaleEventEntity,
   UserEntity,
 } from '../../src/infrastructure/database/entities';
-import { InitialSchema1789894285515 } from '../../migrations/1789894285515-InitialSchema';
+import { applyTestSchema } from '../apply-test-schema';
 
 /**
  * T03 State Machine Integrity (Adversarial Verification — Doc 02 / Doc 05 §4).
@@ -52,7 +52,7 @@ describe('T03 State Guard Integrity', () => {
     await dataSource.initialize();
 
     const queryRunner = dataSource.createQueryRunner();
-    await new InitialSchema1789894285515().up(queryRunner);
+    await applyTestSchema(queryRunner);
     await queryRunner.release();
 
     guard = new StateGuardService(dataSource);

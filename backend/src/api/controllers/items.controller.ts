@@ -29,6 +29,7 @@ import {
   ConfirmTruthDto,
   CreateItemDto,
   PrepareListingDto,
+  SaveChannelPackageDto,
   UpdateTitleDto,
 } from '../dto/items.dto';
 import { CreateFromPurchaseDto, UpdatePurchaseDto } from '../dto/purchase.dto';
@@ -55,6 +56,10 @@ import {
   MarketplaceRecommendationResult,
   MarketplaceRecommenderService,
 } from '../../application/listing/marketplace-recommender.service';
+import {
+  ChannelPackageService,
+  ChannelPackageView,
+} from '../../application/listing/channel-package.service';
 import {
   ListingSummary,
   ListingSummaryService,
@@ -129,6 +134,7 @@ export class ItemsController {
     private readonly stateGuard: StateGuardService,
     private readonly productAnalysis: ProductAnalysisService,
     private readonly canonicalListing: CanonicalListingService,
+    private readonly channelPackage: ChannelPackageService,
     private readonly bundleAssignment: BundleAssignmentService,
     private readonly conflictResolution: ConflictResolutionService,
     private readonly dispositionEngine: DispositionEngineService,
@@ -653,6 +659,25 @@ export class ItemsController {
       { title: dto.title },
     );
     return { ...item, title: dto.title };
+  }
+
+  @Get(':id/channel-package')
+  async getChannelPackage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('salesGoal') salesGoal?: string,
+    @Query('fresh') fresh?: string,
+  ): Promise<ChannelPackageView> {
+    const goal = SALES_GOALS.includes(salesGoal as SalesGoal) ? (salesGoal as SalesGoal) : null;
+    return this.channelPackage.getPackage(id, goal, fresh === 'true');
+  }
+
+  @Post(':id/channel-package')
+  async saveChannelPackage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SaveChannelPackageDto,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<ChannelPackageView> {
+    return this.channelPackage.save(actor.userId!, id, dto.cards, actor);
   }
 
   @Post(':id/prepare-listing')

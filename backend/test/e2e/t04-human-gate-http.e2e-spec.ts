@@ -5,7 +5,7 @@ import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
-import { InitialSchema1789894285515 } from '../../migrations/1789894285515-InitialSchema';
+import { applyTestSchema } from '../apply-test-schema';
 import { DomainExceptionFilter } from '../../src/api/filters/domain-exception.filter';
 
 // Statischer Import ist hier sicher: `data-source.ts` liest `process.env`
@@ -76,7 +76,7 @@ describe('T04 Human-Gate Authority (HTTP)', () => {
 
     dataSource = app.get(DataSource);
     const queryRunner = dataSource.createQueryRunner();
-    await new InitialSchema1789894285515().up(queryRunner);
+    await applyTestSchema(queryRunner);
     await queryRunner.release();
 
     await dataSource.query('INSERT INTO users (id, email) VALUES ($1, $2)', [

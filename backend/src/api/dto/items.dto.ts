@@ -1,4 +1,7 @@
+import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
   ArrayNotEmpty,
   IsArray,
   IsIn,
@@ -8,6 +11,7 @@ import {
   IsString,
   IsUUID,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
 import { PHOTO_SHOTS, PhotoShot } from '../../domain/photo-quality/photo-briefing';
 
@@ -68,4 +72,30 @@ export class BundleItemsDto {
   @ArrayNotEmpty()
   @IsUUID('4', { each: true })
   itemIds: string[];
+}
+
+export class ChannelCardInputDto {
+  @IsIn(['KLEINANZEIGEN', 'VINTED', 'EBAY'])
+  marketplaceId: 'KLEINANZEIGEN' | 'VINTED' | 'EBAY';
+
+  @IsString()
+  @MinLength(1)
+  title: string;
+
+  @IsString()
+  @MinLength(1)
+  descriptionText: string;
+
+  @IsNumber()
+  @IsPositive()
+  suggestedPrice: number;
+}
+
+export class SaveChannelPackageDto {
+  @IsArray()
+  @ArrayMinSize(3)
+  @ArrayMaxSize(3)
+  @ValidateNested({ each: true })
+  @Type(() => ChannelCardInputDto)
+  cards: ChannelCardInputDto[];
 }

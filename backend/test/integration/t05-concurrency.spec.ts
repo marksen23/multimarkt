@@ -11,7 +11,7 @@ import {
   SaleEventEntity,
   UserEntity,
 } from '../../src/infrastructure/database/entities';
-import { InitialSchema1789894285515 } from '../../migrations/1789894285515-InitialSchema';
+import { applyTestSchema } from '../apply-test-schema';
 
 /**
  * T05 Concurrency / Race-Condition / SALE_CONFLICT (Doc 03 §9 — Doc 05 §6).
@@ -46,7 +46,7 @@ describe('T05 Concurrency & SALE_CONFLICT', () => {
     });
     await dataSource.initialize();
     const queryRunner = dataSource.createQueryRunner();
-    await new InitialSchema1789894285515().up(queryRunner);
+    await applyTestSchema(queryRunner);
     await queryRunner.release();
 
     stateGuard = new StateGuardService(dataSource);
