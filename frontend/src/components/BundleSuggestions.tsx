@@ -4,7 +4,7 @@ import { bundlesApi } from '../api/bundles';
 import { ApiRequestError } from '../api/client';
 import type { BundleSuggestion, BundleSuggestionList } from '../api/types';
 import { formatEur } from '../margin/sale-closeout';
-import { Button, Spinner } from '../ui';
+import { Button, Notice, Spinner } from '../ui';
 
 /**
  * Paketvorschläge (Feature-Plan 3.8). Übernehmen legt ein normales Bundle
@@ -54,7 +54,7 @@ export function BundleSuggestions() {
   return (
     <section className="bg-surface border border-line rounded-card shadow-card p-4 space-y-3">
       <h2 className="text-micro uppercase text-ink-muted">Vorschläge</h2>
-      {error && <p className="text-label text-danger">{error}</p>}
+      {error && <Notice tone="danger">{error}</Notice>}
       {!list && !error && (
         <div className="flex items-center gap-2 text-label font-normal text-ink-faint">
           <Spinner />

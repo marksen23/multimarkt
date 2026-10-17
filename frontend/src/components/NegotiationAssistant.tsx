@@ -8,7 +8,7 @@ import {
 } from '../api/negotiation';
 import { ApiRequestError } from '../api/client';
 import { formatEur } from '../margin/sale-closeout';
-import { Button, Card, PageHeader, SectionLabel, inputClass } from '../ui';
+import { Button, Card, Notice, PageHeader, SectionLabel, inputClass } from '../ui';
 
 const PLATFORMS: { id: NegotiationPlatform; label: string }[] = [
   { id: 'KLEINANZEIGEN', label: 'Kleinanzeigen' },
@@ -98,7 +98,7 @@ export function NegotiationAssistant({
         />
       </label>
 
-      {error && <p className="text-label text-danger">{error}</p>}
+      {error && <Notice tone="danger">{error}</Notice>}
 
       <Button
         block

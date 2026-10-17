@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ApiRequestError } from '../api/client';
 import { itemsApi } from '../api/items';
-import { Button, Card, inputClass } from '../ui';
+import { Button, Card, Notice, inputClass } from '../ui';
 import { LogoMark } from './AppShell';
 
 const STORAGE_KEY = 'resale_os_access_token';
@@ -105,7 +105,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
             className={inputClass}
             autoFocus
           />
-          {error && <p className="text-label text-danger">{error}</p>}
+          {error && <Notice tone="danger">{error}</Notice>}
           <Button block size="lg" disabled={checking || !input.trim()} onClick={submit}>
             {checking ? 'Prüft…' : 'Bestätigen'}
           </Button>

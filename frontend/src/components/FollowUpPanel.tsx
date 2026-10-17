@@ -6,7 +6,7 @@ import {
   type ItemFollowUp,
 } from "../api/follow-ups";
 import { formatEur } from "../margin/sale-closeout";
-import { Button, Field, inputClass } from "../ui";
+import { Button, Field, Notice, inputClass } from "../ui";
 
 function parsePrice(raw: string): number | null {
   const normalized = raw.trim().replace(",", ".");
@@ -133,9 +133,7 @@ function FollowUpForm({
         />
       </Field>
       {!priceOk && price.trim() !== "" && (
-        <p className="text-label text-danger">
-          Der neue Preis muss unter dem bisherigen Preis liegen.
-        </p>
+        <Notice tone="danger">Der neue Preis muss unter dem bisherigen Preis liegen.</Notice>
       )}
       <Button
         size="sm"
