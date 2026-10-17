@@ -5,6 +5,7 @@ export * from './bundle.entity';
 export * from './bundle-item.entity';
 export * from './canonical-listing.entity';
 export * from './marketplace-projection.entity';
+export * from './listing-price-change.entity';
 export * from './sale-event.entity';
 export * from './deletion-audit-log.entity';
 export * from './item-price-research.entity';

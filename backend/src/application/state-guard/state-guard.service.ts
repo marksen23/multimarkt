@@ -7,9 +7,18 @@ import {
   InvalidStateTransitionException,
   UnconfirmedConditionException,
 } from '../../domain/errors/state-transition.errors';
-import { BundleMachineEvent, bundleMachine } from '../../domain/machines/bundle.machine';
-import { ItemMachineEvent, itemMachine } from '../../domain/machines/item.machine';
-import { ListingMachineEvent, listingMachine } from '../../domain/machines/listing.machine';
+import {
+  BundleMachineEvent,
+  bundleMachine,
+} from '../../domain/machines/bundle.machine';
+import {
+  ItemMachineEvent,
+  itemMachine,
+} from '../../domain/machines/item.machine';
+import {
+  ListingMachineEvent,
+  listingMachine,
+} from '../../domain/machines/listing.machine';
 import {
   BundleEntity,
   BundleItemEntity,
@@ -34,7 +43,9 @@ const ITEM_HUMAN_GATED_EVENTS = new Set<ItemMachineEvent['type']>([
   'DISCARD',
 ]);
 
-const LISTING_HUMAN_GATED_EVENTS = new Set<ListingMachineEvent['type']>(['PUBLISH']);
+const LISTING_HUMAN_GATED_EVENTS = new Set<ListingMachineEvent['type']>([
+  'PUBLISH',
+]);
 
 const BUNDLE_HUMAN_GATED_EVENTS = new Set<BundleMachineEvent['type']>([
   'ITEMS_ASSIGNED',
@@ -68,7 +79,10 @@ const ACTIVE_PROJECTION_STATES = ['PUBLISHING', 'ONLINE'] as const;
 export class StateGuardService {
   constructor(private readonly dataSource: DataSource) {}
 
-  async transitionItem(itemId: string, event: ItemMachineEvent): Promise<ItemEntity> {
+  async transitionItem(
+    itemId: string,
+    event: ItemMachineEvent,
+  ): Promise<ItemEntity> {
     return this.dataSource.transaction((manager) =>
       this.transitionItemWithManager(manager, itemId, event),
     );
@@ -124,11 +138,16 @@ export class StateGuardService {
       where: { id: projectionId },
       lock: { mode: 'pessimistic_write' },
     });
-    if (!projection) throw new NotFoundException(`Projection ${projectionId} not found`);
+    if (!projection)
+      throw new NotFoundException(`Projection ${projectionId} not found`);
 
     this.assertHumanGate(LISTING_HUMAN_GATED_EVENTS, event, { projectionId });
 
-    const nextStatus = this.resolveTransition(listingMachine, projection.status, event);
+    const nextStatus = this.resolveTransition(
+      listingMachine,
+      projection.status,
+      event,
+    );
     if (nextStatus === projection.status) {
       throw new InvalidStateTransitionException(
         `Transition '${event.type}' is not allowed from listing state '${projection.status}'`,
@@ -137,10 +156,18 @@ export class StateGuardService {
     }
 
     projection.status = nextStatus as MarketplaceProjectionEntity['status'];
+    // Nachfassen (Feature-Plan 3.6): die Frist läuft ab dem Moment, in dem
+    // die Anzeige online ist. Spätere Updates dürfen den Start nicht verschieben.
+    if (nextStatus === 'ONLINE' && projection.onlineSince == null) {
+      projection.onlineSince = new Date();
+    }
     return manager.save(MarketplaceProjectionEntity, projection);
   }
 
-  async transitionBundle(bundleId: string, event: BundleMachineEvent): Promise<BundleEntity> {
+  async transitionBundle(
+    bundleId: string,
+    event: BundleMachineEvent,
+  ): Promise<BundleEntity> {
     return this.dataSource.transaction((manager) =>
       this.transitionBundleWithManager(manager, bundleId, event),
     );
@@ -159,7 +186,11 @@ export class StateGuardService {
 
     this.assertHumanGate(BUNDLE_HUMAN_GATED_EVENTS, event, { bundleId });
 
-    const nextStatus = this.resolveTransition(bundleMachine, bundle.status, event);
+    const nextStatus = this.resolveTransition(
+      bundleMachine,
+      bundle.status,
+      event,
+    );
     if (nextStatus === bundle.status) {
       throw new InvalidStateTransitionException(
         `Transition '${event.type}' is not allowed from bundle state '${bundle.status}'`,
@@ -175,7 +206,12 @@ export class StateGuardService {
     // hierher delegiert dokumentiert. Ohne diese Kaskade blieben Items nach
     // einem Bundle-Verkauf/-Abbruch für immer in BUNDLED hängen.
     if (nextStatus === 'SOLD' || nextStatus === 'CANCELLED') {
-      await this.cascadeBundleStatusToItems(manager, bundleId, nextStatus, event.actor);
+      await this.cascadeBundleStatusToItems(
+        manager,
+        bundleId,
+        nextStatus,
+        event.actor,
+      );
     }
 
     return saved;
@@ -187,8 +223,11 @@ export class StateGuardService {
     bundleStatus: 'SOLD' | 'CANCELLED',
     actor: ActorContext,
   ): Promise<void> {
-    const memberships = await manager.find(BundleItemEntity, { where: { bundleId } });
-    const cascadeEvent = bundleStatus === 'SOLD' ? 'BUNDLE_SOLD' : 'BUNDLE_CANCELLED';
+    const memberships = await manager.find(BundleItemEntity, {
+      where: { bundleId },
+    });
+    const cascadeEvent =
+      bundleStatus === 'SOLD' ? 'BUNDLE_SOLD' : 'BUNDLE_CANCELLED';
     for (const membership of memberships) {
       const item = await manager.findOne(ItemEntity, {
         where: { id: membership.itemId },
@@ -219,7 +258,10 @@ export class StateGuardService {
     currentStatus: string,
     event: TEvent,
   ): string {
-    const resolved = machine.resolveState({ value: currentStatus, context: {} });
+    const resolved = machine.resolveState({
+      value: currentStatus,
+      context: {},
+    });
     const actor = createActor(machine, { snapshot: resolved });
     actor.start();
     actor.send(event as never);
@@ -262,7 +304,11 @@ export class StateGuardService {
       // Doc 02 §11 Precondition für BUNDLED: keine aktiven Listings.
       const activeCount = await manager
         .createQueryBuilder(MarketplaceProjectionEntity, 'projection')
-        .innerJoin(CanonicalListingEntity, 'listing', 'listing.id = projection.canonical_listing_id')
+        .innerJoin(
+          CanonicalListingEntity,
+          'listing',
+          'listing.id = projection.canonical_listing_id',
+        )
         .where('listing.item_id = :itemId', { itemId: item.id })
         .andWhere('projection.status IN (:...activeStates)', {
           activeStates: ACTIVE_PROJECTION_STATES,

@@ -1,35 +1,46 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { itemsApi } from '../api/items';
-import { toLogisticsProfile } from '../logistics/profile';
-import { ApiRequestError } from '../api/client';
-import type { ItemDetail, ListingChannel, SaleEvent } from '../api/types';
-import { ConfidenceCenter } from '../components/ConfidenceCenter';
-import { DispositionPanel } from '../components/DispositionPanel';
-import { LogisticsProfileForm } from '../components/LogisticsProfileForm';
-import { ListingsManager } from '../components/ListingsManager';
-import { PhotoCapture } from '../components/PhotoCapture';
-import { PhotoGallery } from '../components/PhotoGallery';
-import { PhotoQualityPanel } from '../components/PhotoQualityPanel';
-import { PriceResearchPanel } from '../components/PriceResearchPanel';
-import { PurchasePanel } from '../components/PurchasePanel';
-import { SaleResultPanel } from '../components/SaleResultPanel';
-import { DetailPageSkeleton } from '../components/Skeleton';
-import { StatusBadge } from '../components/StatusBadge';
+import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { followUpsApi, type ItemFollowUp } from "../api/follow-ups";
+import { itemsApi } from "../api/items";
+import { toLogisticsProfile } from "../logistics/profile";
+import { ApiRequestError } from "../api/client";
+import type { ItemDetail, ListingChannel, SaleEvent } from "../api/types";
+import { ConfidenceCenter } from "../components/ConfidenceCenter";
+import { DispositionPanel } from "../components/DispositionPanel";
+import { FollowUpPanel } from "../components/FollowUpPanel";
+import { LogisticsProfileForm } from "../components/LogisticsProfileForm";
+import { ListingsManager } from "../components/ListingsManager";
+import { PhotoCapture } from "../components/PhotoCapture";
+import { PhotoGallery } from "../components/PhotoGallery";
+import { PhotoQualityPanel } from "../components/PhotoQualityPanel";
+import { PriceResearchPanel } from "../components/PriceResearchPanel";
+import { PurchasePanel } from "../components/PurchasePanel";
+import { SaleResultPanel } from "../components/SaleResultPanel";
+import { DetailPageSkeleton } from "../components/Skeleton";
+import { StatusBadge } from "../components/StatusBadge";
 
 export function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [detail, setDetail] = useState<ItemDetail | null>(null);
+  const [followUp, setFollowUp] = useState<ItemFollowUp | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const reload = useCallback(async () => {
     if (!id) return;
     try {
-      setDetail(await itemsApi.get(id));
+      const next = await itemsApi.get(id);
+      setDetail(next);
+      if (next.item.status === "LISTED") {
+        setFollowUp(await followUpsApi.forItem(id));
+      } else {
+        setFollowUp(null);
+      }
     } catch (e) {
-      setError(e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler');
+      setError(
+        e instanceof ApiRequestError ? e.body.message : "Unbekannter Fehler",
+      );
     }
   }, [id]);
 
@@ -44,7 +55,9 @@ export function ItemDetailPage() {
       await fn();
       await reload();
     } catch (e) {
-      setError(e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler');
+      setError(
+        e instanceof ApiRequestError ? e.body.message : "Unbekannter Fehler",
+      );
     } finally {
       setBusy(false);
     }
@@ -66,10 +79,10 @@ export function ItemDetailPage() {
           ← Dashboard
         </Link>
         <div className="flex items-center gap-3">
-          {(item.status === 'NEW' ||
-            item.status === 'ANALYZING' ||
-            item.status === 'REVIEW_REQUIRED' ||
-            item.status === 'READY') && (
+          {(item.status === "NEW" ||
+            item.status === "ANALYZING" ||
+            item.status === "REVIEW_REQUIRED" ||
+            item.status === "READY") && (
             <DiscardItemAction
               busy={busy}
               onDiscard={() => run(() => itemsApi.discard(id))}
@@ -93,7 +106,7 @@ export function ItemDetailPage() {
             item.purchaseDate,
             item.purchaseCondition,
             item.purchaseUrl,
-          ].join('|')}
+          ].join("|")}
           item={item}
           busy={busy}
           onSave={(draft) => run(() => itemsApi.updatePurchase(id, draft))}
@@ -107,24 +120,30 @@ export function ItemDetailPage() {
         </div>
       )}
 
-      {(item.status === 'NEW' || item.status === 'ANALYZING') && (
+      {(item.status === "NEW" || item.status === "ANALYZING") && (
         <AnalyzeStep
           itemId={id}
-          busy={busy || item.status === 'ANALYZING'}
-          onAnalyze={(files, onProgress) => run(() => itemsApi.analyze(id, files, onProgress))}
+          busy={busy || item.status === "ANALYZING"}
+          onAnalyze={(files, onProgress) =>
+            run(() => itemsApi.analyze(id, files, onProgress))
+          }
         />
       )}
 
-      {item.status === 'REVIEW_REQUIRED' && (
+      {item.status === "REVIEW_REQUIRED" && (
         <ConfidenceCenter
           detail={detail}
           saving={busy}
-          onConfirmCondition={(condition) => run(() => itemsApi.confirmTruth(id, condition))}
-          onConfirmAttribute={(key, value) => run(() => itemsApi.confirmAttribute(id, key, value))}
+          onConfirmCondition={(condition) =>
+            run(() => itemsApi.confirmTruth(id, condition))
+          }
+          onConfirmAttribute={(key, value) =>
+            run(() => itemsApi.confirmAttribute(id, key, value))
+          }
         />
       )}
 
-      {item.status === 'READY' && (
+      {item.status === "READY" && (
         <div className="space-y-4">
           <div className="px-4 pt-4">
             <LogisticsProfileForm
@@ -138,14 +157,17 @@ export function ItemDetailPage() {
                 item.pickupOnly,
                 item.shippingPossible,
                 item.postalCode,
-              ].join('|')}
+              ].join("|")}
               item={item}
               busy={busy}
               onSave={(draft) => run(() => itemsApi.updateLogistics(id, draft))}
             />
           </div>
           <div className="px-4">
-            <DispositionPanel itemId={id} logistics={toLogisticsProfile(item)} />
+            <DispositionPanel
+              itemId={id}
+              logistics={toLogisticsProfile(item)}
+            />
           </div>
           <div className="px-4">
             <button
@@ -161,7 +183,9 @@ export function ItemDetailPage() {
             purchasePriceEur={item.purchasePriceEur}
             currentTitle={item.title}
             busy={busy}
-            onUpdateTitle={(title) => run(() => itemsApi.updateTitle(id, title))}
+            onUpdateTitle={(title) =>
+              run(() => itemsApi.updateTitle(id, title))
+            }
             onPrepare={(price, description) =>
               run(() => itemsApi.prepareListing(id, price, description))
             }
@@ -169,9 +193,17 @@ export function ItemDetailPage() {
         </div>
       )}
 
-      {item.status === 'LISTED' && (
+      {item.status === "LISTED" && (
         <div className="p-4 space-y-4">
           <h1 className="text-lg font-bold text-ink">Listings</h1>
+          {followUp && (
+            <FollowUpPanel
+              itemId={id}
+              followUp={followUp}
+              busy={busy}
+              onRecord={run}
+            />
+          )}
           <ListingsManager
             listings={detail.listings}
             busy={busy}
@@ -182,11 +214,11 @@ export function ItemDetailPage() {
         </div>
       )}
 
-      {item.status === 'SALE_CONFLICT' && (
+      {item.status === "SALE_CONFLICT" && (
         <ConflictResolutionPanel itemId={id} busy={busy} run={run} />
       )}
 
-      {item.status === 'BUNDLED' && (
+      {item.status === "BUNDLED" && (
         <Centered
           title="Teil eines Bundles"
           message="Dieser Artikel ist einem Bundle zugeordnet und gesperrt, solange das Bundle besteht."
@@ -194,21 +226,25 @@ export function ItemDetailPage() {
         />
       )}
 
-      {item.status === 'SOLD' && (
+      {item.status === "SOLD" && (
         <div className="p-4 space-y-4">
-          <h1 className="text-lg font-bold text-ink">{item.title ?? 'Artikel'}</h1>
+          <h1 className="text-lg font-bold text-ink">
+            {item.title ?? "Artikel"}
+          </h1>
           <SaleResultPanel
             item={item}
             busy={busy}
-            onRecord={(draft) => run(() => itemsApi.recordSaleCloseout(id, draft))}
+            onRecord={(draft) =>
+              run(() => itemsApi.recordSaleCloseout(id, draft))
+            }
           />
         </div>
       )}
 
-      {(item.status === 'CANCELLED' || item.status === 'ARCHIVED') && (
+      {(item.status === "CANCELLED" || item.status === "ARCHIVED") && (
         <div className="p-4">
           <Centered
-            title={item.title ?? 'Artikel'}
+            title={item.title ?? "Artikel"}
             message={`Status: ${item.status}. Für diesen Zustand sind in der aktuellen Frontend-Version keine weiteren Aktionen vorgesehen.`}
             showDashboardLink
           />
@@ -230,7 +266,9 @@ function DiscardItemAction({
   if (confirming) {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-xs font-bold text-danger">Wirklich verwerfen?</span>
+        <span className="text-xs font-bold text-danger">
+          Wirklich verwerfen?
+        </span>
         <button
           type="button"
           disabled={busy}
@@ -296,7 +334,10 @@ function AnalyzeStep({
 }: {
   itemId: string;
   busy: boolean;
-  onAnalyze: (files: File[], onProgress?: (fraction: number) => void) => Promise<void>;
+  onAnalyze: (
+    files: File[],
+    onProgress?: (fraction: number) => void,
+  ) => Promise<void>;
 }) {
   const [photos, setPhotos] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -329,10 +370,13 @@ function AnalyzeStep({
         onClick={start}
         className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
       >
-        {!busy && 'Analysieren'}
-        {busy && analyzing && 'KI analysiert die Fotos…'}
-        {busy && !analyzing && uploadProgress > 0 && `Fotos werden hochgeladen… ${Math.round(uploadProgress * 100)}%`}
-        {busy && !analyzing && uploadProgress === 0 && 'Analysiert…'}
+        {!busy && "Analysieren"}
+        {busy && analyzing && "KI analysiert die Fotos…"}
+        {busy &&
+          !analyzing &&
+          uploadProgress > 0 &&
+          `Fotos werden hochgeladen… ${Math.round(uploadProgress * 100)}%`}
+        {busy && !analyzing && uploadProgress === 0 && "Analysiert…"}
       </button>
     </div>
   );
@@ -353,13 +397,17 @@ function PrepareListingStep({
   onUpdateTitle: (title: string) => Promise<void>;
   onPrepare: (price: number, description?: string) => Promise<void>;
 }) {
-  const [price, setPrice] = useState('');
-  const [description, setDescription] = useState('');
-  const [salesGoal, setSalesGoal] = useState('BALANCED');
+  const [price, setPrice] = useState("");
+  const [description, setDescription] = useState("");
+  const [salesGoal, setSalesGoal] = useState("BALANCED");
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
-  const [descriptionMissingTokens, setDescriptionMissingTokens] = useState<string[]>([]);
-  const [vaguePhrases, setVaguePhrases] = useState<{ phrase: string; suggestion: string }[]>([]);
+  const [descriptionMissingTokens, setDescriptionMissingTokens] = useState<
+    string[]
+  >([]);
+  const [vaguePhrases, setVaguePhrases] = useState<
+    { phrase: string; suggestion: string }[]
+  >([]);
 
   const generateDescription = async () => {
     setGenerating(true);
@@ -370,7 +418,7 @@ function PrepareListingStep({
       setDescriptionMissingTokens(result.gapAnalysis.missingTokens);
       setVaguePhrases(result.vaguePhrases);
     } catch {
-      setGenerateError('Vorschlag konnte nicht erzeugt werden.');
+      setGenerateError("Vorschlag konnte nicht erzeugt werden.");
     } finally {
       setGenerating(false);
     }
@@ -379,7 +427,12 @@ function PrepareListingStep({
   return (
     <div className="p-4 space-y-4">
       <h1 className="text-lg font-bold text-ink">Verkaufspreis festlegen</h1>
-      <TitleEditor itemId={itemId} currentTitle={currentTitle} busy={busy} onUpdateTitle={onUpdateTitle} />
+      <TitleEditor
+        itemId={itemId}
+        currentTitle={currentTitle}
+        busy={busy}
+        onUpdateTitle={onUpdateTitle}
+      />
       <PriceResearchPanel
         itemId={itemId}
         purchasePriceEur={purchasePriceEur}
@@ -397,7 +450,9 @@ function PrepareListingStep({
       />
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-bold text-ink-muted uppercase tracking-wide shrink-0">Beschreibung</span>
+          <span className="text-xs font-bold text-ink-muted uppercase tracking-wide shrink-0">
+            Beschreibung
+          </span>
           <div className="flex items-center gap-2">
             <select
               value={salesGoal}
@@ -415,7 +470,7 @@ function PrepareListingStep({
               disabled={generating}
               className="text-[11px] font-bold text-ink-muted hover:text-accent disabled:opacity-60 transition-colors shrink-0"
             >
-              {generating ? 'Generiert…' : '✨ Vorschlag generieren'}
+              {generating ? "Generiert…" : "✨ Vorschlag generieren"}
             </button>
           </div>
         </div>
@@ -426,10 +481,13 @@ function PrepareListingStep({
           onChange={(e) => setDescription(e.target.value)}
           className="w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
         />
-        {generateError && <p className="text-xs text-danger">{generateError}</p>}
+        {generateError && (
+          <p className="text-xs text-danger">{generateError}</p>
+        )}
         {descriptionMissingTokens.length > 0 && (
           <p className="text-xs text-ink-faint">
-            Vergleichsangebote nutzen zusätzlich: {descriptionMissingTokens.slice(0, 6).join(', ')}
+            Vergleichsangebote nutzen zusätzlich:{" "}
+            {descriptionMissingTokens.slice(0, 6).join(", ")}
           </p>
         )}
         {vaguePhrases.length > 0 && (
@@ -448,7 +506,7 @@ function PrepareListingStep({
         onClick={() => onPrepare(Number(price), description || undefined)}
         className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
       >
-        {busy ? 'Wird angelegt…' : 'Listing anlegen'}
+        {busy ? "Wird angelegt…" : "Listing anlegen"}
       </button>
     </div>
   );
@@ -465,8 +523,8 @@ function TitleEditor({
   busy: boolean;
   onUpdateTitle: (title: string) => Promise<void>;
 }) {
-  const [title, setTitle] = useState(currentTitle ?? '');
-  const [channel, setChannel] = useState<ListingChannel>('KLEINANZEIGEN');
+  const [title, setTitle] = useState(currentTitle ?? "");
+  const [channel, setChannel] = useState<ListingChannel>("KLEINANZEIGEN");
   const [missingTokens, setMissingTokens] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -486,7 +544,7 @@ function TitleEditor({
       setTitle(result.title);
       setMissingTokens(result.gapAnalysis.missingTokens);
     } catch {
-      setGenerateError('Vorschlag konnte nicht erzeugt werden.');
+      setGenerateError("Vorschlag konnte nicht erzeugt werden.");
     } finally {
       setGenerating(false);
     }
@@ -495,7 +553,9 @@ function TitleEditor({
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-bold text-ink-muted uppercase tracking-wide shrink-0">Titel</span>
+        <span className="text-xs font-bold text-ink-muted uppercase tracking-wide shrink-0">
+          Titel
+        </span>
         <div className="flex items-center gap-2">
           <select
             value={channel}
@@ -512,7 +572,7 @@ function TitleEditor({
             disabled={generating}
             className="text-[11px] font-bold text-ink-muted hover:text-accent disabled:opacity-60 transition-colors shrink-0"
           >
-            {generating ? 'Generiert…' : '✨ Vorschlag generieren'}
+            {generating ? "Generiert…" : "✨ Vorschlag generieren"}
           </button>
         </div>
       </div>
@@ -530,13 +590,14 @@ function TitleEditor({
           onClick={saveTitle}
           className="px-3 rounded-xl text-xs font-bold bg-surface border border-line text-ink-muted hover:text-accent disabled:opacity-50 transition-colors"
         >
-          {saved ? '✓ Gespeichert' : 'Speichern'}
+          {saved ? "✓ Gespeichert" : "Speichern"}
         </button>
       </div>
       {generateError && <p className="text-xs text-danger">{generateError}</p>}
       {missingTokens.length > 0 && (
         <p className="text-xs text-ink-faint">
-          Vergleichsangebote nutzen zusätzlich: {missingTokens.slice(0, 6).join(', ')}
+          Vergleichsangebote nutzen zusätzlich:{" "}
+          {missingTokens.slice(0, 6).join(", ")}
         </p>
       )}
     </div>
@@ -565,8 +626,8 @@ function ConflictResolutionPanel({
       <div className="bg-danger-soft border border-danger/20 rounded-xl p-4">
         <h1 className="text-lg font-bold text-danger">Verkaufskonflikt</h1>
         <p className="text-xs text-danger/90 mt-1">
-          Mehrere Plattformen melden einen Verkauf. Wähle den tatsächlichen Verkauf — alle anderen
-          Listings werden storniert.
+          Mehrere Plattformen melden einen Verkauf. Wähle den tatsächlichen
+          Verkauf — alle anderen Listings werden storniert.
         </p>
       </div>
 
@@ -578,16 +639,20 @@ function ConflictResolutionPanel({
           className="bg-surface border border-line rounded-xl p-4 flex items-center justify-between"
         >
           <div>
-            <p className="font-bold text-ink">{event.reportedPrice.toFixed(2)} €</p>
+            <p className="font-bold text-ink">
+              {event.reportedPrice.toFixed(2)} €
+            </p>
             <p className="text-xs text-ink-faint">
-              Event {event.externalEventId} ·{' '}
-              {new Date(event.reportedAt).toLocaleString('de-DE')}
+              Event {event.externalEventId} ·{" "}
+              {new Date(event.reportedAt).toLocaleString("de-DE")}
             </p>
           </div>
           <button
             type="button"
             disabled={busy}
-            onClick={() => run(() => itemsApi.resolveConflict(itemId, event.id))}
+            onClick={() =>
+              run(() => itemsApi.resolveConflict(itemId, event.id))
+            }
             className="text-xs font-bold px-3 py-2 rounded-lg bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
           >
             Als Sieger wählen
@@ -597,8 +662,8 @@ function ConflictResolutionPanel({
 
       {events && openEvents.length === 0 && (
         <p className="text-sm text-ink-faint">
-          Keine offenen Verkaufsmeldungen (mehr) — dieser Status müsste sich in Kürze automatisch
-          auflösen. Falls nicht, lade die Seite neu.
+          Keine offenen Verkaufsmeldungen (mehr) — dieser Status müsste sich in
+          Kürze automatisch auflösen. Falls nicht, lade die Seite neu.
         </p>
       )}
     </div>
