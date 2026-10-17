@@ -1,33 +1,132 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ItemPhoto } from '../api/types';
+import {
+  isPhotoShot,
+  PHOTO_SHOT_LABELS,
+  type MissingPhotoShot,
+  type PhotoShotNeed,
+} from '../category/photo-briefing';
 import { Icon } from '../ui';
 
 /**
- * Fotogalerie pro Artikel (September 2026) — zeigt die dauerhaft mit dem
- * Item verknüpften Fotos (backend/src/infrastructure/database/entities/
- * item-photo.entity.ts). Unabhängig vom Item-Status sichtbar, nicht nur
- * während des Analyse-Schritts.
+ * Fotogalerie pro Artikel. Sobald die Kategorie feststeht, trägt jedes
+ * Foto eine Aufnahme (Gesamtes Stück, Etikett, …). Die Zuordnung ist frei,
+ * Speichern hängt nicht daran.
  */
-export function PhotoGallery({ photos }: { photos: ItemPhoto[] }) {
+export function PhotoGallery({
+  photos,
+  requiredShots = [],
+  missingShots = [],
+  busy,
+  onShotChange,
+  onAdd,
+}: {
+  photos: ItemPhoto[];
+  requiredShots?: PhotoShotNeed[];
+  missingShots?: MissingPhotoShot[];
+  busy?: boolean;
+  onShotChange?: (photoId: string, shot: string | null) => void;
+  onAdd?: (file: File, shot: string | null) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [lightbox, setLightbox] = useState<number | null>(null);
+  const missingKey = missingShots.map((shot) => shot.shot).join('|');
+  const [picked, setPicked] = useState<string | null>(null);
+  const [pickedFor, setPickedFor] = useState(missingKey);
+  if (pickedFor !== missingKey) {
+    setPickedFor(missingKey);
+    setPicked(null);
+  }
+  const nextShot = picked ?? missingShots[0]?.shot ?? '';
 
-  if (photos.length === 0) return null;
+  if (photos.length === 0 && !onAdd) return null;
+
+  const addFile = (list: FileList | null) => {
+    const file = list?.[0];
+    if (!file || !onAdd) return;
+    onAdd(file, nextShot || null);
+  };
 
   return (
-    <>
+    <div className="space-y-3">
+      {photos.length > 0 && (
       <div className="grid grid-cols-3 gap-2">
-        {photos.map((photo, i) => (
+        {photos.map((photo, i) => {
+          const options = [...requiredShots];
+          if (isPhotoShot(photo.shot) && !options.some((shot) => shot.shot === photo.shot)) {
+            options.unshift({ shot: photo.shot, label: PHOTO_SHOT_LABELS[photo.shot] });
+          }
+          return (
+          <div key={photo.id} className="space-y-1">
           <button
-            key={photo.id}
             type="button"
             onClick={() => setLightbox(i)}
-            className="aspect-square rounded-control overflow-hidden border border-line hover:opacity-90 transition focus:outline-none focus:ring-2 focus:ring-accent-soft"
+            className="aspect-square w-full rounded-control overflow-hidden border border-line hover:opacity-90 transition focus:outline-none focus:ring-2 focus:ring-accent-soft"
             aria-label={`Foto ${i + 1} vergrößern`}
           >
             <img src={photo.url} alt="" className="w-full h-full object-cover" />
           </button>
-        ))}
+          {requiredShots.length > 0 && onShotChange && (
+            <select
+              aria-label={`Aufnahme für Foto ${i + 1}`}
+              value={photo.shot ?? ''}
+              disabled={busy}
+              onChange={(event) => onShotChange(photo.id, event.target.value || null)}
+              className="w-full text-label border border-line rounded-control px-1 py-1 bg-surface text-ink outline-none focus:border-accent"
+            >
+              <option value="">Aufnahme wählen…</option>
+              {options.map((shot) => (
+                <option key={shot.shot} value={shot.shot}>
+                  {shot.label}
+                </option>
+              ))}
+            </select>
+          )}
+          </div>
+          );
+        })}
       </div>
+      )}
+
+      {onAdd && (
+        <div className="flex gap-2">
+          {requiredShots.length > 0 && (
+            <select
+              aria-label="Aufnahme für das nächste Foto"
+              value={nextShot}
+              disabled={busy}
+              onChange={(event) => setPicked(event.target.value)}
+              className="min-w-0 flex-1 text-label border border-line rounded-control px-2 py-2 bg-surface text-ink outline-none focus:border-accent"
+            >
+              <option value="">Ohne Zuordnung</option>
+              {requiredShots.map((shot) => (
+                <option key={shot.shot} value={shot.shot}>
+                  {shot.label}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => inputRef.current?.click()}
+            className="shrink-0 px-3 py-2 rounded-control border border-line text-label font-semibold text-ink-muted hover:border-accent hover:text-accent disabled:opacity-60 transition-colors"
+          >
+            Foto hinzufügen
+          </button>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(event) => {
+              addFile(event.target.files);
+              event.target.value = '';
+            }}
+          />
+        </div>
+      )}
 
       {lightbox !== null && (
         <PhotoLightbox
@@ -37,7 +136,7 @@ export function PhotoGallery({ photos }: { photos: ItemPhoto[] }) {
           onClose={() => setLightbox(null)}
         />
       )}
-    </>
+    </div>
   );
 }
 

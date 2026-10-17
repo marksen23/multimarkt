@@ -15,7 +15,10 @@ import { AccountPage } from './pages/AccountPage';
 import { NegotiationDemoPage } from './pages/NegotiationDemoPage';
 import { ConfidenceCenterDemoPage } from './pages/ConfidenceCenterDemoPage';
 import { AnkaufPage } from './pages/AnkaufPage';
+import { NegotiationPage } from './pages/NegotiationPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { SalesPage } from './pages/SalesPage';
+import { SicherungPage } from './pages/SicherungPage';
 
 function App() {
   return (
@@ -29,6 +32,9 @@ function App() {
               <Route path="/mehr" element={<MehrPage />} />
               <Route path="/new" element={<NewItemPage />} />
               <Route path="/items/:id" element={<ItemDetailPage />} />
+              <Route path="/items/:id/verhandlung" element={<NegotiationPage />} />
+              <Route path="/verkaeufe" element={<SalesPage />} />
+              <Route path="/sicherung" element={<SicherungPage />} />
               <Route path="/ankauf" element={<AnkaufPage />} />
               <Route path="/bundles" element={<BundlesPage />} />
               <Route path="/bundles/new" element={<NewBundlePage />} />

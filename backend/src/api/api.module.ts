@@ -10,6 +10,7 @@ import {
 import { AnkaufModule } from '../application/ankauf/ankauf.module';
 import { BundleAssignmentModule } from '../application/bundle/bundle-assignment.module';
 import { CanonicalListingModule } from '../application/listing/canonical-listing.module';
+import { NegotiationModule } from '../application/negotiation/negotiation.module';
 import { CapabilityCheckModule } from '../application/capability-check/capability-check.module';
 import { ConflictResolutionModule } from '../application/conflict-resolution/conflict-resolution.module';
 import { AccountDeletionModule } from '../application/deletion/account-deletion.module';
@@ -22,13 +23,21 @@ import { ProductAnalysisModule } from '../application/product-analysis/product-a
 import { TitleGenerationModule } from '../application/title-generation/title-generation.module';
 import { StorageModule } from '../infrastructure/storage/storage.module';
 import { SaleIngestionModule } from '../application/sale-conflict/sale-ingestion.module';
+import { BackupExportModule } from '../application/export/backup-export.module';
+import { SalesModule } from '../application/sales/sales.module';
 import { StateGuardModule } from '../application/state-guard/state-guard.module';
+import { WorklistModule } from '../application/worklist/worklist.module';
 import { AccountController } from './controllers/account.controller';
+import { ExportController } from './controllers/export.controller';
 import { AnkaufController } from './controllers/ankauf.controller';
 import { BundlesController } from './controllers/bundles.controller';
+import { FollowUpsController } from './controllers/follow-ups.controller';
 import { ItemsController } from './controllers/items.controller';
 import { ListingsController } from './controllers/listings.controller';
 import { SaleEventsController } from './controllers/sale-events.controller';
+import { SalesController } from './controllers/sales.controller';
+import { StorageController } from './controllers/storage.controller';
+import { WorklistController } from './controllers/worklist.controller';
 import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
@@ -54,17 +63,26 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     MarketplacePublishingModule,
     ConflictResolutionModule,
     SaleIngestionModule,
+    SalesModule,
+    BackupExportModule,
+    NegotiationModule,
     AccountDeletionModule,
     WebhooksModule,
     StorageModule,
+    WorklistModule,
   ],
   controllers: [
     ItemsController,
+    FollowUpsController,
     ListingsController,
     BundlesController,
     SaleEventsController,
+    SalesController,
+    ExportController,
+    StorageController,
     AccountController,
     AnkaufController,
+    WorklistController,
   ],
 })
 export class ApiModule {}

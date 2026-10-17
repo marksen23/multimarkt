@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { bundlesApi } from '../api/bundles';
 import { ApiRequestError } from '../api/client';
 import type { BundleListEntry, BundleLifecycleState } from '../api/types';
+import { BundleSuggestions } from '../components/BundleSuggestions';
 import { ListSkeleton } from '../components/Skeleton';
 import { ButtonLink, Button, Card, EmptyState, Icon, Notice, PageHeader, PhaseBadge, type IconName } from '../ui';
 import { relativeDate } from '../lib/format';
@@ -68,6 +69,8 @@ export function BundlesPage() {
           </ButtonLink>
         }
       />
+
+      <BundleSuggestions />
 
       {error && <Notice tone="danger">{error}</Notice>}
 

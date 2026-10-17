@@ -39,6 +39,23 @@ export interface Item {
   purchaseDate: string | null;
   purchaseCondition: string | null;
   purchaseUrl: string | null;
+  saleProceedsEur: number | null;
+  salePortal: string | null;
+  saleFeeEur: number | null;
+  saleShippingEur: number | null;
+  salePaymentMethod: string | null;
+  salePurchasePriceEur: number | null;
+  saleNetProfitEur: number | null;
+  soldAt: string | null;
+  weightGrams: number | null;
+  lengthCm: number | null;
+  widthCm: number | null;
+  heightCm: number | null;
+  logisticsBulky: boolean;
+  pickupOnly: boolean;
+  shippingPossible: boolean;
+  postalCode: string | null;
+  logisticsCaptured: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -72,6 +89,7 @@ export interface ItemPhoto {
   id: string;
   itemId: string;
   url: string;
+  shot: string | null;
   createdAt: string;
 }
 
@@ -86,6 +104,8 @@ export interface ItemListEntry {
   item: Item;
   listings: ListingSummary[];
   thumbnailUrl: string | null;
+  /** Tatsächlicher Verkaufspreis (Gewinner-Verkaufsmeldung), sonst null. */
+  soldPrice: number | null;
 }
 
 export interface Bundle {
@@ -107,6 +127,83 @@ export interface BundleDetail {
   bundle: Bundle;
   items: Item[];
   listings: ListingSummary[];
+}
+
+export type WorklistGroupId =
+  | 'AWAITING_CONFIRMATION'
+  | 'PRICE_MISSING'
+  | 'STALE_ONLINE'
+  | 'SALE_CONFLICT'
+  | 'INCOMPLETE_BUNDLE';
+
+export type WorklistReason =
+  | 'CONFIRM_CONDITION'
+  | 'CONFIRM_ONLINE'
+  | 'PUBLISH_LISTING'
+  | 'SET_PRICE'
+  | 'STALE_ONLINE'
+  | 'RESOLVE_CONFLICT'
+  | 'ADD_BUNDLE_ITEMS';
+
+export interface WorklistItemEntry {
+  kind: 'item';
+  reason: WorklistReason;
+  onlineSince: string | null;
+  staleDays: number | null;
+  item: Item;
+  listings: ListingSummary[];
+  thumbnailUrl: string | null;
+}
+
+export interface WorklistBundleEntry {
+  kind: 'bundle';
+  reason: 'ADD_BUNDLE_ITEMS';
+  itemCount: number;
+  bundle: Bundle;
+}
+
+export type WorklistEntry = WorklistItemEntry | WorklistBundleEntry;
+
+export interface WorklistGroup {
+  id: WorklistGroupId;
+  entries: WorklistEntry[];
+}
+
+export interface Worklist {
+  staleOnlineDays: number;
+  groups: WorklistGroup[];
+  otherItems: Omit<ItemListEntry, 'soldPrice'>[];
+}
+
+export type BundleMatchDimension = 'category' | 'size' | 'brand';
+
+export interface BundleSuggestionItem {
+  id: string;
+  title: string | null;
+  salePriceEur: number;
+  singleNetEur: number;
+  marginEur: number;
+  shippingEur: number;
+}
+
+export interface BundleSuggestion {
+  fingerprint: string;
+  title: string;
+  description: string;
+  dimension: BundleMatchDimension;
+  dimensionLabel: string;
+  matchValue: string;
+  itemIds: string[];
+  items: BundleSuggestionItem[];
+  suggestedPriceEur: number;
+  bundleNetEur: number;
+  bundleMarginEur: number;
+  thresholdEur: number;
+}
+
+export interface BundleSuggestionList {
+  thresholdEur: number | null;
+  suggestions: BundleSuggestion[];
 }
 
 export interface CanonicalListing {
@@ -259,9 +356,21 @@ export interface PhotoQualityIssue {
   message: string;
 }
 
+export interface PhotoShotNeed {
+  shot: string;
+  label: string;
+}
+
+export interface MissingPhotoShot extends PhotoShotNeed {
+  message: string;
+}
+
 export interface PhotoQualityReport {
   photoCount: number;
   issues: PhotoQualityIssue[];
+  category: string | null;
+  requiredShots: PhotoShotNeed[];
+  missingShots: MissingPhotoShot[];
 }
 
 // --- Ankauf-Recherche ---
@@ -269,12 +378,16 @@ export interface PhotoQualityReport {
 export type DealScore = 'SEHR_GUT' | 'GUT' | 'FAIR' | 'TEUER';
 export type AnkaufPlatform = 'KLEINANZEIGEN' | 'EBAY' | 'VINTED' | 'FACEBOOK' | 'SONSTIGE';
 
+export type AnkaufConditionKey = 'wie_neu' | 'gut' | 'gebraucht' | 'defekt';
+
 export interface AnkaufListing {
   title: string;
   price: number;
   platform: AnkaufPlatform;
   url: string | null;
   condition: string | null;
+  conditionKey: AnkaufConditionKey | null;
+  conditionUncertain: boolean;
   dealScore: DealScore | null;
   priceVsMarketPct: number | null;
 }
@@ -290,6 +403,22 @@ export interface AnkaufResearchResult {
   marketMedianEur: number | null;
   listings: AnkaufListing[];
   conditionPriceImpact: Record<string, ConditionPriceImpact>;
+  searchedAt: string;
+}
+
+export interface AnkaufSearchProfile {
+  postalCode: string | null;
+  radiusKm: number;
+}
+
+export interface AnkaufSearchSummary {
+  id: string;
+  keywords: string;
+  postalCode: string;
+  radiusKm: number;
+  location: string;
+  marketMedianEur: number | null;
+  listingCount: number;
   searchedAt: string;
 }
 

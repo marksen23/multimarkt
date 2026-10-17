@@ -19,6 +19,7 @@ import { StateGuardModule } from '../state-guard/state-guard.module';
 import { TitleGenerationModule } from '../title-generation/title-generation.module';
 import { CanonicalListingService } from './canonical-listing.service';
 import { DescriptionQualityService } from './description-quality.service';
+import { FollowUpService } from './follow-up.service';
 import { ListingSummaryService } from './listing-summary.service';
 import { MarketplaceRecommenderService } from './marketplace-recommender.service';
 import { PriceDescriptionAlignmentService } from './price-description-alignment.service';
@@ -44,6 +45,7 @@ const GEMINI_PLACEHOLDER_KEY = 'unused-mock-provider-active';
   ],
   providers: [
     CanonicalListingService,
+    FollowUpService,
     ListingSummaryService,
     VaguePhraseDetectorService,
     DescriptionQualityService,
@@ -60,6 +62,11 @@ const GEMINI_PLACEHOLDER_KEY = 'unused-mock-provider-active';
       },
     },
   ],
-  exports: [CanonicalListingService, ListingSummaryService, MarketplaceRecommenderService],
+  exports: [
+    CanonicalListingService,
+    FollowUpService,
+    ListingSummaryService,
+    MarketplaceRecommenderService,
+  ],
 })
 export class CanonicalListingModule {}

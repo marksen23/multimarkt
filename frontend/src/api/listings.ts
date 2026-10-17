@@ -1,4 +1,5 @@
 import { api } from './client';
+import type { SaleCloseoutDraft } from '../margin/sale-closeout';
 import type { MarketplaceProjectionSummary } from './types';
 
 export const listingsApi = {
@@ -16,6 +17,12 @@ export const listingsApi = {
     api.post<MarketplaceProjectionSummary>(`/listings/${projectionId}/cancel`),
   confirmCancellation: (projectionId: string) =>
     api.post<MarketplaceProjectionSummary>(`/listings/${projectionId}/confirm-cancellation`),
-  markSold: (projectionId: string, reportedPrice: number) =>
-    api.post<{ outcome: string }>(`/listings/${projectionId}/mark-sold`, { reportedPrice }),
+  markSold: (projectionId: string, draft: SaleCloseoutDraft) =>
+    api.post<{ outcome: string }>(`/listings/${projectionId}/mark-sold`, {
+      reportedPrice: draft.proceedsEur,
+      portal: draft.portal,
+      feeEur: draft.feeEur,
+      shippingEur: draft.shippingEur,
+      paymentMethod: draft.paymentMethod,
+    }),
 };

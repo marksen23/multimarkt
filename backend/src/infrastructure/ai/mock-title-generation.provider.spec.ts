@@ -27,6 +27,24 @@ describe('MockTitleGenerationProvider', () => {
     expect(result).toBe('Artikel');
   });
 
+  it('puts known brand and size into the title and does not invent the rest', async () => {
+    const provider = new MockTitleGenerationProvider();
+    const result = await provider.generate({
+      title: 'Herrenjacke',
+      condition: 'good',
+      attributes: [
+        { key: 'brand', value: 'Nike' },
+        { key: 'size', value: 'M' },
+        { key: 'category', value: 'Kleidung' },
+        { key: 'measurements', value: null },
+      ],
+      channel: 'KLEINANZEIGEN',
+      comparableListings: [],
+    });
+
+    expect(result).toBe('Nike Herrenjacke M good');
+  });
+
   it('truncates to the channel character limit', async () => {
     const provider = new MockTitleGenerationProvider();
     const result = await provider.generate({

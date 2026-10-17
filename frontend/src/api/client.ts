@@ -119,6 +119,25 @@ function requestFormWithProgress<T>(
   });
 }
 
+async function requestDownload(path: string): Promise<{ blob: Blob; filename: string | null }> {
+  const response = await safeFetch(`${BASE_URL}${path}`, {
+    method: 'GET',
+    headers: authHeader(),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new ApiRequestError(
+      response.status,
+      body ?? { error_code: 'ERR_UNKNOWN', message: response.statusText, details: {} },
+    );
+  }
+
+  const header = response.headers.get('Content-Disposition') ?? '';
+  const match = /filename="([^"]+)"/.exec(header);
+  return { blob: await response.blob(), filename: match?.[1] ?? null };
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path, { method: 'GET' }),
   post: <T>(path: string, body?: unknown) =>
@@ -127,4 +146,5 @@ export const api = {
     request<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),
   postForm: <T>(path: string, formData: FormData, onProgress?: (fraction: number) => void) =>
     requestFormWithProgress<T>(path, formData, onProgress),
+  download: (path: string) => requestDownload(path),
 };

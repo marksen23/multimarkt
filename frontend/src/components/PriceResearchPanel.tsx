@@ -3,6 +3,8 @@ import { itemsApi } from '../api/items';
 import type { PriceRecommendation, PriceResearchResult, PriceResearchSourceResult, SalesGoal } from '../api/types';
 import { SkeletonBlock } from './Skeleton';
 import { Button, Icon } from '../ui';
+import type { LogisticsProfile } from '../logistics/profile';
+import { ChannelNetComparison } from './ChannelNetComparison';
 import { ExpectedMarginFields } from './ExpectedMarginFields';
 
 /**
@@ -28,11 +30,13 @@ const CONFIDENCE_LABELS: Record<string, string> = {
 export function PriceResearchPanel({
   itemId,
   purchasePriceEur,
+  logistics,
   onSuggestPrice,
   onMedianAvailable,
 }: {
   itemId: string;
   purchasePriceEur: number | null;
+  logistics?: LogisticsProfile | null;
   onSuggestPrice: (price: number) => void;
   onMedianAvailable?: (median: number) => void;
 }) {
@@ -137,6 +141,11 @@ export function PriceResearchPanel({
             purchasePriceEur={purchasePriceEur}
             salePriceLabel="Zielpreis"
           />
+          <ChannelNetComparison
+            salePriceEur={result.recommendation.targetPrice}
+            salePriceLabel="Zielpreis"
+            logistics={logistics}
+          />
         </>
       )}
 
@@ -231,7 +240,7 @@ function SourceCard({
         )}
       </div>
 
-      <p className="text-[11px] text-ink-faint">
+      <p className="text-label font-normal text-ink-faint">
         {example
           ? `${source.providerLabel}: Beispiel, kein echtes Angebot (${Number(source.detail?.buybackPrice ?? 0).toFixed(2)} €). Hebt die Schmerzgrenze nicht an und lenkt nicht zum Ankauf.`
           : source.source === 'ANKAUF_PORTAL'

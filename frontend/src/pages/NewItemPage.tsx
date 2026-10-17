@@ -64,7 +64,7 @@ export function NewItemPage() {
       </Link>
       <PageHeader
         title="Neuer Artikel"
-        subtitle="Fotografiere den Gegenstand, ein Etikett oder Typenschild. Die KI schlägt danach Kategorie, Marke und weitere Angaben vor — du bestätigst."
+        subtitle="Fotografiere den Gegenstand, ein Etikett oder Typenschild. Die KI trägt nur ein, was sie sieht. Fehlende Pflichtangaben der Kategorie fragst du danach."
       />
 
       <Card className="p-4 space-y-4">

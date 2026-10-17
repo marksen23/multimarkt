@@ -4,7 +4,7 @@ import { Icon, PhaseBadge, PHASE_BORDER, statusInfo } from '../ui';
 import { formatEuro, relativeDate } from '../lib/format';
 
 export function ItemRow({
-  entry: { item, listings, thumbnailUrl },
+  entry: { item, listings, thumbnailUrl, soldPrice },
   action,
   meta,
 }: {
@@ -14,7 +14,7 @@ export function ItemRow({
   meta?: string;
 }) {
   const { phase } = statusInfo(item.status);
-  const price = listings[0]?.sellingPrice;
+  const price = soldPrice ?? listings[0]?.sellingPrice;
   return (
     <Link
       to={`/items/${item.id}`}

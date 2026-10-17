@@ -22,6 +22,7 @@ import {
   CapabilityCheckService,
 } from '../../application/capability-check/capability-check.service';
 import { MarketplacePublishingService } from '../../application/listing/marketplace-publishing.service';
+import { SaleCloseoutService } from '../../application/sales/sale-closeout.service';
 import {
   EvaluateSaleOutcome,
   SaleIngestionService,
@@ -40,6 +41,7 @@ export class ListingsController {
     private readonly capabilityCheck: CapabilityCheckService,
     private readonly publishing: MarketplacePublishingService,
     private readonly saleIngestion: SaleIngestionService,
+    private readonly saleCloseout: SaleCloseoutService,
   ) {}
 
   @Post()
@@ -117,6 +119,16 @@ export class ListingsController {
       throw new HumanGateBypassException('Only a USER actor may manually report a sale');
     }
     const outcome = await this.saleIngestion.reportAndEvaluate(id, dto.reportedPrice);
+    const portal = dto.portal?.trim();
+    if (outcome === 'SOLD' && portal) {
+      await this.saleCloseout.recordForListingProjection(id, {
+        proceedsEur: dto.reportedPrice,
+        portal,
+        feeEur: dto.feeEur ?? 0,
+        shippingEur: dto.shippingEur ?? 0,
+        paymentMethod: dto.paymentMethod ?? null,
+      });
+    }
     return { outcome };
   }
 

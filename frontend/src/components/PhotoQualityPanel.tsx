@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { itemsApi } from '../api/items';
 import { Card } from '../ui';
 import type { PhotoQualityIssue, PhotoQualityIssueType, PhotoQualityReport } from '../api/types';
+import type { PhotoBriefing } from '../category/photo-briefing';
 
 /**
  * Rein technischer Hinweis (Schärfe/Belichtung/Auflösung/Duplikate) über
@@ -50,7 +51,15 @@ function groupByPhoto(issues: PhotoQualityIssue[]): Map<number, PhotoQualityIssu
   return map;
 }
 
-export function PhotoQualityPanel({ itemId, photoCount }: { itemId: string; photoCount: number }) {
+export function PhotoQualityPanel({
+  itemId,
+  photoCount,
+  briefing,
+}: {
+  itemId: string;
+  photoCount: number;
+  briefing?: PhotoBriefing;
+}) {
   const [report, setReport] = useState<PhotoQualityReport | null>(null);
 
   useEffect(() => {
@@ -58,7 +67,11 @@ export function PhotoQualityPanel({ itemId, photoCount }: { itemId: string; phot
     itemsApi.photoQuality(itemId).then(setReport).catch(() => setReport(null));
   }, [itemId, photoCount]);
 
-  if (!report || report.issues.length === 0) return null;
+  const showBriefing = briefing?.category != null;
+  if ((!report || report.issues.length === 0) && !showBriefing) return null;
+  if (!report || report.issues.length === 0) {
+    return <PhotoBriefingCard briefing={briefing!} />;
+  }
 
   const criticalCount = report.issues.filter((i) => ISSUE_CONFIG[i.type]?.critical).length;
   const byPhoto = groupByPhoto(report.issues);
@@ -106,9 +119,42 @@ export function PhotoQualityPanel({ itemId, photoCount }: { itemId: string; phot
         ))}
       </ul>
 
+      {showBriefing && <PhotoBriefingBody briefing={briefing!} />}
       <p className="px-4 py-2.5 text-label font-normal text-ink-faint border-t border-line">
         Hinweise sind rein informativ — Listing kann trotzdem erstellt werden.
       </p>
     </Card>
+  );
+}
+
+function PhotoBriefingCard({ briefing }: { briefing: PhotoBriefing }) {
+  return (
+    <Card className="overflow-hidden">
+      <PhotoBriefingBody briefing={briefing} />
+    </Card>
+  );
+}
+
+function PhotoBriefingBody({ briefing }: { briefing: PhotoBriefing }) {
+  return (
+    <div className="px-4 py-3 space-y-1">
+      <h2 className="text-micro uppercase text-ink-faint">Foto-Briefing</h2>
+      {briefing.missingShots.length === 0 ? (
+        <p className="text-label font-normal text-ink-muted">Für {briefing.category} sind alle Aufnahmen da.</p>
+      ) : (
+        <>
+          <p className="text-label font-normal text-ink-muted">
+            Für {briefing.category} fehlt noch. Speichern bleibt möglich.
+          </p>
+          <ul className="space-y-1">
+            {briefing.missingShots.map((shot) => (
+              <li key={shot.shot} className="text-label font-normal text-ink">
+                {shot.message}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
   );
 }

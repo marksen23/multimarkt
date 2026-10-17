@@ -1,3 +1,10 @@
+import type { ItemListEntry } from '../api/types';
+
+/** Erlös eines Artikels: echter Verkaufspreis, sonst Listingpreis. */
+export function realizedPrice(e: ItemListEntry): number {
+  return e.soldPrice ?? e.listings[0]?.sellingPrice ?? 0;
+}
+
 export function formatEuro(value: number, decimals: 0 | 2 = 2): string {
   return `${value.toLocaleString('de-DE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} €`;
 }

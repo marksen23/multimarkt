@@ -5,6 +5,8 @@ import { Card, Icon, PageHeader, type IconName } from '../ui';
 
 const LINKS: { to: string; icon: IconName; title: string; text: string }[] = [
   { to: '/bundles', icon: 'package', title: 'Bundles', text: 'Mehrere Artikel als Paket verkaufen' },
+  { to: '/verkaeufe', icon: 'euro', title: 'Verkäufe', text: 'Monatsauswertung und abgeschlossene Verkäufe' },
+  { to: '/sicherung', icon: 'download', title: 'Sicherung', text: 'Bestand exportieren und Fotos sichern' },
   { to: '/account', icon: 'user', title: 'Konto & Einstellungen', text: 'Statistik, Darstellung, Daten löschen' },
 ];
 

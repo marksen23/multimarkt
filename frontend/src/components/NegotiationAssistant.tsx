@@ -1,162 +1,215 @@
 import { useState } from 'react';
-import { useToast } from './Toast';
-import { Button, Icon, inputClass } from '../ui';
+import { copyText } from '../lib/clipboard';
+import {
+  negotiationApi,
+  type NegotiationPlatform,
+  type NegotiationReply,
+  type NegotiationSuggestion,
+} from '../api/negotiation';
+import { ApiRequestError } from '../api/client';
+import { formatEur } from '../margin/sale-closeout';
+import { Button, Card, PageHeader, SectionLabel, inputClass } from '../ui';
 
-interface SuggestedAction {
-  id: string;
-  label: string;
-  variant: 'primary' | 'secondary' | 'danger';
-  text: string;
-}
-
-const variantStyles: Record<SuggestedAction['variant'], { idle: string; selected: string }> = {
-  primary: {
-    idle: 'border-line bg-surface text-ink-muted hover:bg-surface-hover',
-    selected: 'border-accent bg-accent-soft text-accent shadow-card',
-  },
-  secondary: {
-    idle: 'border-line bg-surface text-ink-muted hover:bg-surface-hover',
-    selected: 'border-ink-faint bg-surface-hover text-ink shadow-card',
-  },
-  danger: {
-    idle: 'border-danger/20 bg-surface text-danger hover:bg-danger/5',
-    selected: 'border-danger bg-danger-soft text-danger shadow-card',
-  },
-};
-
-interface Props {
-  itemTitle: string;
-  targetPrice: number;
-  minAcceptablePrice: number;
-  buyerName: string;
-  platform: string;
-  incomingMessage: string;
-  offeredPrice: number;
-  suggestedActions: SuggestedAction[];
-}
+const PLATFORMS: { id: NegotiationPlatform; label: string }[] = [
+  { id: 'KLEINANZEIGEN', label: 'Kleinanzeigen' },
+  { id: 'VINTED', label: 'Vinted' },
+  { id: 'EBAY', label: 'eBay' },
+];
 
 /**
- * Verhandlungs-Assistent (Zusammenfassung §3-V). Adaptiert aus
- * `docs/verhandlungs_assistent_ui_react.js`.
- *
- * SCOPE-HINWEIS: Doc 04 definiert KEINEN Endpunkt für Käufer-Nachrichten
- * oder KI-gestützte Verhandlungsvorschläge — das ist kein Teil des
- * eingefrorenen API-Vertrags. Diese Komponente bleibt daher bewusst
- * UI-only/Demo mit den vom Aufrufer übergebenen Daten, bis ein
- * entsprechender Backend-Endpunkt bewusst spezifiziert wird (siehe
- * Abschlussbericht) — sie erfindet keine Live-Anbindung vor.
+ * Verhandlung an der Schmerzgrenze (Feature-Plan 3.7).
+ * Die Nachricht wird eingefügt. Die Antworten werden kopiert.
+ * Es wird nichts gesendet.
  */
 export function NegotiationAssistant({
-  itemTitle,
+  itemId,
+  title,
   targetPrice,
-  minAcceptablePrice,
-  buyerName,
-  platform,
-  incomingMessage,
-  offeredPrice,
-  suggestedActions,
-}: Props) {
-  const toast = useToast();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [reply, setReply] = useState('');
+  minPrice,
+}: {
+  itemId: string;
+  title: string | null;
+  targetPrice: number;
+  minPrice: number;
+}) {
+  const [platform, setPlatform] = useState<NegotiationPlatform>('KLEINANZEIGEN');
+  const [message, setMessage] = useState('');
+  const [result, setResult] = useState<NegotiationSuggestion | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const platformLabel = PLATFORMS.find((entry) => entry.id === platform)?.label ?? 'dem Portal';
 
-  const select = (action: SuggestedAction) => {
-    setSelectedId(action.id);
-    setReply(action.text);
-  };
-
-  const copyToClipboard = async () => {
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
     try {
-      await navigator.clipboard.writeText(reply);
-      toast(`Kopiert — bei ${platform} einfügen.`, 'success');
-    } catch {
-      toast('Kopieren nicht möglich — Text oben manuell markieren und kopieren.', 'error');
+      setResult(await negotiationApi.suggest(itemId, { message, platform }));
+    } catch (e) {
+      setResult(null);
+      setError(e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler');
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto bg-bg min-h-screen flex flex-col">
-      <header className="bg-surface/90 backdrop-blur p-4 border-b border-line flex items-center justify-between z-10">
-        <div>
-          <h1 className="text-title text-ink">Chat Assistent</h1>
-          <p className="text-label font-normal text-ink-muted line-clamp-1">{itemTitle}</p>
-        </div>
-        <div className="text-right">
-          <span className="block text-micro uppercase text-ink-faint">Dein Ziel</span>
-          <span className="font-bold text-accent tabular-nums">{targetPrice} €</span>
-        </div>
-      </header>
+    <div className="space-y-4">
+      <PageHeader title="Verhandlung" subtitle={title?.trim() || 'Artikel'} />
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        <div className="flex flex-col items-start">
-          <span className="text-label font-medium text-ink-muted ml-1 mb-1">
-            {buyerName} (via {platform})
-          </span>
-          <div className="bg-surface p-4 rounded-card rounded-tl-sm shadow-card border border-line max-w-[90%]">
-            <p className="text-ink text-body">{incomingMessage}</p>
+      <div className="grid grid-cols-2 gap-2">
+        <PriceFigure label="Zielpreis" value={targetPrice} />
+        <PriceFigure label="Schmerzgrenze" value={minPrice} />
+      </div>
+      <p className="text-label font-normal text-ink-muted">
+        Preise aus der Preisrecherche dieses Artikels. Die Nachricht bleibt hier, nichts wird
+        gesendet.
+      </p>
+
+      <div className="space-y-2">
+        <span className="block text-micro uppercase text-ink-faint">Einfügen bei</span>
+        <div className="flex gap-2">
+          {PLATFORMS.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              onClick={() => setPlatform(entry.id)}
+              className={`flex-1 h-9 px-2 rounded-control text-label border transition-colors ${
+                platform === entry.id
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-line bg-surface text-ink-muted hover:bg-surface-hover'
+              }`}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <label className="block space-y-1">
+        <span className="block text-micro uppercase text-ink-faint">
+          Käufernachricht einfügen
+        </span>
+        <textarea
+          value={message}
+          onChange={(event) => setMessage(event.target.value)}
+          rows={5}
+          placeholder="Nachricht aus Kleinanzeigen, Vinted oder eBay hier einfügen"
+          className={`${inputClass} resize-none`}
+        />
+      </label>
+
+      {error && <p className="text-label text-danger">{error}</p>}
+
+      <Button
+        block
+        size="md"
+        icon="sparkle"
+        disabled={busy || message.trim().length === 0}
+        onClick={() => void submit()}
+      >
+        {busy ? 'Liest das Gebot…' : 'Antworten vorschlagen'}
+      </Button>
+
+      {result && (
+        <SuggestionResult
+          key={`${result.platform}-${result.offer ?? 'none'}-${result.assessment}`}
+          result={result}
+          platformLabel={PLATFORMS.find((entry) => entry.id === result.platform)?.label ?? platformLabel}
+        />
+      )}
+    </div>
+  );
+}
+
+function PriceFigure({ label, value }: { label: string; value: number }) {
+  return (
+    <Card className="p-3">
+      <span className="block text-micro uppercase text-ink-faint">{label}</span>
+      <span className="text-title text-ink tabular-nums">{formatEur(value)}</span>
+    </Card>
+  );
+}
+
+function SuggestionResult({
+  result,
+  platformLabel,
+}: {
+  result: NegotiationSuggestion;
+  platformLabel: string;
+}) {
+  return (
+    <div className="space-y-3">
+      <Card className="p-3 space-y-2">
+        <div className="flex justify-between gap-3">
+          <div>
+            <span className="block text-micro uppercase text-ink-faint">Gebot</span>
+            <span className="font-bold text-ink tabular-nums">
+              {result.offer == null ? 'kein Betrag' : formatEur(result.offer)}
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="block text-micro uppercase text-ink-faint">Schmerzgrenze</span>
+            <span className="font-medium text-ink-muted tabular-nums">{formatEur(result.minPrice)}</span>
           </div>
         </div>
+        <p className="text-body text-ink">{result.assessment}</p>
+      </Card>
 
-        <div className="bg-accent-soft border border-accent/20 rounded-card p-4 shadow-card">
-          <div className="flex items-center gap-2 mb-2">
-            <Icon name="sparkle" size={16} className="text-accent" />
-            <h3 className="font-bold text-accent text-body">KI-Einschätzung</h3>
-          </div>
-          <div className="flex justify-between items-end mb-3">
-            <div>
-              <span className="block text-micro uppercase text-accent/70">Gebot</span>
-              <span className="text-display text-danger tabular-nums">{offeredPrice} €</span>
-            </div>
-            <div className="text-right">
-              <span className="block text-micro uppercase text-accent/70">
-                Deine Schmerzgrenze
-              </span>
-              <span className="font-medium text-body text-ink-muted tabular-nums">{minAcceptablePrice} €</span>
-            </div>
-          </div>
-        </div>
+      <SectionLabel>Drei Antworten</SectionLabel>
+      {result.replies.map((reply) => (
+        <ReplyCard key={reply.id} reply={reply} platformLabel={platformLabel} />
+      ))}
+    </div>
+  );
+}
 
-        <div className="space-y-3">
-          <h4 className="text-micro uppercase text-ink-muted ml-1">Antwort-Strategie wählen</h4>
-          <div className="flex flex-col gap-2">
-            {suggestedActions.map((action) => (
-              <button
-                key={action.id}
-                type="button"
-                onClick={() => select(action)}
-                className={`p-3 text-body font-semibold rounded-control border transition-all text-left flex justify-between items-center ${
-                  selectedId === action.id
-                    ? variantStyles[action.variant].selected
-                    : variantStyles[action.variant].idle
-                }`}
-              >
-                {action.label}
-                {selectedId === action.id && <Icon name="check" size={16} strokeWidth={2.5} />}
-              </button>
-            ))}
-          </div>
-        </div>
+function ReplyCard({ reply, platformLabel }: { reply: NegotiationReply; platformLabel: string }) {
+  const [text, setText] = useState(reply.text);
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
 
-        {selectedId && (
-          <div className="mt-4">
-            <h4 className="text-micro uppercase text-ink-muted ml-1 mb-2">
-              Antwort anpassen & senden
-            </h4>
-            <textarea
-              className={`${inputClass} resize-none shadow-card`}
-              rows={4}
-              value={reply}
-              onChange={(e) => setReply(e.target.value)}
-            />
-            <Button size="lg" block icon="copy" className="mt-3" onClick={copyToClipboard}>
-              Antwort kopieren
-            </Button>
-            <p className="text-label font-normal text-ink-faint text-center mt-2">
-              Für {platform} muss die Antwort manuell eingefügt werden.
-            </p>
-          </div>
+  const copy = async () => {
+    try {
+      await copyText(text);
+      setCopyState('copied');
+    } catch {
+      setCopyState('error');
+    }
+    window.setTimeout(() => setCopyState('idle'), 1800);
+  };
+
+  return (
+    <div
+      className={`bg-surface border rounded-card shadow-card p-3 space-y-2 ${
+        reply.recommended ? 'border-accent' : 'border-line'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-body font-bold text-ink">{reply.label}</h3>
+        {reply.recommended && (
+          <span className="text-micro uppercase text-accent">Vorschlag</span>
         )}
       </div>
+      <textarea
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        rows={4}
+        className={`${inputClass} resize-none`}
+      />
+      <Button
+        block
+        size="md"
+        icon={copyState === 'copied' ? 'check' : 'copy'}
+        onClick={() => void copy()}
+      >
+        {copyState === 'copied'
+          ? 'Antwort kopiert'
+          : copyState === 'error'
+            ? 'Kopieren nicht möglich — Text markieren'
+            : 'Antwort kopieren'}
+      </Button>
+      <p className="text-label font-normal text-ink-faint text-center">
+        Zum Einfügen bei {platformLabel}. Es wird nichts gesendet.
+      </p>
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import type { LogisticsDraft } from '../logistics/profile';
+import type { SaleCloseoutDraft } from '../margin/sale-closeout';
 import { api } from './client';
 import type {
   CanonicalListing,
@@ -7,6 +9,7 @@ import type {
   ItemAttribute,
   ItemDetail,
   ItemListEntry,
+  ItemPhoto,
   ItemLifecycleState,
   ListingChannel,
   MarketplaceRecommendationResult,
@@ -29,6 +32,8 @@ export const itemsApi = {
     condition?: string | null;
     url?: string | null;
   }) => api.post<Item>('/items/from-purchase', body),
+  updateLogistics: (id: string, body: LogisticsDraft) =>
+    api.patch<Item>(`/items/${id}/logistics`, body),
   updatePurchase: (
     id: string,
     body: {
@@ -53,6 +58,14 @@ export const itemsApi = {
     return api.get<PriceResearchResult>(`/items/${id}/price-research${query ? `?${query}` : ''}`);
   },
   photoQuality: (id: string) => api.get<PhotoQualityReport>(`/items/${id}/photo-quality`),
+  addPhoto: (id: string, file: File, shot: string | null) => {
+    const form = new FormData();
+    form.append('files', file);
+    if (shot) form.append('shot', shot);
+    return api.postForm<ItemPhoto[]>(`/items/${id}/photos`, form);
+  },
+  assignPhotoShot: (id: string, photoId: string, shot: string | null) =>
+    api.patch<ItemPhoto>(`/items/${id}/photos/${photoId}`, { shot }),
   generateTitle: (id: string, channel: ListingChannel) =>
     api.get<TitleSuggestion>(`/items/${id}/generate-title?channel=${channel}`),
   updateTitle: (id: string, title: string) => api.patch<Item>(`/items/${id}/title`, { title }),
@@ -89,6 +102,8 @@ export const itemsApi = {
     }),
   bundle: (id: string, title: string, itemIds: string[]) =>
     api.post(`/items/${id}/bundle`, { title, itemIds }),
+  recordSaleCloseout: (id: string, draft: SaleCloseoutDraft) =>
+    api.post<Item>(`/items/${id}/sale-closeout`, draft),
   saleEvents: (id: string) => api.get<SaleEvent[]>(`/items/${id}/sale-events`),
   resolveConflict: (id: string, winningSaleEventId: string) =>
     api.post<Item>(`/items/${id}/resolve-conflict`, { winningSaleEventId }),

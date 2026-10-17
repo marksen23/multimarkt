@@ -5,9 +5,9 @@ import { DescriptionGenerationProvider } from '../../domain/ai/description-gener
 import { PriceTriangulationService } from '../pricing/price-triangulation.service';
 import { StateGuardService } from '../state-guard/state-guard.service';
 import { TitleTokenAnalysisService } from '../title-generation/title-token-analysis.service';
-import { VaguePhraseDetectorService } from './vague-phrase-detector.service';
 import { DescriptionQualityService } from './description-quality.service';
 import { PriceDescriptionAlignmentService } from './price-description-alignment.service';
+import { VaguePhraseDetectorService } from './vague-phrase-detector.service';
 
 const item = { id: 'item-1', title: 'Herrenjacke', condition: 'good' };
 
@@ -107,5 +107,55 @@ describe('CanonicalListingService.generateDescription', () => {
     expect(result.descriptionText).toBe('Herrenjacke — Zustand: good');
     expect(result.gapAnalysis).toBeDefined();
     expect(result.vaguePhrases).toEqual([]);
+  });
+
+  it('writes shipping text for a small parcel and drops pickup-only wording', async () => {
+    const service = makeService(
+      makeDataSource({
+        ...item,
+        logisticsCaptured: true,
+        weightGrams: 180,
+        lengthCm: 22,
+        widthCm: 16,
+        heightCm: 2,
+        logisticsBulky: false,
+        pickupOnly: false,
+        shippingPossible: true,
+        postalCode: '10115',
+      }),
+      makeProvider('Sofort abholbar am Bahnhof. Kaum benutzt.'),
+    );
+
+    const result = await service.generateDescription('item-1');
+
+    expect(result.descriptionText).toMatch(/Versand möglich/);
+    expect(result.descriptionText).not.toMatch(/abholung|abholbar|selbstabhol/i);
+    expect(result.descriptionText).toContain('180 g');
+  });
+
+  it('writes pickup text for a sofa and drops a shipping offer', async () => {
+    const service = makeService(
+      makeDataSource({
+        ...item,
+        title: 'Sofa',
+        condition: 'Gebraucht',
+        logisticsCaptured: true,
+        weightGrams: 45_000,
+        lengthCm: 210,
+        widthCm: 95,
+        heightCm: 85,
+        logisticsBulky: true,
+        pickupOnly: true,
+        shippingPossible: false,
+        postalCode: '10115',
+      }),
+      makeProvider('Versand möglich, gerne verschickt.'),
+    );
+
+    const result = await service.generateDescription('item-1');
+
+    expect(result.descriptionText).toMatch(/Nur Abholung in 10115/);
+    expect(result.descriptionText).not.toMatch(/Versand möglich/);
+    expect(result.descriptionText).toContain('45 kg');
   });
 });

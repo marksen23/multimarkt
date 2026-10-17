@@ -38,11 +38,14 @@ describe('RealGeminiVisionProvider', () => {
     expect(generateContentMock).not.toHaveBeenCalled();
     expect(result.attributes.map((a) => a.key)).toEqual([
       'category',
+      'categoryDetail',
       'color',
       'brand',
       'material',
       'condition',
       'size',
+      'measurements',
+      'functionChecked',
       'notable_features',
       'visible_defects',
     ]);

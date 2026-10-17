@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { itemsApi } from '../api/items';
 import { Button, Icon } from '../ui';
+import { VolatilePhotoStorageNotice } from './VolatilePhotoStorageNotice';
 
 /**
  * README §3 Schritt 1 "Foto-Erfassung": der gesamte Workflow beginnt mit
@@ -16,10 +17,12 @@ export function PhotoCapture({
   files,
   onChange,
   itemId,
+  storageNotice = true,
 }: {
   files: File[];
   onChange: (files: File[]) => void;
   itemId?: string;
+  storageNotice?: boolean;
 }) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -80,6 +83,7 @@ export function PhotoCapture({
 
   return (
     <div className="space-y-3">
+      {storageNotice && <VolatilePhotoStorageNotice />}
       {previews.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
           {previews.map((src, i) => (

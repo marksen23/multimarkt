@@ -3,8 +3,11 @@ import { dispositionApi } from '../api/disposition';
 import type { DispositionRecommendation, DispositionUserGoal } from '../api/disposition';
 import { ApiRequestError } from '../api/client';
 import { itemsApi } from '../api/items';
+import { RESALE_CATEGORIES, resolveCategory, type ResaleCategory } from '../category/taxonomy';
+import { shippingCostEur, shippingPortalsAllowed, type LogisticsProfile } from '../logistics/profile';
 import { flushMarginAssumptions } from '../margin/use-margin-assumptions';
 import { Button, Card, inputClass } from '../ui';
+import { ChannelNetComparison } from './ChannelNetComparison';
 
 const USER_GOALS: { value: DispositionUserGoal; label: string }[] = [
   { value: 'BALANCED', label: 'Ausgewogen' },
@@ -38,6 +41,18 @@ const ACTION_COLORS: Record<string, string> = {
 };
 
 const ACTION_COLOR_FALLBACK = 'bg-phase-archive-soft text-phase-archive';
+const SELLING_CHANNEL_KEYS = new Set(['KLEINANZEIGEN', 'EBAY', 'VINTED']);
+const EMPTY_LOGISTICS: LogisticsProfile = {
+  captured: false,
+  weightGrams: null,
+  lengthCm: null,
+  widthCm: null,
+  heightCm: null,
+  bulky: false,
+  pickupOnly: false,
+  shippingPossible: false,
+  postalCode: null,
+};
 
 /**
  * "Lohnt sich das?" (Freeze §10, Disposition Engine). Reine Empfehlung —
@@ -46,14 +61,33 @@ const ACTION_COLOR_FALLBACK = 'bg-phase-archive-soft text-phase-archive';
  * Schema). Diese Komponente ist deshalb ein Rechner, kein Formular mit
  * Speicherzustand.
  */
-export function DispositionPanel({ itemId, initialMedian }: { itemId: string; initialMedian?: number | null }) {
+export function DispositionPanel({
+  itemId,
+  initialMedian,
+  logistics = EMPTY_LOGISTICS,
+  itemCategory,
+}: {
+  itemId: string;
+  initialMedian?: number | null;
+  logistics?: LogisticsProfile;
+  itemCategory?: string | null;
+}) {
   const [open, setOpen] = useState(false);
-  const [category, setCategory] = useState('household');
+  const [category, setCategory] = useState(resolveCategory(itemCategory) ?? 'Haushalt');
   const [marketMedianPrice, setMarketMedianPrice] = useState(
     initialMedian != null ? initialMedian.toFixed(2) : '',
   );
-  const [isBulky, setIsBulky] = useState(false);
-
+  const logisticsKey = [
+    logistics.captured,
+    logistics.weightGrams,
+    logistics.lengthCm,
+    logistics.widthCm,
+    logistics.heightCm,
+    logistics.bulky,
+    logistics.pickupOnly,
+    logistics.shippingPossible,
+    logistics.postalCode,
+  ].join('|');
   useEffect(() => {
     if (initialMedian != null && !marketMedianPrice) {
       setMarketMedianPrice(initialMedian.toFixed(2));
@@ -65,6 +99,11 @@ export function DispositionPanel({ itemId, initialMedian }: { itemId: string; in
   const [result, setResult] = useState<DispositionRecommendation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [seenLogisticsKey, setSeenLogisticsKey] = useState(logisticsKey);
+  if (seenLogisticsKey !== logisticsKey) {
+    setSeenLogisticsKey(logisticsKey);
+    setResult(null);
+  }
 
   const evaluate = async () => {
     setBusy(true);
@@ -75,7 +114,6 @@ export function DispositionPanel({ itemId, initialMedian }: { itemId: string; in
         await dispositionApi.evaluate(itemId, {
           category,
           marketMedianPrice: Number(marketMedianPrice),
-          isBulky,
           userGoal,
         }),
       );
@@ -132,15 +170,14 @@ export function DispositionPanel({ itemId, initialMedian }: { itemId: string; in
       <div className="grid grid-cols-2 gap-2">
         <select
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          onChange={(e) => setCategory(e.target.value as ResaleCategory)}
           className={inputClass}
         >
-          <option value="household">Haushalt</option>
-          <option value="fashion">Mode</option>
-          <option value="shoes">Schuhe</option>
-          <option value="electronics">Elektronik</option>
-          <option value="books">Bücher</option>
-          <option value="media">Medien</option>
+          {RESALE_CATEGORIES.map((entry) => (
+            <option key={entry} value={entry}>
+              {entry}
+            </option>
+          ))}
         </select>
         <select
           value={userGoal}
@@ -164,10 +201,8 @@ export function DispositionPanel({ itemId, initialMedian }: { itemId: string; in
         onChange={(e) => setMarketMedianPrice(e.target.value)}
         className={inputClass}
       />
-      <label className="flex items-center gap-2 text-label font-normal text-ink-muted">
-        <input type="checkbox" checked={isBulky} onChange={(e) => setIsBulky(e.target.checked)} />
-        Sperrig (nur Abholung möglich)
-      </label>
+      <p className="text-label font-normal text-ink-muted">{logisticsSummary(logistics)}</p>
+      <ChannelNetComparison salePriceEur={null} salePriceLabel="Marktpreis" logistics={logistics} />
 
       {error && <p className="text-label text-danger">{error}</p>}
 
@@ -206,18 +241,30 @@ export function DispositionPanel({ itemId, initialMedian }: { itemId: string; in
           )}
           {result.recommendedPlatforms.length > 0 && (
             <div className="space-y-1">
+              <p className="text-label font-normal text-ink-faint">
+                Annahmen. Gebühren ändern sich. Reihenfolge nach dem Netto, nicht nach dem Angebotsmedian.
+              </p>
               {result.recommendedPlatforms.map((p) => (
-                <div
-                  key={p.key}
-                  className="flex items-center justify-between gap-2 bg-surface-hover rounded-control p-2 text-label font-normal"
-                >
-                  <div>
+                <div key={p.key} className="bg-surface-hover rounded-control p-2 text-label font-normal space-y-0.5">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="font-bold text-ink">{PLATFORM_LABELS[p.key] ?? p.key}</span>
-                    <p className="text-ink-faint">{p.reasoning}</p>
+                    {!SELLING_CHANNEL_KEYS.has(p.key) && (
+                      <span className="font-bold text-accent tabular-nums">~{p.netExpectedValue.toFixed(2)} €</span>
+                    )}
                   </div>
-                  <span className="font-bold text-accent tabular-nums shrink-0">
-                    ~{p.netExpectedValue.toFixed(2)} €
-                  </span>
+                  {SELLING_CHANNEL_KEYS.has(p.key) && (
+                    <p className="text-ink">
+                      bei Verkauf zu diesem Preis bleiben{' '}
+                      <span className="font-bold">{p.netExpectedValue.toFixed(2)} €</span>
+                    </p>
+                  )}
+                  {p.feePercent != null && p.feeFixedEur != null && (
+                    <p className="text-ink-faint">
+                      Annahme {p.feePercent.toFixed(2)} % + {p.feeFixedEur.toFixed(2)} €
+                      {p.shippingEur > 0 ? `, Versand ${p.shippingEur.toFixed(2)} €` : ', ohne Versandabzug'}
+                    </p>
+                  )}
+                  <p className="text-ink-faint">{p.reasoning}</p>
                 </div>
               ))}
             </div>
@@ -229,4 +276,15 @@ export function DispositionPanel({ itemId, initialMedian }: { itemId: string; in
       )}
     </Card>
   );
+}
+
+function logisticsSummary(profile: LogisticsProfile): string {
+  if (!profile.captured) {
+    return 'Logistikprofil fehlt. Versandportale bleiben zu, keine Versandpauschale.';
+  }
+  if (shippingPortalsAllowed(profile)) {
+    return `Versand möglich. Paketkosten ${shippingCostEur(profile).toFixed(2)} € aus Gewicht und Maßen.`;
+  }
+  const postalCode = profile.postalCode ? ` PLZ ${profile.postalCode}.` : '';
+  return `Nur Abholung.${postalCode} Keine Versandportale.`;
 }

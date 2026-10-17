@@ -27,7 +27,11 @@ const EBAY_PLACEHOLDER_KEY = 'unused-mock-provider-active';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ItemEntity, ItemAttributeEntity, ItemPriceResearchEntity]),
+    TypeOrmModule.forFeature([
+      ItemEntity,
+      ItemAttributeEntity,
+      ItemPriceResearchEntity,
+    ]),
     ConfigModule,
   ],
   providers: [
@@ -62,6 +66,6 @@ const EBAY_PLACEHOLDER_KEY = 'unused-mock-provider-active';
       },
     },
   ],
-  exports: [PriceTriangulationService, MARKET_DISTRIBUTION_PROVIDER],
+  exports: [PriceTriangulationService, PriceRecommendationService, MARKET_DISTRIBUTION_PROVIDER],
 })
 export class PriceTriangulationModule {}

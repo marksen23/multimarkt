@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import { bundlesApi } from '../api/bundles';
 import { itemsApi } from '../api/items';
@@ -120,12 +120,15 @@ function buildBundleDescription(items: Item[]): string {
 
 export function BundleDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const toast = useToast();
   const [detail, setDetail] = useState<BundleDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [price, setPrice] = useState('');
-  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState<string | null>(null);
+  const [description, setDescription] = useState<string | null>(null);
+  const priceValue = price ?? searchParams.get('preis') ?? '';
+  const descriptionValue = description ?? detail?.bundle.description ?? '';
 
   const reload = useCallback(async () => {
     if (!id) return;
@@ -169,7 +172,7 @@ export function BundleDetailPage() {
   const { bundle, items, listings } = detail;
 
   const prepareListing = () =>
-    run(() => bundlesApi.prepareListing(id, Number(price), description));
+    run(() => bundlesApi.prepareListing(id, Number(priceValue), descriptionValue));
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-4">
@@ -250,19 +253,19 @@ export function BundleDetailPage() {
             <textarea
               rows={5}
               placeholder="Beschreibung des Bundles…"
-              value={description}
+              value={descriptionValue}
               onChange={(e) => setDescription(e.target.value)}
               className={`${inputClass} resize-none`}
             />
             <div className="flex items-center justify-between px-0.5">
               <div className="flex-1 h-0.5 rounded-full bg-line overflow-hidden mr-3">
                 <div
-                  className={`h-full rounded-full transition-all ${description.length > 1500 ? 'bg-danger' : 'bg-accent'}`}
-                  style={{ width: `${Math.min((description.length / 1500) * 100, 100)}%` }}
+                  className={`h-full rounded-full transition-all ${descriptionValue.length > 1500 ? 'bg-danger' : 'bg-accent'}`}
+                  style={{ width: `${Math.min((descriptionValue.length / 1500) * 100, 100)}%` }}
                 />
               </div>
-              <span className={`text-label tabular-nums shrink-0 ${description.length > 1500 ? 'text-danger' : 'font-normal text-ink-faint'}`}>
-                {description.length} / 1500
+              <span className={`text-label tabular-nums shrink-0 ${descriptionValue.length > 1500 ? 'text-danger' : 'font-normal text-ink-faint'}`}>
+                {descriptionValue.length} / 1500
               </span>
             </div>
           </div>
@@ -276,7 +279,7 @@ export function BundleDetailPage() {
               min="0"
               step="0.01"
               placeholder="z. B. 29.99"
-              value={price}
+              value={priceValue}
               onChange={(e) => setPrice(e.target.value)}
               className={inputClass}
             />
@@ -285,7 +288,7 @@ export function BundleDetailPage() {
           <Button
             block
             size="md"
-            disabled={busy || !price || !description || description.length > 1500}
+            disabled={busy || !priceValue || !descriptionValue || descriptionValue.length > 1500}
             onClick={prepareListing}
           >
             {busy ? 'Wird angelegt…' : 'Listing anlegen'}

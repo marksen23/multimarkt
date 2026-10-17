@@ -19,6 +19,8 @@ import {
 import { PriceTriangulationService } from '../pricing/price-triangulation.service';
 import { StateGuardService } from '../state-guard/state-guard.service';
 import { TitleGapAnalysis, TitleTokenAnalysisService } from '../title-generation/title-token-analysis.service';
+import { applyLogisticsListingText, fulfillmentClause } from '../../domain/logistics/listing-text';
+import { toLogisticsProfile } from '../../domain/logistics/logistics-profile';
 import { VaguePhraseDetectorService, VaguePhraseMatch } from './vague-phrase-detector.service';
 import {
   DescriptionQualityResult,
@@ -95,8 +97,7 @@ export class CanonicalListingService {
     const { comparableListings, priceResearchResult } = await this.fetchPriceResearchData(itemId);
 
     const descriptionText = await this.suggestDescription(
-      item.title,
-      item.condition,
+      item,
       attributes,
       comparableListings,
       salesGoal,
@@ -155,8 +156,7 @@ export class CanonicalListingService {
       const finalDescription =
         descriptionText ??
         (await this.suggestDescription(
-          item.title,
-          item.condition,
+          item,
           await manager.find(ItemAttributeEntity, { where: { itemId } }),
           (await this.fetchPriceResearchData(itemId)).comparableListings,
           null,
@@ -216,22 +216,31 @@ export class CanonicalListingService {
   }
 
   private async suggestDescription(
-    title: string | null,
-    condition: string | null,
+    item: Parameters<typeof toLogisticsProfile>[0] & { title: string | null; condition: string | null },
     attributes: ItemAttributeEntity[],
     comparableListings: ComparableListingRef[],
     salesGoal: SalesGoal | null,
     channel: DescriptionChannel | null,
   ): Promise<string> {
+    const profile = toLogisticsProfile(item);
     const suggestion = await this.descriptionProvider.generate({
-      title,
-      condition,
+      title: item.title,
+      condition: item.condition,
       attributes: attributes.map((a) => ({ key: a.attributeKey, value: a.attributeValue })),
       comparableListings,
       salesGoal,
+      logisticsHint: profile.captured ? fulfillmentClause(profile) : null,
       channel: channel ?? undefined,
     });
-    return suggestion ?? `${title ?? 'Artikel'} — Zustand: ${condition ?? 'unbekannt'}`;
+    // Provider liefert `null`, wenn keine Generierung möglich war (z.B.
+    // Gemini-Antwort leer) — nie einen kaputten/leeren Text durchreichen.
+    const base = suggestion ?? `${item.title ?? 'Artikel'} — Zustand: ${item.condition ?? 'unbekannt'}`;
+    return applyLogisticsListingText({
+      body: base,
+      title: item.title,
+      condition: item.condition,
+      profile,
+    });
   }
 
   /**

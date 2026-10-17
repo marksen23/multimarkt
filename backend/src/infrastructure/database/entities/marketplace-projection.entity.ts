@@ -46,6 +46,11 @@ export class MarketplaceProjectionEntity {
   @Column({ name: 'fallback_data', type: 'jsonb', default: {} })
   fallbackData: Record<string, unknown>;
 
+  // Start der Nachfass-Frist (Feature-Plan 3.6). Gesetzt beim Wechsel nach
+  // ONLINE, danach nicht mehr verschoben.
+  @Column({ name: 'online_since', type: 'timestamptz', nullable: true })
+  onlineSince: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

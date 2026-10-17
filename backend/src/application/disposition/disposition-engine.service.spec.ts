@@ -1,11 +1,38 @@
+import { EMPTY_LOGISTICS } from '../../domain/logistics/logistics-profile';
+import { DEFAULT_CHANNEL_FEE_ASSUMPTIONS } from '../../domain/pricing/channel-fees';
 import { DispositionEngineService, ProductProfile } from './disposition-engine.service';
+import type { LogisticsProfile } from '../../domain/logistics/logistics-profile';
+
+const smallParcel: LogisticsProfile = {
+  captured: true,
+  weightGrams: 180,
+  lengthCm: 22,
+  widthCm: 16,
+  heightCm: 2,
+  bulky: false,
+  pickupOnly: false,
+  shippingPossible: true,
+  postalCode: '10115',
+};
+
+const sofa: LogisticsProfile = {
+  captured: true,
+  weightGrams: 45_000,
+  lengthCm: 210,
+  widthCm: 95,
+  heightCm: 85,
+  bulky: true,
+  pickupOnly: true,
+  shippingPossible: false,
+  postalCode: '10115',
+};
 
 const baseProfile: ProductProfile = {
   id: 'p1',
   category: 'household',
   condition: 'good',
   marketMedianPrice: 50,
-  isBulky: false,
+  logistics: EMPTY_LOGISTICS,
   userGoal: 'BALANCED',
 };
 
@@ -37,6 +64,18 @@ describe('DispositionEngineService', () => {
     expect(result.action).toBe('BUYBACK_SERVICE');
   });
 
+  it('recommends BUYBACK_SERVICE for the taxonomy labels Elektronik and Medien', () => {
+    for (const category of ['Elektronik', 'Medien']) {
+      const result = service.evaluate({
+        ...baseProfile,
+        category,
+        marketMedianPrice: 100,
+        userGoal: 'MINIMAL_EFFORT',
+      });
+      expect(result.action).toBe('BUYBACK_SERVICE');
+    }
+  });
+
   it('does not force BUYBACK_SERVICE for electronics when the goal is MAX_PROFIT', () => {
     const result = service.evaluate({
       ...baseProfile,
@@ -47,13 +86,107 @@ describe('DispositionEngineService', () => {
     expect(result.action).toBe('SELL_ONLINE');
   });
 
-  it('routes bulky items to LOCAL_PICKUP_ONLY', () => {
-    const result = service.evaluate({ ...baseProfile, isBulky: true, marketMedianPrice: 80 });
+  it('routes a sofa to local pickup and recommends no shipping portal', () => {
+    const result = service.evaluate({ ...baseProfile, logistics: sofa, marketMedianPrice: 80 });
     expect(result.action).toBe('LOCAL_PICKUP_ONLY');
+    expect(result.shippingCostEur).toBe(0);
+    expect(result.recommendedPlatforms.map((p) => p.key)).toEqual(['KLEINANZEIGEN']);
+    expect(result.recommendedPlatforms.some((p) => p.key === 'EBAY' || p.key === 'VINTED')).toBe(false);
+    expect(result.recommendedPlatforms[0].netExpectedValue).toBe(80);
   });
 
-  it('only ever recommends Kleinanzeigen — the sole active sales channel (§4e-Ergänzung)', () => {
-    const result = service.evaluate({ ...baseProfile, category: 'fashion', marketMedianPrice: 40 });
+  it('keeps an oversized sofa off shipping portals even when shipping was ticked', () => {
+    const result = service.evaluate({
+      ...baseProfile,
+      marketMedianPrice: 80,
+      logistics: { ...sofa, bulky: false, pickupOnly: false, shippingPossible: true },
+    });
+    expect(result.action).toBe('LOCAL_PICKUP_ONLY');
     expect(result.recommendedPlatforms.map((p) => p.key)).toEqual(['KLEINANZEIGEN']);
+  });
+
+  it('recommends shipping portals for a small parcel and drops the flat 1.50 € deduction', () => {
+    const result = service.evaluate({
+      ...baseProfile,
+      marketMedianPrice: 40,
+      logistics: smallParcel,
+    });
+    expect(result.action).toBe('SELL_ONLINE');
+    expect(result.shippingCostEur).toBe(1.95);
+    expect(result.shippingCostEur).not.toBe(1.5);
+    expect(result.recommendedPlatforms.map((p) => p.key)).toEqual(['KLEINANZEIGEN', 'EBAY', 'VINTED']);
+    for (const platform of result.recommendedPlatforms) {
+      expect(platform.netExpectedValue).toBe(38.05);
+    }
+  });
+
+  it('ranks channels by net after fee assumptions, not by the shared offer median', () => {
+    const result = service.evaluate({
+      ...baseProfile,
+      marketMedianPrice: 40,
+      logistics: smallParcel,
+      channelFees: DEFAULT_CHANNEL_FEE_ASSUMPTIONS,
+    });
+    expect(result.recommendedPlatforms.map((p) => p.key)).toEqual([
+      'KLEINANZEIGEN',
+      'VINTED',
+      'EBAY',
+    ]);
+    expect(result.recommendedPlatforms.map((p) => p.netExpectedValue)).toEqual([
+      38.05, 35.35, 33.65,
+    ]);
+    expect(result.recommendedPlatforms.map((p) => p.feePercent)).toEqual([0, 5, 11]);
+    expect(result.rationale).toContain('nicht dem Angebotsmedian');
+  });
+
+  it('puts the channel with the lower fee assumption ahead when medians match', () => {
+    const result = service.evaluate({
+      ...baseProfile,
+      marketMedianPrice: 40,
+      logistics: smallParcel,
+      channelFees: {
+        KLEINANZEIGEN: { percent: 20, fixedEur: 0 },
+        EBAY: { percent: 0, fixedEur: 0 },
+        VINTED: { percent: 0, fixedEur: 1 },
+      },
+    });
+    expect(result.recommendedPlatforms.map((p) => p.key)).toEqual([
+      'EBAY',
+      'VINTED',
+      'KLEINANZEIGEN',
+    ]);
+    expect(result.recommendedPlatforms.map((p) => p.netExpectedValue)).toEqual([
+      38.05, 37.05, 30.05,
+    ]);
+  });
+
+  it('uses the shipping flat rate in the net when it is set', () => {
+    const result = service.evaluate({
+      ...baseProfile,
+      marketMedianPrice: 40,
+      logistics: smallParcel,
+      channelFees: {
+        KLEINANZEIGEN: { percent: 0, fixedEur: 0 },
+        EBAY: { percent: 0, fixedEur: 0 },
+        VINTED: { percent: 10, fixedEur: 0 },
+      },
+      shippingFlatEur: 6,
+    });
+    expect(result.recommendedPlatforms.map((p) => p.key)).toEqual([
+      'KLEINANZEIGEN',
+      'EBAY',
+      'VINTED',
+    ]);
+    expect(result.recommendedPlatforms.map((p) => p.netExpectedValue)).toEqual([34, 34, 30]);
+    expect(result.recommendedPlatforms[0].shippingEur).toBe(6);
+    expect(result.shippingCostEur).toBe(1.95);
+  });
+
+  it('without a logistics profile recommends only Kleinanzeigen and does not subtract 1.50 €', () => {
+    const result = service.evaluate({ ...baseProfile, category: 'fashion', marketMedianPrice: 40 });
+    expect(result.action).toBe('SELL_ONLINE');
+    expect(result.shippingCostEur).toBe(0);
+    expect(result.recommendedPlatforms.map((p) => p.key)).toEqual(['KLEINANZEIGEN']);
+    expect(result.recommendedPlatforms[0].netExpectedValue).toBe(40);
   });
 });

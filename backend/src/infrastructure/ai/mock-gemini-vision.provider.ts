@@ -17,14 +17,20 @@ export class MockGeminiVisionProvider implements AiVisionProvider {
     return {
       modelId: 'mock-gemini-vision-stub-v1',
       promptVersion: '2026-09-20',
+      // Nur, was auf einem Jackenfoto typischerweise sichtbar ist. Größe,
+      // Marke und Funktion werden nicht geraten — ProductAnalysisService
+      // macht daraus Lücken, wenn die Kategorie sie verlangt.
       attributes: hasImages
         ? [
             { key: 'category', value: 'Bekleidung > Herren > Jacken & Mäntel', confidence: 0.91 },
             { key: 'color', value: 'Schwarz', confidence: 0.87 },
-            { key: 'brand', value: null, confidence: 0.22 }, // zu unsicher -> UNKNOWN
+            { key: 'brand', value: null, confidence: 0.22 },
             { key: 'material', value: 'Polyester', confidence: 0.58 },
-            { key: 'condition', value: 'good', confidence: 0.64 }, // Vorschlag, kein Zusicherung
-            { key: 'size', value: 'L', confidence: 0.72 },
+            // Größe, Maße und Funktion nicht raten — die Taxonomie macht daraus Lücken.
+            { key: 'size', value: null, confidence: 0 },
+            { key: 'measurements', value: null, confidence: 0 },
+            { key: 'functionChecked', value: null, confidence: 0 },
+            { key: 'condition', value: 'good', confidence: 0.64 },
             { key: 'notable_features', value: null, confidence: 0.1 },
             { key: 'visible_defects', value: null, confidence: 0.8 },
           ]
@@ -33,8 +39,10 @@ export class MockGeminiVisionProvider implements AiVisionProvider {
             { key: 'color', value: null, confidence: 0 },
             { key: 'brand', value: null, confidence: 0 },
             { key: 'material', value: null, confidence: 0 },
-            { key: 'condition', value: null, confidence: 0 },
             { key: 'size', value: null, confidence: 0 },
+            { key: 'measurements', value: null, confidence: 0 },
+            { key: 'functionChecked', value: null, confidence: 0 },
+            { key: 'condition', value: null, confidence: 0 },
             { key: 'notable_features', value: null, confidence: 0 },
             { key: 'visible_defects', value: null, confidence: 0 },
           ],

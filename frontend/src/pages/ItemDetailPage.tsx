@@ -1,14 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { copyText } from '../lib/clipboard';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../components/Toast';
+import { followUpsApi, type ItemFollowUp } from '../api/follow-ups';
 import { itemsApi } from '../api/items';
 import { listingsApi } from '../api/listings';
 import { ApiRequestError } from '../api/client';
 import type { ItemDetail, ListingChannel, SaleEvent } from '../api/types';
+import { buildPhotoBriefing } from '../category/photo-briefing';
+import { toLogisticsProfile, type LogisticsProfile } from '../logistics/profile';
+import { portalLabel } from '../margin/sale-closeout';
 import { Angebotspaket } from '../components/Angebotspaket';
 import { SmartReviewPanel } from '../components/SmartReviewPanel';
 import { DispositionPanel } from '../components/DispositionPanel';
+import { FollowUpPanel } from '../components/FollowUpPanel';
+import { LogisticsProfileForm } from '../components/LogisticsProfileForm';
 import { ListingsManager } from '../components/ListingsManager';
+import { SaleCloseoutForm } from '../components/SaleCloseoutForm';
+import { SaleResultPanel } from '../components/SaleResultPanel';
 import { PhotoCapture } from '../components/PhotoCapture';
 import { PhotoGallery } from '../components/PhotoGallery';
 import { PhotoQualityPanel } from '../components/PhotoQualityPanel';
@@ -46,6 +55,7 @@ export function ItemDetailPage() {
   const toast = useToast();
   const { refresh: refreshItems } = useItems();
   const [detail, setDetail] = useState<ItemDetail | null>(null);
+  const [followUp, setFollowUp] = useState<ItemFollowUp | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState<'discard' | 'sold' | null>(null);
@@ -55,7 +65,13 @@ export function ItemDetailPage() {
   const reload = useCallback(async () => {
     if (!id) return;
     try {
-      setDetail(await itemsApi.get(id));
+      const next = await itemsApi.get(id);
+      setDetail(next);
+      if (next.item.status === 'LISTED') {
+        setFollowUp(await followUpsApi.forItem(id));
+      } else {
+        setFollowUp(null);
+      }
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler');
     }
@@ -112,6 +128,13 @@ export function ItemDetailPage() {
   if (!detail || !id) return <DetailPageSkeleton />;
 
   const { item } = detail;
+  const briefing = buildPhotoBriefing(
+    detail.attributes,
+    detail.photos.map((photo) => photo.shot),
+  );
+  const logistics = toLogisticsProfile(item);
+  const categoryValue =
+    detail.attributes.find((attribute) => attribute.attributeKey === 'category')?.attributeValue ?? null;
 
   const menu: MoreMenuItem[] = [];
   if (item.status === 'READY') {
@@ -166,10 +189,19 @@ export function ItemDetailPage() {
         />
       </div>
 
-      {detail.photos.length > 0 && !FINISHED.has(item.status) && (
+      {(detail.photos.length > 0 || briefing.category) && !FINISHED.has(item.status) && (
         <div className="space-y-3">
-          <PhotoGallery photos={detail.photos} />
-          {DISCARDABLE.has(item.status) && <PhotoQualityPanel itemId={id} photoCount={detail.photos.length} />}
+          <PhotoGallery
+            photos={detail.photos}
+            requiredShots={briefing.requiredShots}
+            missingShots={briefing.missingShots}
+            busy={busy}
+            onShotChange={(photoId, shot) => run(() => itemsApi.assignPhotoShot(id, photoId, shot))}
+            onAdd={(file, shot) => run(() => itemsApi.addPhoto(id, file, shot))}
+          />
+          {DISCARDABLE.has(item.status) && (
+            <PhotoQualityPanel itemId={id} photoCount={detail.photos.length} briefing={briefing} />
+          )}
         </div>
       )}
 
@@ -192,34 +224,64 @@ export function ItemDetailPage() {
         />
       )}
 
-      {item.status === 'READY' &&
-        (manual ? (
-          <PrepareListingStep
-            itemId={id}
-            purchasePriceEur={item.purchasePriceEur}
-            currentTitle={item.title}
+      {item.status === 'READY' && (
+        <>
+          <LogisticsProfileForm
+            key={[
+              item.logisticsCaptured,
+              item.weightGrams,
+              item.lengthCm,
+              item.widthCm,
+              item.heightCm,
+              item.logisticsBulky,
+              item.pickupOnly,
+              item.shippingPossible,
+              item.postalCode,
+            ].join('|')}
+            item={item}
             busy={busy}
-            onUpdateTitle={(title) => run(() => itemsApi.updateTitle(id, title))}
-            onPrepare={(price, description) => run(() => itemsApi.prepareListing(id, price, description))}
+            onSave={(draft) => run(() => itemsApi.updateLogistics(id, draft))}
           />
-        ) : (
-          <>
-            <Angebotspaket
+          {manual ? (
+            <PrepareListingStep
               itemId={id}
-              onListed={() => {
-                void reload();
-                refreshItems();
-              }}
+              purchasePriceEur={item.purchasePriceEur}
+              logistics={logistics}
+              currentTitle={item.title}
+              busy={busy}
+              onUpdateTitle={(title) => run(() => itemsApi.updateTitle(id, title))}
+              onPrepare={(price, description) => run(() => itemsApi.prepareListing(id, price, description))}
             />
-            <DispositionPanel itemId={id} />
-          </>
-        ))}
+          ) : (
+            <>
+              <Angebotspaket
+                itemId={id}
+                onListed={() => {
+                  void reload();
+                  refreshItems();
+                }}
+              />
+              <DispositionPanel itemId={id} logistics={logistics} itemCategory={categoryValue} />
+            </>
+          )}
+          <NegotiationEntry itemId={id} />
+        </>
+      )}
 
       {item.status === 'LISTED' && (
         <div className="space-y-5">
+          <NegotiationEntry itemId={id} />
+          {followUp && <FollowUpPanel itemId={id} followUp={followUp} busy={busy} onRecord={run} />}
           <section>
             <SectionLabel>Online auf</SectionLabel>
-            <ListingsManager listings={detail.listings} busy={busy} run={run} reportSold={false} emptyLabel="Noch kein Listing vorhanden." />
+            <ListingsManager
+              listings={detail.listings}
+              busy={busy}
+              run={run}
+              reportSold={false}
+              purchasePriceEur={item.purchasePriceEur}
+              emptyLabel="Noch kein Listing vorhanden."
+            />
           </section>
           {detail.listings[0]?.descriptionText && <CopyDescriptionButton text={detail.listings[0].descriptionText} />}
           {showTexts ? (
@@ -240,7 +302,12 @@ export function ItemDetailPage() {
         </div>
       )}
 
-      {item.status === 'SALE_CONFLICT' && <ConflictResolutionPanel itemId={id} busy={busy} run={run} onReload={() => void reload()} />}
+      {item.status === 'SALE_CONFLICT' && (
+        <>
+          <NegotiationEntry itemId={id} />
+          <ConflictResolutionPanel itemId={id} busy={busy} run={run} onReload={() => void reload()} />
+        </>
+      )}
 
       {item.status === 'BUNDLED' && (
         <EmptyState
@@ -251,7 +318,13 @@ export function ItemDetailPage() {
         />
       )}
 
-      {FINISHED.has(item.status) && <FinishedScreen detail={detail} />}
+      {FINISHED.has(item.status) && (
+        <FinishedScreen
+          detail={detail}
+          busy={busy}
+          onRecordSale={(draft) => run(() => itemsApi.recordSaleCloseout(id, draft))}
+        />
+      )}
 
       <Sheet open={sheet === 'discard'} onClose={() => setSheet(null)} title="Artikel verwerfen?">
         <p className="text-body text-ink-muted mb-4">
@@ -279,6 +352,20 @@ export function ItemDetailPage() {
 }
 
 /** Meldet den Verkauf über das Online-Listing (mit echtem Preis); ohne verfolgtes Portal nur den Status. */
+function NegotiationEntry({ itemId }: { itemId: string }) {
+  return (
+    <Link
+      to={`/items/${itemId}/verhandlung`}
+      className="block bg-surface border border-line rounded-card p-4 hover:bg-surface-hover transition-colors"
+    >
+      <span className="text-micro uppercase text-ink-muted">Verhandlung</span>
+      <p className="text-body text-ink mt-1">
+        Käufernachricht einfügen. Drei Antworten zum Kopieren, nichts wird gesendet.
+      </p>
+    </Link>
+  );
+}
+
 function SoldSheet({
   open,
   onClose,
@@ -294,61 +381,60 @@ function SoldSheet({
 }) {
   const online = detail.listings.flatMap((l) => l.projections.filter((p) => p.status === 'ONLINE').map((p) => ({ p, listing: l })));
   const [projectionId, setProjectionId] = useState<string | null>(null);
-  const [price, setPrice] = useState('');
 
   useEffect(() => {
     if (!open) return;
     setProjectionId(online[0]?.p.id ?? null);
-    setPrice(online[0]?.listing.sellingPrice.toFixed(2) ?? '');
     // Nur beim Öffnen vorbelegen, nicht bei jeder Eingabe überschreiben.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const parsed = parseFloat(price.replace(',', '.'));
-  const valid = !isNaN(parsed) && parsed > 0;
+  const selected = online.find(({ p }) => p.id === projectionId) ?? online[0];
 
   return (
     <Sheet open={open} onClose={onClose} title="Verkauft!">
       <div className="space-y-4">
-        {online.length > 0 ? (
+        {online.length > 0 && selected ? (
           <>
             {online.length > 1 && (
               <Field label="Verkauft über">
                 <select value={projectionId ?? ''} onChange={(e) => setProjectionId(e.target.value)} className={inputClass}>
                   {online.map(({ p }) => (
                     <option key={p.id} value={p.id}>
-                      {p.marketplaceId}
+                      {portalLabel(p.marketplaceId)}
                     </option>
                   ))}
                 </select>
               </Field>
             )}
-            <Field label="Tatsächlicher Verkaufspreis (€)" hint="Für deine Erlös-Statistik.">
-              <input type="number" inputMode="decimal" step="0.01" min="0.01" value={price} onChange={(e) => setPrice(e.target.value)} className={inputClass} />
-            </Field>
+            <SaleCloseoutForm
+              key={selected.p.id}
+              initialProceeds={selected.listing.sellingPrice}
+              initialPortal={portalLabel(selected.p.marketplaceId)}
+              purchasePriceEur={detail.item.purchasePriceEur}
+              showProfit
+              busy={busy}
+              submitLabel="Verkauf speichern"
+              onSubmit={(draft) => onConfirm(() => listingsApi.markSold(selected.p.id, draft))}
+              onCancel={onClose}
+            />
           </>
         ) : (
-          <p className="text-body text-ink-muted">
-            Der Artikel wird als verkauft abgeschlossen. Da kein Portal verfolgt wird, wird kein Verkaufspreis gespeichert.
-          </p>
+          <>
+            <p className="text-body text-ink-muted">
+              Der Artikel wird als verkauft abgeschlossen. Da kein Portal verfolgt wird, wird kein Verkaufspreis gespeichert.
+            </p>
+            <p className="text-label font-normal text-ink-faint">Das lässt sich nicht rückgängig machen.</p>
+            <div className="flex gap-2 [&>*]:flex-1">
+              <Button variant="secondary" onClick={onClose}>
+                Abbrechen
+              </Button>
+              <Button loading={busy} onClick={() => onConfirm(() => itemsApi.markSold(detail.item.id))}>
+                Verkauft
+              </Button>
+            </div>
+          </>
         )}
-        <p className="text-label font-normal text-ink-faint">Das lässt sich nicht rückgängig machen.</p>
-        <div className="flex gap-2 [&>*]:flex-1">
-          <Button variant="secondary" onClick={onClose}>
-            Abbrechen
-          </Button>
-          <Button
-            loading={busy}
-            disabled={online.length > 0 && (!valid || !projectionId)}
-            onClick={() =>
-              onConfirm(() =>
-                online.length > 0 && projectionId ? listingsApi.markSold(projectionId, parsed) : itemsApi.markSold(detail.item.id),
-              )
-            }
-          >
-            Verkauft
-          </Button>
-        </div>
       </div>
     </Sheet>
   );
@@ -358,7 +444,7 @@ function CopyDescriptionButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(text);
+      await copyText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -441,6 +527,7 @@ function AnalyzeStep({
 function PrepareListingStep({
   itemId,
   purchasePriceEur,
+  logistics,
   currentTitle,
   busy,
   onUpdateTitle,
@@ -448,6 +535,7 @@ function PrepareListingStep({
 }: {
   itemId: string;
   purchasePriceEur: number | null;
+  logistics: LogisticsProfile;
   currentTitle: string | null;
   busy: boolean;
   onUpdateTitle: (title: string) => Promise<void>;
@@ -517,6 +605,7 @@ function PrepareListingStep({
       <PriceResearchPanel
         itemId={itemId}
         purchasePriceEur={purchasePriceEur}
+        logistics={logistics}
         onSuggestPrice={(p) => setPrice(String(p))}
         onMedianAvailable={setMarketMedian}
       />
@@ -734,7 +823,15 @@ function ConflictResolutionPanel({
   );
 }
 
-function FinishedScreen({ detail }: { detail: ItemDetail }) {
+function FinishedScreen({
+  detail,
+  busy,
+  onRecordSale,
+}: {
+  detail: ItemDetail;
+  busy: boolean;
+  onRecordSale: (draft: Parameters<typeof itemsApi.recordSaleCloseout>[1]) => Promise<void>;
+}) {
   const { item, photos, listings } = detail;
   const [saleEvents, setSaleEvents] = useState<SaleEvent[] | null>(null);
 
@@ -773,6 +870,7 @@ function FinishedScreen({ detail }: { detail: ItemDetail }) {
           )}
         </div>
       </Card>
+      {sold && <SaleResultPanel item={item} busy={busy} onRecord={onRecordSale} />}
       <ActionBar>
         <ButtonLink to="/new" size="lg" icon="camera">
           Nächsten Artikel erfassen

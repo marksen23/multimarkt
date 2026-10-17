@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { itemsApi } from '../api/items';
 import type { ItemDetail } from '../api/types';
+import { RESALE_CATEGORIES, attributeLabel, categoryGaps } from '../category/taxonomy';
 import { ActionBar, Button, Card, Icon, inputClass } from '../ui';
 
 const CONDITION_OPTIONS = ['Neu', 'Wie neu', 'Gut', 'Gebraucht', 'Defekt'];
@@ -21,9 +22,14 @@ const KEY_LABELS: Record<string, string> = {
   material: 'Material',
   condition: 'Zustand',
   size: 'Größe',
+  measurements: 'Maße',
+  functionChecked: 'Funktion geprüft',
+  categoryDetail: 'Artikelart',
   notable_features: 'Besonderheiten',
   visible_defects: 'Sichtbare Mängel',
 };
+
+const TAXONOMY_KEYS = new Set(['category', 'size', 'measurements', 'brand', 'functionChecked']);
 
 interface Props {
   detail: ItemDetail;
@@ -104,10 +110,15 @@ export function SmartReviewPanel({
   // Exclude condition from attribute lists — it's handled by the condition picker
   const nonConditionAttrs = detail.attributes.filter((a) => a.attributeKey !== 'condition');
 
-  const missing = useMemo(
-    () => nonConditionAttrs.filter((a) => a.truthState === 'UNKNOWN'),
-    [nonConditionAttrs],
+  const gapKeys = useMemo(() => categoryGaps(detail.attributes), [detail.attributes]);
+  const extraMissing = useMemo(
+    () =>
+      nonConditionAttrs.filter(
+        (a) => a.truthState === 'UNKNOWN' && !TAXONOMY_KEYS.has(a.attributeKey) && !gapKeys.includes(a.attributeKey),
+      ),
+    [nonConditionAttrs, gapKeys],
   );
+  const missingCount = gapKeys.length + extraMissing.length;
   const inferred = useMemo(
     () => nonConditionAttrs.filter((a) => a.truthState === 'INFERRED'),
     [nonConditionAttrs],
@@ -117,7 +128,7 @@ export function SmartReviewPanel({
     [detail.attributes],
   );
 
-  const totalQuestions = missing.length + inferred.length + 1; // +1 for condition
+  const totalQuestions = missingCount + inferred.length + 1; // +1 for condition
   const answeredQuestions =
     (selectedCondition !== null ? 1 : 0) +
     inferred.filter((a) => a.truthState === 'USER_CONFIRMED').length;
@@ -137,7 +148,7 @@ export function SmartReviewPanel({
   };
 
   // Determine if this is a "one-tap" scenario (only condition needed)
-  const isOneTap = missing.length === 0 && inferred.length === 0;
+  const isOneTap = missingCount === 0 && inferred.length === 0;
 
   return (
     <div>
@@ -150,7 +161,7 @@ export function SmartReviewPanel({
             <p className="text-label font-normal text-ink-muted mt-0.5">
               {isOneTap
                 ? 'KI hat alles erkannt — nur Zustand bestätigen'
-                : `${missing.length + inferred.length + 1} Angabe${missing.length + inferred.length + 1 !== 1 ? 'n' : ''} nötig`}
+                : `${missingCount + inferred.length + 1} Angabe${missingCount + inferred.length + 1 !== 1 ? 'n' : ''} nötig`}
             </p>
           </div>
           {autoConfirmed.length > 0 && (
@@ -175,8 +186,70 @@ export function SmartReviewPanel({
 
       <div className="p-4 space-y-4">
 
-        {/* UNKNOWN attributes — required, AI had no answer */}
-        {missing.map((a) => (
+        {gapKeys.map((key) => (
+          <div key={key} className="bg-danger/5 p-4 rounded-card border border-danger/20 space-y-2">
+            <label className="block text-body font-bold text-ink">
+              {key === 'category'
+                ? 'Welche Kategorie passt?'
+                : key === 'functionChecked'
+                  ? 'Funktioniert der Artikel?'
+                  : `${KEY_LABELS[key] ?? attributeLabel(key)}?`}
+            </label>
+            <p className="text-label font-normal text-ink-muted">
+              Pflichtangabe dieser Kategorie — auf dem Foto nicht erkennbar
+            </p>
+            {key === 'functionChecked' ? (
+              <div className="grid grid-cols-2 gap-2">
+                {(['ja', 'nein'] as const).map((answer) => (
+                  <Button
+                    key={answer}
+                    variant="secondary"
+                    disabled={anyActionInProgress}
+                    loading={savingKey === key}
+                    onClick={() => confirmAttr(key, answer)}
+                  >
+                    {answer === 'ja' ? 'Ja' : 'Nein'}
+                  </Button>
+                ))}
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                {key === 'category' ? (
+                  <select
+                    value={missingDrafts.category ?? ''}
+                    onChange={(e) => setMissingDrafts((prev) => ({ ...prev, category: e.target.value }))}
+                    className={`${inputClass} flex-1 min-w-0`}
+                  >
+                    <option value="">Kategorie wählen…</option>
+                    {RESALE_CATEGORIES.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder={`${KEY_LABELS[key] ?? attributeLabel(key)} eingeben…`}
+                    value={missingDrafts[key] ?? ''}
+                    onChange={(e) => setMissingDrafts((prev) => ({ ...prev, [key]: e.target.value }))}
+                    className={`${inputClass} flex-1 min-w-0`}
+                  />
+                )}
+                <Button
+                  disabled={anyActionInProgress || !missingDrafts[key]?.trim()}
+                  loading={savingKey === key}
+                  onClick={() => confirmAttr(key, missingDrafts[key])}
+                >
+                  OK
+                </Button>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* UNKNOWN attributes outside the category taxonomy */}
+        {extraMissing.map((a) => (
           <div key={a.id} className="bg-danger/5 p-4 rounded-card border border-danger/20 space-y-2">
             <div className="flex items-start gap-2">
               <span className="mt-0.5 w-4 h-4 rounded-full bg-danger/20 flex items-center justify-center shrink-0">
