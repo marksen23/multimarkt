@@ -26,6 +26,7 @@ import { SaleIngestionModule } from '../application/sale-conflict/sale-ingestion
 import { BackupExportModule } from '../application/export/backup-export.module';
 import { SalesModule } from '../application/sales/sales.module';
 import { StateGuardModule } from '../application/state-guard/state-guard.module';
+import { WorklistModule } from '../application/worklist/worklist.module';
 import { AccountController } from './controllers/account.controller';
 import { ExportController } from './controllers/export.controller';
 import { AnkaufController } from './controllers/ankauf.controller';
@@ -36,6 +37,7 @@ import { ListingsController } from './controllers/listings.controller';
 import { SaleEventsController } from './controllers/sale-events.controller';
 import { SalesController } from './controllers/sales.controller';
 import { StorageController } from './controllers/storage.controller';
+import { WorklistController } from './controllers/worklist.controller';
 import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
@@ -67,6 +69,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     AccountDeletionModule,
     WebhooksModule,
     StorageModule,
+    WorklistModule,
   ],
   controllers: [
     ItemsController,
@@ -79,6 +82,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     StorageController,
     AccountController,
     AnkaufController,
+    WorklistController,
   ],
 })
 export class ApiModule {}
