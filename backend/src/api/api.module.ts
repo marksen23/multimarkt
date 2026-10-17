@@ -10,6 +10,7 @@ import {
 import { AnkaufModule } from '../application/ankauf/ankauf.module';
 import { BundleAssignmentModule } from '../application/bundle/bundle-assignment.module';
 import { CanonicalListingModule } from '../application/listing/canonical-listing.module';
+import { NegotiationModule } from '../application/negotiation/negotiation.module';
 import { CapabilityCheckModule } from '../application/capability-check/capability-check.module';
 import { ConflictResolutionModule } from '../application/conflict-resolution/conflict-resolution.module';
 import { AccountDeletionModule } from '../application/deletion/account-deletion.module';
@@ -58,6 +59,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     ConflictResolutionModule,
     SaleIngestionModule,
     SalesModule,
+    NegotiationModule,
     AccountDeletionModule,
     WebhooksModule,
     StorageModule,

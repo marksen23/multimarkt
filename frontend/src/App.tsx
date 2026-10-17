@@ -9,6 +9,7 @@ import { NewBundlePage } from './pages/NewBundlePage';
 import { BundleDetailPage } from './pages/BundleDetailPage';
 import { AccountPage } from './pages/AccountPage';
 import { NegotiationDemoPage } from './pages/NegotiationDemoPage';
+import { NegotiationPage } from './pages/NegotiationPage';
 import { ConfidenceCenterDemoPage } from './pages/ConfidenceCenterDemoPage';
 import { AngebotspaketPage } from './pages/AngebotspaketPage';
 import { AnkaufPage } from './pages/AnkaufPage';
@@ -29,6 +30,7 @@ function App() {
           <Route path="/bundles/new" element={<NewBundlePage />} />
           <Route path="/bundles/:id" element={<BundleDetailPage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/items/:id/verhandlung" element={<NegotiationPage />} />
           <Route path="/demo/negotiation" element={<NegotiationDemoPage />} />
           <Route path="/demo/confidence-center" element={<ConfidenceCenterDemoPage />} />
         </Routes>

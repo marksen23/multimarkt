@@ -32,6 +32,7 @@ import {
 } from '../dto/items.dto';
 import { CreateFromPurchaseDto, UpdatePurchaseDto } from '../dto/purchase.dto';
 import { UpdateLogisticsProfileDto } from '../dto/logistics-profile.dto';
+import { SuggestNegotiationDto } from '../dto/negotiation.dto';
 import { RecordPriceDropDto } from '../dto/price-drop.dto';
 import { RecordSaleCloseoutDto } from '../dto/sale-closeout.dto';
 import { EvaluateDispositionDto } from '../dto/disposition.dto';
@@ -81,6 +82,10 @@ import {
   TitleSuggestion,
 } from '../../application/title-generation/title-generation.service';
 import { ListingChannel } from '../../domain/ai/title-generation-provider.interface';
+import {
+  NegotiationService,
+  NegotiationSuggestion,
+} from '../../application/negotiation/negotiation.service';
 import { SaleCloseoutService } from '../../application/sales/sale-closeout.service';
 import { toLogisticsProfile } from '../../domain/logistics/logistics-profile';
 import { StateGuardService } from '../../application/state-guard/state-guard.service';
@@ -137,6 +142,7 @@ export class ItemsController {
     private readonly attributeConfirmation: ItemAttributeConfirmationService,
     private readonly saleCloseout: SaleCloseoutService,
     private readonly followUps: FollowUpService,
+    private readonly negotiation: NegotiationService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
   ) {}
 
@@ -651,6 +657,25 @@ export class ItemsController {
       itemId: id,
       newPrice: dto.newPrice,
       canonicalListingId: dto.canonicalListingId,
+    });
+  }
+
+  /**
+   * Feature-Plan 3.7: Käufernachricht einfügen, mit P_min und P_target
+   * dieses Artikels vergleichen, drei Antworten zurückgeben. Nichts wird
+   * gesendet und kein Portal-Chat gelesen.
+   */
+  @Post(':id/negotiation')
+  async suggestNegotiation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SuggestNegotiationDto,
+    @CurrentActor() actor: ActorContext,
+  ): Promise<NegotiationSuggestion> {
+    return this.negotiation.suggest({
+      userId: actor.userId ?? '',
+      itemId: id,
+      message: dto.message,
+      platform: dto.platform,
     });
   }
 

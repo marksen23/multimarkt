@@ -178,6 +178,9 @@ export function ItemDetailPage() {
               ✨ Angebotspaket erstellen
             </button>
           </div>
+          <div className="px-4">
+            <NegotiationEntry itemId={id} />
+          </div>
           <PrepareListingStep
             itemId={id}
             purchasePriceEur={item.purchasePriceEur}
@@ -196,6 +199,7 @@ export function ItemDetailPage() {
       {item.status === "LISTED" && (
         <div className="p-4 space-y-4">
           <h1 className="text-lg font-bold text-ink">Listings</h1>
+          <NegotiationEntry itemId={id} />
           {followUp && (
             <FollowUpPanel
               itemId={id}
@@ -215,7 +219,12 @@ export function ItemDetailPage() {
       )}
 
       {item.status === "SALE_CONFLICT" && (
-        <ConflictResolutionPanel itemId={id} busy={busy} run={run} />
+        <>
+          <div className="px-4 pt-4">
+            <NegotiationEntry itemId={id} />
+          </div>
+          <ConflictResolutionPanel itemId={id} busy={busy} run={run} />
+        </>
       )}
 
       {item.status === "BUNDLED" && (
@@ -251,6 +260,23 @@ export function ItemDetailPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function NegotiationEntry({ itemId }: { itemId: string }) {
+  return (
+    <Link
+      to={`/items/${itemId}/verhandlung`}
+      className="block bg-surface border border-line rounded-2xl p-4 hover:bg-surface-hover transition-colors"
+    >
+      <span className="text-xs font-bold text-ink-muted uppercase tracking-wide">
+        Verhandlung
+      </span>
+      <p className="text-sm text-ink mt-1">
+        Käufernachricht einfügen. Drei Antworten zum Kopieren, nichts wird
+        gesendet.
+      </p>
+    </Link>
   );
 }
 

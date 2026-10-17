@@ -107,7 +107,7 @@ export function NewItemPage() {
             Confidence-Center-Demo
           </a>
           <a href="/demo/negotiation" className="text-xs text-ink-faint hover:text-ink-muted">
-            Chat-Assistent-Demo
+            Verhandlung
           </a>
         </div>
       </div>
