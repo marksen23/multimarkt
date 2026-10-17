@@ -3,12 +3,15 @@
 // Preisrecherche live dieselbe Zahl zeigt wie die Disposition nach
 // „Berechnen“.
 
+import type { ChannelFeeAssumptions } from './channel-fees';
+
 export const NOT_INDIVIDUAL_SALE_NOTICE = 'nicht einzeln verkaufen';
 
 export interface MarginAssumptions {
   feePercent: number;
   shippingEur: number;
   singleSaleThresholdEur: number | null;
+  channels: ChannelFeeAssumptions;
 }
 
 export interface ExpectedMargin {

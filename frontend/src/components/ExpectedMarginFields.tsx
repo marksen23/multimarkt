@@ -47,7 +47,7 @@ export function ExpectedMarginFields({
 
   const commit = (nextFee: string, nextShipping: string, nextThreshold: string) => {
     const next = readDraft(nextFee, nextShipping, nextThreshold);
-    if (next) void persistMarginAssumptions(next);
+    if (next && assumptions) void persistMarginAssumptions({ ...assumptions, ...next });
   };
 
   const margin =
@@ -143,7 +143,11 @@ export function ExpectedMarginFields({
   );
 }
 
-function readDraft(feeRaw: string, shippingRaw: string, thresholdRaw: string): MarginAssumptions | null {
+function readDraft(
+  feeRaw: string,
+  shippingRaw: string,
+  thresholdRaw: string,
+): Pick<MarginAssumptions, 'feePercent' | 'shippingEur' | 'singleSaleThresholdEur'> | null {
   const feePercent = feeRaw.trim() === '' ? 0 : parseAmount(feeRaw);
   const shippingEur = shippingRaw.trim() === '' ? 0 : parseAmount(shippingRaw);
   const singleSaleThresholdEur = thresholdRaw.trim() === '' ? null : parseAmount(thresholdRaw);

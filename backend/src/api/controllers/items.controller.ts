@@ -59,6 +59,7 @@ import {
   DispositionEngineService,
   DispositionRecommendation,
 } from '../../application/disposition/disposition-engine.service';
+import { channelFeesFromUser } from '../../domain/pricing/channel-fees';
 import {
   computeExpectedMargin,
   ExpectedMargin,
@@ -552,6 +553,11 @@ export class ItemsController {
     // Logistikprofil, nicht aus der Ja/Nein-Sperrig-Flagge und nicht aus
     // den pauschalen 1,50 €. Solange das Profil fehlt, bleibt die vom
     // Nutzer gepflegte Versandannahme in der Marge (Feature-Plan 3.3).
+    // Feature-Plan 3.10: Gebührenannahmen je Kanal. Der Netto der
+    // Kanalliste zieht sie ab und sortiert danach, nicht nach dem Median.
+    const user = await this.dataSource.manager.findOneBy(UserEntity, {
+      id: item.userId,
+    });
     const recommendation = this.dispositionEngine.evaluate({
       id: item.id,
       category: dto.category,
@@ -559,9 +565,8 @@ export class ItemsController {
       marketMedianPrice: dto.marketMedianPrice,
       logistics: toLogisticsProfile(item),
       userGoal: dto.userGoal,
-    });
-    const user = await this.dataSource.manager.findOneBy(UserEntity, {
-      id: item.userId,
+      channelFees: channelFeesFromUser(user),
+      shippingFlatEur: user?.shippingEur ?? 0,
     });
     const margin = computeExpectedMargin({
       salePriceEur: dto.marketMedianPrice,
