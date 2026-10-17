@@ -103,7 +103,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             }`}
           >
             <Icon name="logout" />
-            {confirmLogout ? 'Wirklich abmelden?' : 'Abmelden'}
+            {confirmLogout ? 'Wirklich abmelden? Nochmal tippen' : 'Abmelden'}
           </button>
         </div>
       </aside>
