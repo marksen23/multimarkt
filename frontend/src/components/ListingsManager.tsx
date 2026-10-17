@@ -90,12 +90,12 @@ function ListingCard({
               </div>
               <div className="flex gap-1.5 flex-wrap">
                 {(p.status === 'DRAFT' || p.status === 'READY') && (
-                  <Button size="sm" disabled={busy} onClick={() => void run(() => listingsApi.publish(p.id))}>
+                  <Button size="sm" loading={busy} disabled={busy} onClick={() => void run(() => listingsApi.publish(p.id))}>
                     Veröffentlichen
                   </Button>
                 )}
                 {p.status === 'PUBLISHING' && (
-                  <Button size="sm" disabled={busy} onClick={() => void run(() => listingsApi.confirmPublished(p.id))}>
+                  <Button size="sm" loading={busy} disabled={busy} onClick={() => void run(() => listingsApi.confirmPublished(p.id))}>
                     Ich habe es eingestellt
                   </Button>
                 )}
@@ -120,6 +120,7 @@ function ListingCard({
                     <Button
                       size="sm"
                       variant="danger"
+                      loading={busy}
                       disabled={busy}
                       onClick={() => {
                         setConfirmingCancelFor(null);
@@ -134,7 +135,7 @@ function ListingCard({
                   </>
                 )}
                 {p.status === 'CANCEL_PENDING' && (
-                  <Button size="sm" disabled={busy} onClick={() => void run(() => listingsApi.confirmCancellation(p.id))}>
+                  <Button size="sm" loading={busy} disabled={busy} onClick={() => void run(() => listingsApi.confirmCancellation(p.id))}>
                     Storno bestätigen
                   </Button>
                 )}

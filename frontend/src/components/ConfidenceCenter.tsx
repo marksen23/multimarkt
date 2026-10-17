@@ -201,6 +201,7 @@ export function ConfidenceCenter({
                           (anyActionInProgress && savingKey !== a.attributeKey) ||
                           savingKey === a.attributeKey
                         }
+                        loading={savingKey === a.attributeKey}
                         onClick={() => confirmAttr(a.attributeKey, editValue)}
                       >
                         Speichern

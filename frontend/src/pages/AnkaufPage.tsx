@@ -483,8 +483,9 @@ function ListingCard({
         type="button"
         disabled={adopting}
         onClick={onAdopt}
-        className="w-full text-label px-3 py-2 rounded-control border border-accent text-accent hover:bg-accent-soft disabled:opacity-60 transition-colors"
+        className="w-full text-label px-3 py-2 rounded-control border border-accent text-accent hover:bg-accent-soft disabled:opacity-60 transition-colors inline-flex items-center justify-center gap-1.5"
       >
+        {adopting && <Spinner />}
         {adopting ? 'Übernimmt…' : 'Als Einkauf übernehmen'}
       </button>
     </Card>
