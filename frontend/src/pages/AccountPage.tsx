@@ -103,7 +103,6 @@ export function AccountPage() {
 
       <SectionLabel>Darstellung</SectionLabel>
       <Card className="p-4 space-y-3">
-        <p className="text-body font-semibold text-ink">Design</p>
         <div className="flex gap-2">
           {(['auto', 'light', 'dark'] as const).map((t) => (
             <button
@@ -146,7 +145,7 @@ export function AccountPage() {
           }`}
         >
           <Icon name="logout" size={17} />
-          {confirmLogout ? 'Wirklich abmelden?' : 'Abmelden (Token entfernen)'}
+          {confirmLogout ? 'Wirklich abmelden? Nochmal tippen' : 'Abmelden (Token entfernen)'}
         </button>
       </Card>
 
