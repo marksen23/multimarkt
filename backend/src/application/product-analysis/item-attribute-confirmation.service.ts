@@ -2,6 +2,13 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { ActorContext } from '../../domain/actor-context';
+import {
+  canonicalAttributeKey,
+  canonicalCategory,
+  isWritableAttributeKey,
+  normalizeConfirmedValue,
+  requiredFactsFor,
+} from '../../domain/category/taxonomy';
 import { HumanGateBypassException } from '../../domain/errors/state-transition.errors';
 import { ItemAttributeEntity } from '../../infrastructure/database/entities';
 
@@ -35,24 +42,72 @@ export class ItemAttributeConfirmationService {
       );
     }
 
+    const key = canonicalAttributeKey(attributeKey) ?? attributeKey;
     const existing = await this.dataSource.manager.findOneBy(ItemAttributeEntity, {
       itemId,
-      attributeKey,
+      attributeKey: key,
     });
-    if (!existing) {
+
+    if (!existing && !isWritableAttributeKey(key)) {
       throw new NotFoundException(`No attribute '${attributeKey}' found for item ${itemId}`);
     }
 
-    const finalValue = value ?? existing.attributeValue;
-    if (!finalValue) {
+    const stored = resolveConfirmedValue(key, value, existing?.attributeValue ?? null);
+    if (!stored) {
       throw new BadRequestException(
-        `Attribute '${attributeKey}' has no value to confirm — provide one explicitly`,
+        existing
+          ? `Attribute '${attributeKey}' is not a valid value`
+          : `Attribute '${attributeKey}' has no value to confirm — provide one explicitly`,
       );
     }
 
-    existing.attributeValue = finalValue;
-    existing.truthState = 'USER_CONFIRMED';
-    existing.source = 'USER_INPUT';
-    return this.dataSource.manager.save(ItemAttributeEntity, existing);
+    if (existing) {
+      existing.attributeKey = key;
+      existing.attributeValue = stored;
+      existing.truthState = 'USER_CONFIRMED';
+      existing.source = 'USER_INPUT';
+      const saved = await this.dataSource.manager.save(ItemAttributeEntity, existing);
+      if (key === 'category') await this.ensureRequiredFacts(itemId, stored);
+      return saved;
+    }
+
+    const created = await this.dataSource.manager.save(ItemAttributeEntity, {
+      itemId,
+      attributeKey: key,
+      attributeValue: stored,
+      truthState: 'USER_CONFIRMED',
+      source: 'USER_INPUT',
+    });
+    if (key === 'category') await this.ensureRequiredFacts(itemId, stored);
+    return created;
   }
+
+  /** Fehlende Pflichtangaben der gewählten Kategorie als Lücke anlegen. */
+  private async ensureRequiredFacts(itemId: string, categoryValue: string): Promise<void> {
+    const category = canonicalCategory(categoryValue);
+    if (!category) return;
+    const existing = await this.dataSource.manager.find(ItemAttributeEntity, { where: { itemId } });
+    const present = new Set(existing.map((attribute) => attribute.attributeKey));
+    for (const fact of requiredFactsFor(category)) {
+      if (present.has(fact)) continue;
+      await this.dataSource.manager.insert(ItemAttributeEntity, {
+        itemId,
+        attributeKey: fact,
+        attributeValue: null,
+        truthState: 'UNKNOWN',
+        source: 'SCHEMA',
+      });
+    }
+  }
+}
+
+function resolveConfirmedValue(
+  key: string,
+  value: string | undefined,
+  current: string | null,
+): string | null {
+  if (value !== undefined) return normalizeConfirmedValue(key, value);
+  if (!current) return null;
+  if (key === 'category' || key === 'functionChecked') return normalizeConfirmedValue(key, current);
+  return current;
 }

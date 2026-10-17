@@ -4,15 +4,36 @@ import { GoogleGenAI } from '@google/genai';
 import { AiAnalysisResult, AiVisionProvider } from '../../domain/ai/ai-vision-provider.interface';
 
 const MODEL_ID = 'gemini-flash-latest';
-const PROMPT_VERSION = '2026-09-24';
+const PROMPT_VERSION = '2026-10-06';
 
-// Dieselben fünf Attribut-Keys wie MockGeminiVisionProvider — der
-// Aufrufer (ProductAnalysisService) kennt keine anderen.
-const ATTRIBUTE_KEYS = ['category', 'color', 'brand', 'material', 'condition'] as const;
+// ProductAnalysisService mappt category auf die kleine Taxonomie und legt
+// Lücken nur für die Pflichtangaben dieser Kategorie an. Der Provider
+// selbst erfindet nichts: null heißt "nicht gesehen".
+const ATTRIBUTE_KEYS = [
+  'category',
+  'categoryDetail',
+  'color',
+  'brand',
+  'material',
+  'size',
+  'measurements',
+  'functionChecked',
+  'condition',
+] as const;
 
 const PROMPT = `Analysiere die angehängten Fotos eines gebrauchten Gegenstands, der weiterverkauft werden soll.
-Schätze für jedes der folgenden Felder einen Wert: category (z.B. "Bekleidung > Herren > Jacken"), color, brand, material, condition (eine von: new, like_new, good, fair, defective).
-WICHTIG: Wenn du dir bei einem Feld nicht ausreichend sicher bist, gib für dieses Feld value=null zurück — rate NICHT. Ein falscher Wert ist schlimmer als kein Wert, weil ein Mensch diese Angabe später ungeprüft bestätigen könnte.`;
+Fülle ausschließlich, was auf den Fotos sichtbar ist.
+
+Felder:
+- category: genau eine von Kleidung, Schuhe, Elektronik, Medien, Haushalt, Möbel, Sonstiges — oder null, wenn der Gegenstand nicht erkennbar ist.
+- categoryDetail: kurze sichtbare Artikelart (z.B. "Herrenjacke"), oder null.
+- color, brand, material: nur wenn sichtbar, sonst null.
+- size: Größe nur wenn ein Etikett oder eine Größenangabe sichtbar ist, sonst null. Nicht aus dem Schnitt raten.
+- measurements: Maße nur wenn eine Zahl sichtbar ist, sonst null.
+- functionChecked: "ja" oder "nein" nur wenn der Betrieb sichtbar ist (z.B. eingeschaltetes Display). Sonst null. Nicht raten.
+- condition: eine von new, like_new, good, fair, defective, oder null.
+
+WICHTIG: Wenn du dir bei einem Feld nicht ausreichend sicher bist, gib value=null zurück — rate NICHT. Ein falscher Wert ist schlimmer als kein Wert.`;
 
 const RESPONSE_SCHEMA = {
   type: 'object',

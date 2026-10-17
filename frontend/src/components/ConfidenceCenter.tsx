@@ -1,7 +1,27 @@
 import { useMemo, useState } from 'react';
 import type { ItemDetail } from '../api/types';
+import {
+  attributeLabel,
+  categoryGaps,
+  displayAttributeValue,
+  RESALE_CATEGORIES,
+} from '../category/taxonomy';
 
 const CONDITION_OPTIONS = ['Neu', 'Wie neu', 'Gut', 'Gebraucht', 'Defekt'];
+
+const GAP_PROMPTS: Record<string, string> = {
+  category: 'Welche Kategorie passt?',
+  size: 'Welche Größe hat der Artikel?',
+  measurements: 'Welche Maße hat der Artikel?',
+  brand: 'Welche Marke hat der Artikel?',
+  functionChecked: 'Funktioniert der Artikel?',
+};
+
+const GAP_PLACEHOLDERS: Record<string, string> = {
+  size: 'z.B. M oder 42',
+  measurements: 'z.B. 80 × 40 × 30 cm',
+  brand: 'Marke eingeben…',
+};
 
 interface Props {
   detail: ItemDetail;
@@ -20,6 +40,11 @@ interface Props {
  * dokumentierte Doc-04-Erweiterung (siehe items.controller.ts), ohne die
  * "Stimmt"/"Ändern"-Interaktion aus dem ursprünglichen Mockup nur
  * vorgetäuscht wäre.
+ *
+ * Feature-Plan 3.9: gefragt werden nur die Lücken der Kategorie
+ * (Größe, Maße, Marke, Funktion geprüft — jeweils nur, was die
+ * Kategorie braucht). Die Bildanalyse füllt den Rest nur, wenn sie
+ * ihn gesehen hat.
  */
 export function ConfidenceCenter({
   detail,
@@ -33,10 +58,7 @@ export function ConfidenceCenter({
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [missingDrafts, setMissingDrafts] = useState<Record<string, string>>({});
 
-  const missing = useMemo(
-    () => detail.attributes.filter((a) => a.truthState === 'UNKNOWN'),
-    [detail.attributes],
-  );
+  const gaps = useMemo(() => categoryGaps(detail.attributes), [detail.attributes]);
   const inferred = useMemo(
     () => detail.attributes.filter((a) => a.truthState === 'INFERRED'),
     [detail.attributes],
@@ -78,7 +100,8 @@ export function ConfidenceCenter({
 
       <div className="p-4 space-y-6">
         <p className="text-sm text-ink-muted">
-          Die KI hat das Foto analysiert. <strong className="text-ink">Keine Information geht ohne deine Bestätigung online.</strong>
+          Die KI hat nur eingetragen, was auf dem Foto zu sehen ist.{' '}
+          <strong className="text-ink">Pflichtangaben hängen an der Kategorie — Lücken fragst du hier.</strong>
         </p>
 
         <section className="space-y-3">
@@ -111,34 +134,59 @@ export function ConfidenceCenter({
             </div>
           </div>
 
-          {missing.map((a) => (
-            <div key={a.id} className="bg-red-500/5 p-4 rounded-2xl border border-red-500/20 space-y-2">
-              <label className="block text-sm font-bold text-ink capitalize">
-                Welche(s) {a.attributeKey} hat der Artikel?
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder={`${a.attributeKey} eingeben…`}
-                  value={missingDrafts[a.attributeKey] ?? ''}
-                  onChange={(e) =>
-                    setMissingDrafts((prev) => ({ ...prev, [a.attributeKey]: e.target.value }))
-                  }
-                  className="flex-1 p-2 border border-red-500/30 rounded-lg text-sm outline-none focus:border-red-500"
-                />
-                <button
-                  type="button"
-                  disabled={
-                    (anyActionInProgress && savingKey !== a.attributeKey) ||
-                    savingKey === a.attributeKey ||
-                    !missingDrafts[a.attributeKey]
-                  }
-                  onClick={() => confirmAttr(a.attributeKey, missingDrafts[a.attributeKey])}
-                  className="px-3 py-2 bg-red-600 text-white rounded-lg font-bold text-xs disabled:bg-line disabled:text-ink-faint"
-                >
-                  {savingKey === a.attributeKey ? '…' : 'Sichern'}
-                </button>
-              </div>
+          {gaps.map((key) => (
+            <div key={key} className="bg-red-500/5 p-4 rounded-2xl border border-red-500/20 space-y-2">
+              <label className="block text-sm font-bold text-ink">{GAP_PROMPTS[key] ?? attributeLabel(key)}</label>
+              {key === 'functionChecked' ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {(['ja', 'nein'] as const).map((answer) => (
+                    <button
+                      key={answer}
+                      type="button"
+                      disabled={anyActionInProgress}
+                      onClick={() => confirmAttr(key, answer)}
+                      className="py-2 rounded-lg border border-red-500/30 bg-surface text-sm font-bold text-ink hover:bg-red-500/10 disabled:opacity-50"
+                    >
+                      {savingKey === key ? '…' : answer === 'ja' ? 'Ja' : 'Nein'}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  {key === 'category' ? (
+                    <select
+                      value={missingDrafts.category ?? ''}
+                      onChange={(e) => setMissingDrafts((prev) => ({ ...prev, category: e.target.value }))}
+                      className="flex-1 p-2 border border-red-500/30 rounded-lg text-sm bg-surface text-ink outline-none focus:border-red-500"
+                    >
+                      <option value="">Kategorie wählen…</option>
+                      {RESALE_CATEGORIES.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder={GAP_PLACEHOLDERS[key] ?? `${attributeLabel(key)} eingeben…`}
+                      value={missingDrafts[key] ?? ''}
+                      onChange={(e) => setMissingDrafts((prev) => ({ ...prev, [key]: e.target.value }))}
+                      className="flex-1 p-2 border border-red-500/30 rounded-lg text-sm outline-none focus:border-red-500"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    disabled={
+                      (anyActionInProgress && savingKey !== key) || savingKey === key || !missingDrafts[key]
+                    }
+                    onClick={() => confirmAttr(key, missingDrafts[key])}
+                    className="px-3 py-2 bg-red-600 text-white rounded-lg font-bold text-xs disabled:bg-line disabled:text-ink-faint"
+                  >
+                    {savingKey === key ? '…' : 'Sichern'}
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </section>
@@ -154,10 +202,10 @@ export function ConfidenceCenter({
                 <div key={a.id} className="p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-xs text-yellow-700 dark:text-yellow-500 capitalize font-medium block">
-                        {a.attributeKey}
+                      <span className="text-xs text-yellow-700 dark:text-yellow-500 font-medium block">
+                        {attributeLabel(a.attributeKey)}
                       </span>
-                      <span className="font-bold text-ink">{a.attributeValue}</span>
+                      <span className="font-bold text-ink">{displayAttributeValue(a.attributeKey, a.attributeValue)}</span>
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -183,12 +231,37 @@ export function ConfidenceCenter({
                   </div>
                   {editingKey === a.attributeKey && (
                     <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        className="flex-1 p-2 border border-yellow-500/25 rounded-lg text-sm outline-none focus:border-yellow-500"
-                      />
+                      {a.attributeKey === 'category' ? (
+                        <select
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="flex-1 p-2 border border-yellow-500/25 rounded-lg text-sm bg-surface text-ink outline-none focus:border-yellow-500"
+                        >
+                          <option value="">Kategorie wählen…</option>
+                          {RESALE_CATEGORIES.map((category) => (
+                            <option key={category} value={category}>
+                              {category}
+                            </option>
+                          ))}
+                        </select>
+                      ) : a.attributeKey === 'functionChecked' ? (
+                        <select
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="flex-1 p-2 border border-yellow-500/25 rounded-lg text-sm bg-surface text-ink outline-none focus:border-yellow-500"
+                        >
+                          <option value="">Bitte wählen…</option>
+                          <option value="ja">Ja</option>
+                          <option value="nein">Nein</option>
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="flex-1 p-2 border border-yellow-500/25 rounded-lg text-sm outline-none focus:border-yellow-500"
+                        />
+                      )}
                       <button
                         type="button"
                         disabled={
@@ -218,11 +291,11 @@ export function ConfidenceCenter({
             <div className="bg-surface rounded-2xl border border-line p-4 grid grid-cols-2 gap-4">
               {confirmed.map((a) => (
                 <div key={a.id}>
-                  <span className="text-[10px] text-ink-faint uppercase font-bold capitalize">
-                    {a.attributeKey}
+                  <span className="text-[10px] text-ink-faint uppercase font-bold">
+                    {attributeLabel(a.attributeKey)}
                   </span>
                   <span className="font-semibold text-ink block text-sm truncate">
-                    {a.attributeValue}
+                    {displayAttributeValue(a.attributeKey, a.attributeValue)}
                   </span>
                 </div>
               ))}
