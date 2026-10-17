@@ -4,6 +4,7 @@ import { bundlesApi } from '../api/bundles';
 import { ApiRequestError } from '../api/client';
 import type { BundleSuggestion, BundleSuggestionList } from '../api/types';
 import { formatEur } from '../margin/sale-closeout';
+import { Button } from '../ui';
 
 /**
  * Paketvorschläge (Feature-Plan 3.8). Übernehmen legt ein normales Bundle
@@ -51,18 +52,18 @@ export function BundleSuggestions() {
   };
 
   return (
-    <section className="bg-surface border border-line rounded-2xl p-4 space-y-3">
-      <h2 className="text-xs font-bold text-ink-muted uppercase tracking-wide">Vorschläge</h2>
-      {error && <p className="text-xs text-danger">{error}</p>}
-      {!list && !error && <p className="text-xs text-ink-faint">Vorschläge werden gesucht…</p>}
+    <section className="bg-surface border border-line rounded-card shadow-card p-4 space-y-3">
+      <h2 className="text-micro uppercase text-ink-muted">Vorschläge</h2>
+      {error && <p className="text-label text-danger">{error}</p>}
+      {!list && !error && <p className="text-label font-normal text-ink-faint">Vorschläge werden gesucht…</p>}
       {list && list.thresholdEur == null && (
-        <p className="text-sm text-ink-muted">
+        <p className="text-body text-ink-muted">
           Lege unter Erwartete Marge eine Schwelle fest. Darunter schlägt die App Pakete vor, wenn
           mehrere Artikel dieselbe Kategorie, Größe oder Marke haben.
         </p>
       )}
       {list && list.thresholdEur != null && list.suggestions.length === 0 && (
-        <p className="text-sm text-ink-muted">
+        <p className="text-body text-ink-muted">
           Keine Vorschläge. Mehrere bereite Artikel mit derselben Kategorie, Größe oder Marke, deren
           Einzelmarge unter {formatEur(list.thresholdEur)} liegt, erscheinen hier.
         </p>
@@ -97,39 +98,29 @@ function SuggestionCard({
   onDismiss: () => void;
 }) {
   return (
-    <article className="border border-accent/30 bg-accent-soft/40 rounded-xl p-3 space-y-2">
-      <p className="font-bold text-ink text-sm">{suggestion.title}</p>
-      <p className="text-xs text-ink-muted">{suggestion.description}</p>
+    <article className="border border-accent/30 bg-accent-soft/40 rounded-control p-3 space-y-2">
+      <p className="text-body font-bold text-ink">{suggestion.title}</p>
+      <p className="text-label font-normal text-ink-muted">{suggestion.description}</p>
       <ul className="space-y-1">
         {suggestion.items.map((item) => (
-          <li key={item.id} className="text-xs text-ink flex justify-between gap-3">
+          <li key={item.id} className="text-label font-normal text-ink flex justify-between gap-3">
             <span>{item.title ?? `Artikel ${item.id.slice(0, 8)}`}</span>
-            <span className="text-ink-faint shrink-0">Einzelmarge {formatEur(item.marginEur)}</span>
+            <span className="text-ink-faint shrink-0 tabular-nums">Einzelmarge {formatEur(item.marginEur)}</span>
           </li>
         ))}
       </ul>
-      <p className="text-xs text-ink">
-        Abholpreis <span className="font-bold">{formatEur(suggestion.suggestedPriceEur)}</span>
+      <p className="text-label font-normal text-ink">
+        Abholpreis <span className="font-bold tabular-nums">{formatEur(suggestion.suggestedPriceEur)}</span>
         {' · '}
-        Marge <span className="font-bold">{formatEur(suggestion.bundleMarginEur)}</span>
+        Marge <span className="font-bold tabular-nums">{formatEur(suggestion.bundleMarginEur)}</span>
       </p>
       <div className="flex gap-2">
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={onAccept}
-          className="px-3 py-1.5 rounded-full bg-accent text-accent-ink text-xs font-bold hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
-        >
+        <Button size="sm" disabled={disabled} onClick={onAccept}>
           {busy ? 'Bitte warten…' : 'Übernehmen'}
-        </button>
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={onDismiss}
-          className="px-3 py-1.5 rounded-full bg-surface text-ink-muted text-xs font-bold border border-line hover:bg-surface-hover disabled:text-ink-faint transition-colors"
-        >
+        </Button>
+        <Button size="sm" variant="secondary" disabled={disabled} onClick={onDismiss}>
           Verwerfen
-        </button>
+        </Button>
       </div>
     </article>
   );

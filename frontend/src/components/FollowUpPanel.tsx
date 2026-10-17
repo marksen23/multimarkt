@@ -6,6 +6,7 @@ import {
   type ItemFollowUp,
 } from "../api/follow-ups";
 import { formatEur } from "../margin/sale-closeout";
+import { Button, Field, inputClass } from "../ui";
 
 function parsePrice(raw: string): number | null {
   const normalized = raw.trim().replace(",", ".");
@@ -37,14 +38,12 @@ export function FollowUpPanel({
   if (!card && notes.length === 0) return null;
 
   return (
-    <section className="bg-surface border border-line rounded-2xl p-4 space-y-3">
-      <h2 className="text-xs font-bold text-ink-muted uppercase tracking-wide">
-        Nachfassen
-      </h2>
+    <section className="bg-surface border border-line rounded-card shadow-card p-4 space-y-3">
+      <h2 className="text-micro uppercase text-ink-muted">Nachfassen</h2>
       {notes.length > 0 && (
         <ul className="space-y-1">
           {notes.map((change) => (
-            <li key={change.id} className="text-xs text-ink">
+            <li key={change.id} className="text-label font-normal text-ink">
               {change.note}. Vorher {formatEur(change.previousPrice)}.
             </li>
           ))}
@@ -95,56 +94,51 @@ function FollowUpForm({
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-ink">{card.headline}</p>
-      <p className="text-sm text-ink">
+      <p className="text-body text-ink">{card.headline}</p>
+      <p className="text-body text-ink">
         Aktueller Preis{" "}
-        <span className="font-bold">{formatEur(card.currentPrice)}</span>
+        <span className="font-bold tabular-nums">{formatEur(card.currentPrice)}</span>
       </p>
-      <p className="text-sm text-ink">{card.suggestionLabel}</p>
-      <label className="block space-y-1">
-        <span className="block text-[10px] font-bold text-ink-faint uppercase">
-          Neuer Text, nur zum Kopieren
-        </span>
+      <p className="text-body text-ink">{card.suggestionLabel}</p>
+      <Field label="Neuer Text, nur zum Kopieren">
         <textarea
           readOnly
           value={card.copyText}
           rows={5}
-          className="w-full p-2 border border-line rounded-lg text-xs text-ink bg-surface-hover outline-none"
+          className={`${inputClass} resize-none`}
         />
-      </label>
-      <p className="text-xs text-ink-muted">
+      </Field>
+      <p className="text-label font-normal text-ink-muted">
         Die Live-Anzeige bleibt unverändert. Text kopieren, auf dem Portal
         einsetzen, dann den neuen Preis hier eintragen.
       </p>
-      <button
-        type="button"
+      <Button
+        size="sm"
+        variant="secondary"
+        icon={copyState === "copied" ? "check" : "copy"}
         onClick={() => void copy()}
-        className="text-[11px] font-bold px-2 py-1 rounded-lg bg-surface-hover text-ink-muted hover:bg-line transition-colors"
       >
         {copyState === "copied"
           ? "Text kopiert"
           : copyState === "error"
             ? "Kopieren nicht möglich"
             : "Text kopieren"}
-      </button>
-      <label className="block space-y-1">
-        <span className="block text-[10px] font-bold text-ink-faint uppercase">
-          Neuer Preis
-        </span>
+      </Button>
+      <Field label="Neuer Preis">
         <input
           value={price}
           onChange={(event) => setPrice(event.target.value)}
           inputMode="decimal"
-          className="w-full p-2 border border-line rounded-lg text-sm text-ink outline-none focus:border-accent"
+          className={`${inputClass} tabular-nums`}
         />
-      </label>
+      </Field>
       {!priceOk && price.trim() !== "" && (
-        <p className="text-xs text-danger">
+        <p className="text-label text-danger">
           Der neue Preis muss unter dem bisherigen Preis liegen.
         </p>
       )}
-      <button
-        type="button"
+      <Button
+        size="sm"
         disabled={busy || !priceOk || parsed == null}
         onClick={() =>
           void onRecord(() =>
@@ -154,10 +148,9 @@ function FollowUpForm({
             }),
           )
         }
-        className="text-[11px] font-bold px-2 py-1 rounded-lg bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
       >
         Preis eintragen
-      </button>
+      </Button>
     </div>
   );
 }

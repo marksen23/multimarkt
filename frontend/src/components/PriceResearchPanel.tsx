@@ -240,7 +240,7 @@ function SourceCard({
         )}
       </div>
 
-      <p className="text-[11px] text-ink-faint">
+      <p className="text-label font-normal text-ink-faint">
         {example
           ? `${source.providerLabel}: Beispiel, kein echtes Angebot (${Number(source.detail?.buybackPrice ?? 0).toFixed(2)} €). Hebt die Schmerzgrenze nicht an und lenkt nicht zum Ankauf.`
           : source.source === 'ANKAUF_PORTAL'

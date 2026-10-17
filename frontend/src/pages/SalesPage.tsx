@@ -9,7 +9,15 @@ import {
   type SoldSaleItem,
 } from "../api/sales";
 import { ListSkeleton } from "../components/Skeleton";
-import { PhaseBadge } from "../ui";
+import {
+  Card,
+  EmptyState,
+  Notice,
+  PageHeader,
+  PhaseBadge,
+  SectionLabel,
+  type IconName,
+} from "../ui";
 import { formatEur } from "../margin/sale-closeout";
 
 function itemTitle(title: string | null, id: string): string {
@@ -55,22 +63,13 @@ export function SalesPage() {
   }, []);
 
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-4">
-      <div>
-        <h1 className="text-xl font-extrabold text-ink tracking-tight">
-          Verkäufe
-        </h1>
-        <p className="text-xs text-ink-muted mt-1">
-          Offene Artikel, abgeschlossene Verkäufe und die Marge der letzten
-          Wochen.
-        </p>
-      </div>
+    <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-6">
+      <PageHeader
+        title="Verkäufe"
+        subtitle="Offene Artikel, abgeschlossene Verkäufe und die Marge der letzten Wochen."
+      />
 
-      {error && (
-        <div className="bg-danger-soft border border-danger/20 rounded-xl p-4 text-sm text-danger">
-          {error}
-        </div>
-      )}
+      {error && <Notice tone="danger">{error}</Notice>}
 
       {!overview && !error && <ListSkeleton />}
 
@@ -78,17 +77,15 @@ export function SalesPage() {
         <>
           <FollowUpSection followUps={followUps} />
 
-          <section className="bg-surface border border-line rounded-2xl p-4">
-            <h2 className="text-xs font-bold text-ink-muted uppercase tracking-wide mb-2">
-              Marge der letzten Wochen
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+          <section>
+            <SectionLabel>Marge der letzten Wochen</SectionLabel>
+            <Card className="p-4 overflow-x-auto">
+              <table className="w-full text-body">
                 <thead>
-                  <tr className="text-left text-[10px] uppercase text-ink-faint">
-                    <th className="font-bold py-2 pr-3">Woche</th>
-                    <th className="font-bold py-2 pr-3 text-right">Verkäufe</th>
-                    <th className="font-bold py-2 text-right">Marge</th>
+                  <tr className="text-left text-micro uppercase text-ink-faint">
+                    <th className="py-2 pr-3">Woche</th>
+                    <th className="py-2 pr-3 text-right">Verkäufe</th>
+                    <th className="py-2 text-right">Marge</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -111,21 +108,22 @@ export function SalesPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </Card>
           </section>
 
           <ItemTable
             title={`Offen (${overview.openItems.length})`}
             empty="Keine offenen Artikel."
+            emptyIcon="tag"
             isEmpty={overview.openItems.length === 0}
           >
-            <table className="w-full text-sm">
+            <table className="w-full text-body">
               <thead>
-                <tr className="text-left text-[10px] uppercase text-ink-faint">
-                  <th className="font-bold py-2 pr-3">Artikel</th>
-                  <th className="font-bold py-2 pr-3">Status</th>
-                  <th className="font-bold py-2 pr-3 text-right">Einstand</th>
-                  <th className="font-bold py-2 text-right">Preis</th>
+                <tr className="text-left text-micro uppercase text-ink-faint">
+                  <th className="py-2 pr-3">Artikel</th>
+                  <th className="py-2 pr-3">Status</th>
+                  <th className="py-2 pr-3 text-right">Einstand</th>
+                  <th className="py-2 text-right">Preis</th>
                 </tr>
               </thead>
               <tbody>
@@ -145,18 +143,19 @@ export function SalesPage() {
           <ItemTable
             title={`Verkauft (${overview.soldItems.length})`}
             empty="Noch nichts verkauft."
+            emptyIcon="euro"
             isEmpty={overview.soldItems.length === 0}
           >
-            <table className="w-full text-sm">
+            <table className="w-full text-body">
               <thead>
-                <tr className="text-left text-[10px] uppercase text-ink-faint">
-                  <th className="font-bold py-2 pr-3">Artikel</th>
-                  <th className="font-bold py-2 pr-3">Datum</th>
-                  <th className="font-bold py-2 pr-3">Portal</th>
-                  <th className="font-bold py-2 pr-3 text-right">Erlös</th>
-                  <th className="font-bold py-2 pr-3 text-right">Gebühr</th>
-                  <th className="font-bold py-2 pr-3 text-right">Versand</th>
-                  <th className="font-bold py-2 text-right">Nettogewinn</th>
+                <tr className="text-left text-micro uppercase text-ink-faint">
+                  <th className="py-2 pr-3">Artikel</th>
+                  <th className="py-2 pr-3">Datum</th>
+                  <th className="py-2 pr-3">Portal</th>
+                  <th className="py-2 pr-3 text-right">Erlös</th>
+                  <th className="py-2 pr-3 text-right">Gebühr</th>
+                  <th className="py-2 pr-3 text-right">Versand</th>
+                  <th className="py-2 text-right">Nettogewinn</th>
                 </tr>
               </thead>
               <tbody>
@@ -175,23 +174,23 @@ export function SalesPage() {
 function ItemTable({
   title,
   empty,
+  emptyIcon,
   isEmpty,
   children,
 }: {
   title: string;
   empty: string;
+  emptyIcon: IconName;
   isEmpty: boolean;
   children: ReactNode;
 }) {
   return (
-    <section className="bg-surface border border-line rounded-2xl p-4">
-      <h2 className="text-xs font-bold text-ink-muted uppercase tracking-wide mb-2">
-        {title}
-      </h2>
+    <section>
+      <SectionLabel>{title}</SectionLabel>
       {isEmpty ? (
-        <p className="text-sm text-ink-muted">{empty}</p>
+        <EmptyState icon={emptyIcon} title={empty} />
       ) : (
-        <div className="overflow-x-auto">{children}</div>
+        <Card className="p-4 overflow-x-auto">{children}</Card>
       )}
     </section>
   );
@@ -199,35 +198,38 @@ function ItemTable({
 
 function FollowUpSection({ followUps }: { followUps: FollowUpCard[] }) {
   return (
-    <section className="bg-surface border border-line rounded-2xl p-4">
-      <h2 className="text-xs font-bold text-ink-muted uppercase tracking-wide mb-2">
-        Nachfassen ({followUps.length})
-      </h2>
+    <section>
+      <SectionLabel>Nachfassen ({followUps.length})</SectionLabel>
       {followUps.length === 0 ? (
-        <p className="text-sm text-ink-muted">
-          Keine Anzeige, die seit 7 oder 14 Tagen online ist.
-        </p>
+        <EmptyState
+          icon="check"
+          title="Keine Anzeige, die seit 7 oder 14 Tagen online ist."
+        />
       ) : (
-        <ul className="space-y-3">
-          {followUps.map((card) => (
-            <li
-              key={card.listingId}
-              className="border-t border-line pt-3 first:border-t-0 first:pt-0"
-            >
-              <Link
-                to={`/items/${card.itemId}`}
-                className="font-bold text-ink hover:text-accent text-sm"
+        <Card className="p-4">
+          <ul className="space-y-3">
+            {followUps.map((card) => (
+              <li
+                key={card.listingId}
+                className="border-t border-line pt-3 first:border-t-0 first:pt-0"
               >
-                {itemTitle(card.title, card.itemId)}
-              </Link>
-              <p className="text-xs text-ink-muted mt-1">{card.headline}</p>
-              <p className="text-xs text-ink mt-1">
-                {formatEur(card.currentPrice)} →{" "}
-                {formatEur(card.suggestedPrice)}
-              </p>
-            </li>
-          ))}
-        </ul>
+                <Link
+                  to={`/items/${card.itemId}`}
+                  className="text-body font-bold text-ink hover:text-accent"
+                >
+                  {itemTitle(card.title, card.itemId)}
+                </Link>
+                <p className="text-label font-normal text-ink-muted mt-1">
+                  {card.headline}
+                </p>
+                <p className="text-label font-normal text-ink mt-1 tabular-nums">
+                  {formatEur(card.currentPrice)} →{" "}
+                  {formatEur(card.suggestedPrice)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
     </section>
   );
@@ -250,7 +252,7 @@ function OpenRow({
           {itemTitle(item.title, item.id)}
         </Link>
         {followUp && (
-          <div className="text-[11px] font-semibold text-accent">
+          <div className="text-label text-accent">
             Nachfassen · {followUp.stage} Tage
           </div>
         )}

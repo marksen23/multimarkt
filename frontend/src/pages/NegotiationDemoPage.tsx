@@ -4,7 +4,7 @@ import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import type { ItemListEntry } from '../api/types';
 import { ListSkeleton } from '../components/Skeleton';
-import { PhaseBadge } from '../ui';
+import { Notice, PageHeader, PhaseBadge } from '../ui';
 
 /**
  * Einstieg ohne Artikel-ID. Es gibt keine Beispielnachricht und keinen Chat.
@@ -23,17 +23,15 @@ export function NegotiationDemoPage() {
 
   return (
     <div className="max-w-md mx-auto p-4 space-y-4">
-      <div>
-        <h1 className="text-xl font-extrabold text-ink tracking-tight">Verhandlung</h1>
-        <p className="text-sm text-ink-muted mt-1">
-          Wähle einen Artikel. Danach fügst du die Käufernachricht ein. Es wird nichts gesendet.
-        </p>
-      </div>
+      <PageHeader
+        title="Verhandlung"
+        subtitle="Wähle einen Artikel. Danach fügst du die Käufernachricht ein. Es wird nichts gesendet."
+      />
 
-      {error && <p className="text-sm text-danger">{error}</p>}
+      {error && <Notice tone="danger">{error}</Notice>}
       {!entries && !error && <ListSkeleton />}
       {entries && entries.length === 0 && (
-        <p className="text-sm text-ink-muted">Noch kein Artikel. Lege zuerst einen an.</p>
+        <p className="text-body text-ink-muted">Noch kein Artikel. Lege zuerst einen an.</p>
       )}
       {entries && entries.length > 0 && (
         <ul className="space-y-2">
@@ -41,10 +39,10 @@ export function NegotiationDemoPage() {
             <li key={entry.item.id}>
               <Link
                 to={`/items/${entry.item.id}/verhandlung`}
-                className="block bg-surface border border-line rounded-xl p-3 hover:bg-surface-hover transition-colors"
+                className="block bg-surface border border-line rounded-control shadow-card p-3 hover:bg-surface-hover transition-colors"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-bold text-ink line-clamp-1">
+                  <span className="text-body font-bold text-ink line-clamp-1">
                     {entry.item.title?.trim() || 'Ohne Titel'}
                   </span>
                   <PhaseBadge status={entry.item.status} />
