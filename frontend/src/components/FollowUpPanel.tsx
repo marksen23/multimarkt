@@ -139,6 +139,7 @@ function FollowUpForm({
       )}
       <Button
         size="sm"
+        loading={busy}
         disabled={busy || !priceOk || parsed == null}
         onClick={() =>
           void onRecord(() =>

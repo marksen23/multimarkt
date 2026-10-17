@@ -104,10 +104,11 @@ export function NegotiationAssistant({
         block
         size="md"
         icon="sparkle"
+        loading={busy}
         disabled={busy || message.trim().length === 0}
         onClick={() => void submit()}
       >
-        {busy ? 'Liest das Gebot…' : 'Antworten vorschlagen'}
+        Antworten vorschlagen
       </Button>
 
       {result && (

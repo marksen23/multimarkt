@@ -46,6 +46,7 @@ export function PurchasePanel({
       url: url.trim() || null,
     });
     setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   return (
@@ -114,7 +115,7 @@ export function PurchasePanel({
           <Icon name="external" size={14} />
         </a>
       )}
-      <Button block size="md" disabled={busy || !priceValid} onClick={() => void save()}>
+      <Button block size="md" loading={busy} disabled={busy || !priceValid} icon={saved ? 'check' : undefined} onClick={() => void save()}>
         {saved ? 'Einkauf gespeichert' : 'Einkauf speichern'}
       </Button>
     </Card>
