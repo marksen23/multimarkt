@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { copyText } from '../lib/clipboard';
 import { itemsApi } from '../api/items';
 import { listingsApi } from '../api/listings';
+import { ApiRequestError } from '../api/client';
 import type {
   DescriptionChannel,
   DescriptionQualityResult,
@@ -97,6 +98,8 @@ export function Angebotspaket({ itemId, onListed }: { itemId: string; onListed?:
   const [listingBusy, setListingBusy] = useState(false);
   const [portal, setPortal] = useState<'KLEINANZEIGEN' | 'OTHER'>('KLEINANZEIGEN');
   const [pickupOnlyNote, setPickupOnlyNote] = useState(false);
+  const [fix, setFix] = useState<{ projectionId: string; missing: string[] } | null>(null);
+  const [fixValues, setFixValues] = useState<Record<string, string>>({});
 
   const loadPortalText = useCallback(
     async (marketplace: SecondhandMarketplace, goal: SalesGoal) => {
@@ -189,6 +192,37 @@ export function Angebotspaket({ itemId, onListed }: { itemId: string; onListed?:
   const textMarkets = recommendations.filter((r) => drafts[r.marketplace]);
   const firstDescription = textMarkets.map((r) => drafts[r.marketplace]).find((d) => d?.loadState === 'loaded')?.description;
 
+  // Kleinanzeigen hat keine API: der Nutzer bestätigt hier selbst, dass die
+  // Anzeige online ist — das ist genau der Human-Gate-Schritt confirm-published.
+  // Fehlen Pflichtangaben der Kategorie (Capability-Check), werden sie im Sheet
+  // nachgefragt und derselbe Eintrag danach erneut veröffentlicht.
+  const publishKleinanzeigen = async (projectionId: string): Promise<boolean> => {
+    try {
+      await listingsApi.publish(projectionId);
+      await listingsApi.confirmPublished(projectionId);
+      return true;
+    } catch (e) {
+      const missing = e instanceof ApiRequestError && e.body.error_code === 'ERR_CAPABILITY_CHECK_FAILED' ? e.body.details.missing : null;
+      if (Array.isArray(missing) && missing.length > 0) {
+        setFix({ projectionId, missing: missing as string[] });
+        setFixValues({});
+      } else {
+        setFix(null);
+        setSheetOpen(false);
+        toast('Listing angelegt — Kleinanzeigen-Status bitte unter „Online auf“ bestätigen.', 'error');
+        onListed?.();
+      }
+      return false;
+    }
+  };
+
+  const finishListed = () => {
+    setFix(null);
+    setSheetOpen(false);
+    toast('Als inseriert markiert', 'success');
+    onListed?.();
+  };
+
   const createListing = async () => {
     const parsed = parsePrice(listingPrice);
     if (parsed === null) return;
@@ -201,23 +235,50 @@ export function Angebotspaket({ itemId, onListed }: { itemId: string; onListed?:
       setListingBusy(false);
       return;
     }
-    // Kleinanzeigen hat keine API: der Nutzer bestätigt hier selbst, dass die
-    // Anzeige online ist — das ist genau der Human-Gate-Schritt confirm-published.
-    let portalOk = true;
     if (portal === 'KLEINANZEIGEN') {
+      let projectionId: string;
       try {
-        const projection = await listingsApi.create(listingId, 'KLEINANZEIGEN');
-        await listingsApi.publish(projection.id);
-        await listingsApi.confirmPublished(projection.id);
+        projectionId = (await listingsApi.create(listingId, 'KLEINANZEIGEN')).id;
       } catch {
-        portalOk = false;
+        setListingBusy(false);
+        setSheetOpen(false);
+        toast('Listing angelegt — Kleinanzeigen-Status bitte unter „Online auf“ bestätigen.', 'error');
+        onListed?.();
+        return;
       }
+      const ok = await publishKleinanzeigen(projectionId);
+      setListingBusy(false);
+      if (ok) finishListed();
+      return;
     }
     setListingBusy(false);
+    finishListed();
+  };
+
+  const completeMissingFacts = async () => {
+    if (!fix) return;
+    setListingBusy(true);
+    try {
+      for (const key of fix.missing) {
+        await itemsApi.confirmAttribute(itemId, key, fixValues[key]?.trim());
+      }
+    } catch (e) {
+      toast(e instanceof ApiRequestError ? e.body.message : 'Angaben konnten nicht gespeichert werden.', 'error');
+      setListingBusy(false);
+      return;
+    }
+    const ok = await publishKleinanzeigen(fix.projectionId);
+    setListingBusy(false);
+    if (ok) finishListed();
+  };
+
+  const closeSheet = () => {
+    // Listing existiert bereits (Artikel ist LISTED) — Seite neu laden, damit sie nicht READY zeigt.
+    if (fix) {
+      setFix(null);
+      onListed?.();
+    }
     setSheetOpen(false);
-    if (portalOk) toast('Als inseriert markiert', 'success');
-    else toast('Listing angelegt — Kleinanzeigen-Status bitte unter „Online auf“ bestätigen.', 'error');
-    onListed?.();
   };
 
   return (
@@ -353,7 +414,49 @@ export function Angebotspaket({ itemId, onListed }: { itemId: string; onListed?:
         </ActionBar>
       )}
 
-      <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Als inseriert markieren">
+      <Sheet open={sheetOpen} onClose={closeSheet} title={fix ? 'Noch kurz ergänzen' : 'Als inseriert markieren'}>
+        {fix ? (
+          <div className="space-y-4">
+            <p className="text-body text-ink-muted">
+              Kleinanzeigen braucht für diese Kategorie noch folgende Angaben. Danach wird die Anzeige als online markiert.
+            </p>
+            {fix.missing.map((key) => (
+              <Field key={key} label={FACT_LABELS[key] ?? key}>
+                {key === 'functionChecked' || key === 'category' ? (
+                  <select
+                    value={fixValues[key] ?? ''}
+                    onChange={(e) => setFixValues((v) => ({ ...v, [key]: e.target.value }))}
+                    className={inputClass}
+                  >
+                    <option value="">Bitte wählen</option>
+                    {(key === 'functionChecked' ? FUNCTION_CHECKED_OPTIONS : CATEGORY_OPTIONS).map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={fixValues[key] ?? ''}
+                    onChange={(e) => setFixValues((v) => ({ ...v, [key]: e.target.value }))}
+                    placeholder={FACT_PLACEHOLDERS[key]}
+                    className={inputClass}
+                  />
+                )}
+              </Field>
+            ))}
+            <Button
+              block
+              size="lg"
+              loading={listingBusy}
+              disabled={fix.missing.some((key) => !fixValues[key]?.trim())}
+              onClick={() => void completeMissingFacts()}
+            >
+              Speichern und als online markieren
+            </Button>
+          </div>
+        ) : (
         <div className="space-y-4">
           <p className="text-body text-ink-muted">Wo ist die Anzeige online, und zu welchem Preis?</p>
           <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Portal">
@@ -398,10 +501,32 @@ export function Angebotspaket({ itemId, onListed }: { itemId: string; onListed?:
             Bestätigen
           </Button>
         </div>
+        )}
       </Sheet>
     </div>
   );
 }
+
+const FACT_LABELS: Record<string, string> = {
+  category: 'Kategorie',
+  size: 'Größe',
+  brand: 'Marke',
+  measurements: 'Maße',
+  functionChecked: 'Funktion geprüft?',
+};
+
+const FACT_PLACEHOLDERS: Record<string, string> = {
+  size: 'z. B. M, 42 oder 98 cm',
+  brand: 'z. B. Bosch, Nike',
+  measurements: 'z. B. 80 × 40 × 30 cm',
+};
+
+const FUNCTION_CHECKED_OPTIONS = [
+  { value: 'ja', label: 'Ja, funktioniert' },
+  { value: 'nein', label: 'Nein / nicht geprüft' },
+];
+
+const CATEGORY_OPTIONS = ['Kleidung', 'Schuhe', 'Elektronik', 'Medien', 'Haushalt', 'Möbel', 'Sonstiges'].map((c) => ({ value: c, label: c }));
 
 const TIME_LABEL: Record<EstimatedTimeToSale, string> = {
   INSTANT: 'Sofort',
