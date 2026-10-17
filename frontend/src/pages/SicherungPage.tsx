@@ -157,7 +157,7 @@ export function SicherungPage() {
                 Die Datei enthält Artikel, Einkäufe, Verkäufe und die Fotoliste. Die Fotos
                 selbst bleiben im Speicher; die Liste nennt Verweis und Dateiname.
               </p>
-              {downloadError && <p className="text-label text-danger">{downloadError}</p>}
+              {downloadError && <Notice tone="danger">{downloadError}</Notice>}
               {downloadedName && (
                 <p className="text-label font-normal text-ink">{downloadedName} wurde heruntergeladen.</p>
               )}

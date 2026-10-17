@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Item } from '../api/types';
 import { shippingCostEur, shippingPortalsAllowed, type LogisticsDraft, type LogisticsProfile } from '../logistics/profile';
-import { Button, Card, inputClass } from '../ui';
+import { Button, Card, Notice, inputClass } from '../ui';
 
 function parseGrams(raw: string): number | null {
   const trimmed = raw.trim();
@@ -185,9 +185,9 @@ export function LogisticsProfileForm({
         className={inputClass}
       />
 
-      {!weightOk && <p className="text-label text-danger">Gewicht als ganze Grammzahl angeben.</p>}
-      {!dimensionsOk && <p className="text-label text-danger">Maße vollständig angeben oder leer lassen.</p>}
-      {!postalOk && <p className="text-label text-danger">PLZ mit fünf Ziffern.</p>}
+      {!weightOk && <Notice tone="danger">Gewicht als ganze Grammzahl angeben.</Notice>}
+      {!dimensionsOk && <Notice tone="danger">Maße vollständig angeben oder leer lassen.</Notice>}
+      {!postalOk && <Notice tone="danger">PLZ mit fünf Ziffern.</Notice>}
       {!choice && <p className="text-label font-normal text-ink-faint">Wähle Abholung oder Versand.</p>}
       {choice && ship && (
         <p className="text-label font-normal text-ink-muted">

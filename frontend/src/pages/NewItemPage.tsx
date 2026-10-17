@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import { PhotoCapture } from '../components/PhotoCapture';
-import { ActionBar, Button, Card, Icon, PageHeader, Spinner, inputClass } from '../ui';
+import { ActionBar, Button, Card, Icon, Notice, PageHeader, Spinner, inputClass } from '../ui';
 
 /**
  * README §3 Schritt 1: "Fotografieren statt Formulare ausfüllen." Der
@@ -92,7 +92,7 @@ export function NewItemPage() {
           />
         </details>
 
-        {error && <p className="text-label text-danger">{error}</p>}
+        {error && <Notice tone="danger">{error}</Notice>}
 
         {stage === 'uploading' && (
           <div className="w-full h-1.5 rounded-full bg-line overflow-hidden">

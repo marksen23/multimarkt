@@ -4,7 +4,7 @@ import { bundlesApi } from '../api/bundles';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import type { ItemListEntry } from '../api/types';
-import { ActionBar, Button, PageHeader, SectionLabel, Spinner, inputClass } from '../ui';
+import { ActionBar, Button, Notice, PageHeader, SectionLabel, Spinner, inputClass } from '../ui';
 
 /** Nur READY-Items sind bündelbar (Doc 02 §11 Precondition, StateGuardService). */
 export function NewBundlePage() {
@@ -124,7 +124,7 @@ export function NewBundlePage() {
         </div>
       </section>
 
-      {error && <p className="text-label text-danger">{error}</p>}
+      {error && <Notice tone="danger">{error}</Notice>}
 
       <ActionBar>
         <Button size="lg" disabled={creating || !title} onClick={create}>

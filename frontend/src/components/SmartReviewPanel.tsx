@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { itemsApi } from '../api/items';
 import type { ItemDetail } from '../api/types';
 import { RESALE_CATEGORIES, attributeLabel, categoryGaps } from '../category/taxonomy';
-import { ActionBar, Button, Card, Icon, inputClass } from '../ui';
+import { ActionBar, Button, Card, Icon, Notice, inputClass } from '../ui';
 
 const CONDITION_OPTIONS = ['Neu', 'Wie neu', 'Gut', 'Gebraucht', 'Defekt'];
 
@@ -171,7 +171,7 @@ export function SmartReviewPanel({
           )}
         </div>
         {reanalyzeError && (
-          <p className="text-label text-danger mt-1">{reanalyzeError}</p>
+          <Notice tone="danger">{reanalyzeError}</Notice>
         )}
         {/* Progress bar */}
         <div className="mt-3 h-1.5 bg-line rounded-full overflow-hidden">
@@ -535,13 +535,12 @@ function PhotosAndReanalyze({
             </button>
             <Button
               size="sm"
+              loading={uploadingPhotos}
               disabled={uploadingPhotos || anyActionInProgress}
               onClick={onUpload}
             >
-              {uploadingPhotos
-                ? uploadProgress > 0
-                  ? `${Math.round(uploadProgress * 100)}%`
-                  : 'Lädt hoch…'
+              {uploadingPhotos && uploadProgress > 0
+                ? `${Math.round(uploadProgress * 100)} %`
                 : 'Hochladen & neu analysieren'}
             </Button>
           </div>
@@ -556,7 +555,7 @@ function PhotosAndReanalyze({
         disabled={reanalyzing || anyActionInProgress}
         onClick={onReanalyze}
       >
-        {reanalyzing ? 'KI analysiert neu…' : 'KI-Analyse wiederholen'}
+        KI-Analyse wiederholen
       </Button>
     </>
   );

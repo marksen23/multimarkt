@@ -119,7 +119,7 @@ export function PriceResearchPanel({
             className="inline-flex items-center gap-1 text-label text-ink-faint hover:text-accent disabled:opacity-60 transition-colors shrink-0"
           >
             {refreshing ? <Spinner /> : <Icon name="refresh" size={13} />}
-            {refreshing ? 'Aktualisiert…' : 'Neu abrufen'}
+            Neu abrufen
           </button>
         </div>
       </div>

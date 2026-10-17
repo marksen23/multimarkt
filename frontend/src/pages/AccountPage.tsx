@@ -5,7 +5,7 @@ import { ApiRequestError } from '../api/client';
 import { clearAccessToken } from '../components/TokenGate';
 import { useTheme } from '../hooks/useTheme';
 import type { DeletionAuditLog, ItemListEntry } from '../api/types';
-import { Button, Card, Icon, PageHeader, SectionLabel } from '../ui';
+import { Button, Card, Icon, Notice, PageHeader, SectionLabel } from '../ui';
 import { formatEuro, realizedPrice } from '../lib/format';
 
 /** Doc 04 §16 / Doc 01 §15 — Hard-Delete-Lifecycle (T08-1). */
@@ -156,7 +156,7 @@ export function AccountPage() {
           Löscht unwiderruflich alle Items, Listings, Bundles und Verkaufsdaten (DB-Kaskade). Diese
           Aktion kann nicht rückgängig gemacht werden.
         </p>
-        {error && <p className="text-label text-danger">{error}</p>}
+        {error && <Notice tone="danger">{error}</Notice>}
         {!confirming ? (
           <button
             type="button"
@@ -167,7 +167,7 @@ export function AccountPage() {
           </button>
         ) : (
           <div className="space-y-2">
-            <p className="text-label text-danger">Bist du sicher?</p>
+            <Notice tone="danger">Bist du sicher?</Notice>
             <div className="flex gap-2">
               <Button
                 variant="danger"
