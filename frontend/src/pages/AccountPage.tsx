@@ -171,11 +171,12 @@ export function AccountPage() {
             <div className="flex gap-2">
               <Button
                 variant="danger"
+                loading={busy}
                 disabled={busy}
                 onClick={requestDeletion}
                 className="flex-1"
               >
-                {busy ? 'Löscht…' : 'Ja, endgültig löschen'}
+                Ja, endgültig löschen
               </Button>
               <Button
                 variant="secondary"

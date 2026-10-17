@@ -288,10 +288,11 @@ export function BundleDetailPage() {
           <Button
             block
             size="md"
+            loading={busy}
             disabled={busy || !priceValue || !descriptionValue || descriptionValue.length > 1500}
             onClick={prepareListing}
           >
-            {busy ? 'Wird angelegt…' : 'Listing anlegen'}
+            Listing anlegen
           </Button>
         </Card>
       )}

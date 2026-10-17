@@ -17,7 +17,7 @@ import type {
 } from '../api/types';
 import { shippingPortalsAllowed, toLogisticsProfile } from '../logistics/profile';
 import { useToast } from './Toast';
-import { ActionBar, Button, Card, Field, Icon, Notice, SectionLabel, Sheet, inputClass } from '../ui';
+import { ActionBar, Button, Card, Field, Icon, Notice, SectionLabel, Sheet, Spinner, inputClass } from '../ui';
 
 const SHIPPING_PORTALS = new Set<SecondhandMarketplace>(['EBAY', 'VINTED']);
 
@@ -578,7 +578,7 @@ function MarketplaceRankRow({
             <Icon name="check" size={14} strokeWidth={2.6} /> Text
           </span>
         ) : draftState === 'loading' ? (
-          <span className="text-label text-ink-faint animate-pulse">Lädt…</span>
+          <span className="inline-flex items-center gap-1.5 text-label text-ink-faint"><Spinner />Lädt…</span>
         ) : canLoadText ? (
           <Button variant="ghost" size="sm" onClick={onLoadText}>
             Text erzeugen

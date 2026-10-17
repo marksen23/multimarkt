@@ -237,10 +237,11 @@ export function ConfidenceCenter({
         <ActionBar>
           <Button
             size="lg"
+            loading={saving}
             disabled={!canSave || anyActionInProgress}
             onClick={() => selectedCondition && onConfirmCondition(selectedCondition)}
           >
-            {saving ? 'Speichert…' : isConditionConfirmed ? 'Zustand aktualisieren' : 'Zustand bestätigen'}
+            {isConditionConfirmed ? 'Zustand aktualisieren' : 'Zustand bestätigen'}
           </Button>
         </ActionBar>
       </div>

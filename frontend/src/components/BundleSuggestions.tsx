@@ -120,8 +120,8 @@ function SuggestionCard({
         Marge <span className="font-bold tabular-nums">{formatEur(suggestion.bundleMarginEur)}</span>
       </p>
       <div className="flex gap-2">
-        <Button size="sm" disabled={disabled} onClick={onAccept}>
-          {busy ? 'Bitte warten…' : 'Übernehmen'}
+        <Button size="sm" loading={busy} disabled={disabled} onClick={onAccept}>
+          Übernehmen
         </Button>
         <Button size="sm" variant="secondary" disabled={disabled} onClick={onDismiss}>
           Verwerfen
