@@ -181,7 +181,7 @@ export function SaleCloseoutForm({
       )}
 
       <div className="flex gap-2">
-        <Button size="sm" disabled={busy || !preview || !portal.trim()} onClick={submit}>
+        <Button size="sm" loading={busy} disabled={busy || !preview || !portal.trim()} onClick={submit}>
           {submitLabel}
         </Button>
         {onCancel && (
