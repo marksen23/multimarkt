@@ -22,6 +22,10 @@ async function noiseJpeg(size = 40): Promise<Buffer> {
     .toBuffer();
 }
 
+// Die 1000×1000-Rauschbilder brauchen bei parallelem Volllauf (alle Suites)
+// mehr als Jests Default von 5 s — einzeln laufen sie deutlich schneller.
+const LARGE_IMAGE_TIMEOUT_MS = 20_000;
+
 describe('PhotoQualityService', () => {
   const service = new PhotoQualityService(makeConfig());
 
@@ -59,12 +63,12 @@ describe('PhotoQualityService', () => {
     const report = await service.analyze([photo]);
 
     expect(report.issues.filter((i) => i.type !== 'DUPLICATE')).toHaveLength(0);
-  });
+  }, LARGE_IMAGE_TIMEOUT_MS);
 
   it('flags a second, near-identical photo as a duplicate', async () => {
     const photo = await noiseJpeg(1000);
     const report = await service.analyze([photo, photo]);
 
     expect(report.issues.some((i) => i.type === 'DUPLICATE' && i.photoIndex === 1)).toBe(true);
-  });
+  }, LARGE_IMAGE_TIMEOUT_MS);
 });

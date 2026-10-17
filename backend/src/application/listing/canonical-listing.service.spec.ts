@@ -6,6 +6,8 @@ import { PriceTriangulationService } from '../pricing/price-triangulation.servic
 import { StateGuardService } from '../state-guard/state-guard.service';
 import { TitleTokenAnalysisService } from '../title-generation/title-token-analysis.service';
 import { VaguePhraseDetectorService } from './vague-phrase-detector.service';
+import { DescriptionQualityService } from './description-quality.service';
+import { PriceDescriptionAlignmentService } from './price-description-alignment.service';
 
 const item = { id: 'item-1', title: 'Herrenjacke', condition: 'good' };
 
@@ -47,6 +49,8 @@ function makeService(
     priceTriangulation,
     new TitleTokenAnalysisService(),
     new VaguePhraseDetectorService(),
+    new DescriptionQualityService(),
+    new PriceDescriptionAlignmentService(),
   );
 }
 
