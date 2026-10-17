@@ -80,7 +80,7 @@ export function NegotiationPage() {
       ) : (
         <Card className="p-4 space-y-2">
           <div className="flex items-center gap-2">
-            <Icon name="alertCircle" size={18} className="text-warning shrink-0" />
+            <Icon name="alert" size={18} className="text-warning shrink-0" />
             <h1 className="text-title text-ink">Verhandlung</h1>
           </div>
           <p className="text-body text-ink-muted">
