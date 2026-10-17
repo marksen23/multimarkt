@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import { bundlesApi } from '../api/bundles';
 import { itemsApi } from '../api/items';
@@ -90,14 +90,13 @@ function AddItemsSection({
         <Button
           block
           size="md"
+          loading={busy}
           disabled={busy || selected.size === 0}
           onClick={add}
         >
-          {busy
-            ? 'Wird hinzugefügt…'
-            : selected.size > 0
-              ? `${selected.size} ${selected.size === 1 ? 'Artikel' : 'Artikel'} hinzufügen → Bundle bereit`
-              : 'Artikel auswählen'}
+          {selected.size > 0
+            ? `${selected.size} Artikel hinzufügen → Bundle bereit`
+            : 'Artikel auswählen'}
         </Button>
       )}
     </div>
@@ -121,6 +120,7 @@ function buildBundleDescription(items: Item[]): string {
 export function BundleDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const toast = useToast();
   const [detail, setDetail] = useState<BundleDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -176,9 +176,14 @@ export function BundleDetailPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-4">
-      <Link to="/bundles" className="inline-block text-label font-normal text-ink-faint hover:text-ink-muted">
-        ← Bundles
-      </Link>
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-1 h-10 pl-1 pr-3 -ml-1 rounded-full text-body text-ink-muted hover:bg-surface-hover hover:text-ink"
+      >
+        <Icon name="chevronLeft" size={20} />
+        Bundles
+      </button>
 
       <PageHeader
         title={bundle.title}
@@ -191,7 +196,7 @@ export function BundleDetailPage() {
       <section>
         <SectionLabel>Enthaltene Artikel ({items.length})</SectionLabel>
         {items.length === 0 && bundle.status !== 'NEW' ? (
-          <EmptyState icon="package" title="Noch keine Artikel in diesem Bundle." />
+          <EmptyState icon="package" title="Noch keine Artikel in diesem Bundle" />
         ) : (
           <div className="space-y-1.5">
             {items.map((item) => (

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { ItemListEntry } from '../api/types';
-import { Icon, PhaseBadge, PHASE_BORDER, statusInfo } from '../ui';
+import { Icon, PhaseBadge, PHASE_BORDER, Spinner, statusInfo } from '../ui';
 import { formatEuro, relativeDate } from '../lib/format';
 
 export function ItemRow({
@@ -43,7 +43,7 @@ export function ItemRow({
           <Icon name="chevronRight" size={14} strokeWidth={2.4} />
         </span>
       ) : item.status === 'ANALYZING' ? (
-        <span className="shrink-0 w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" aria-label="Wird analysiert" />
+        <Spinner className="shrink-0" />
       ) : (
         <Icon name="chevronRight" className="text-ink-faint group-hover:text-accent" />
       )}
