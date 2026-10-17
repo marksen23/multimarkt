@@ -7,14 +7,17 @@ import {
   MARKET_DISTRIBUTION_PROVIDER,
   MarketDistributionProvider,
 } from '../../domain/pricing/market-distribution-provider.interface';
+import { classifySourceCondition } from '../../domain/ankauf/condition';
+import {
+  formatSearchLocation,
+  type AnkaufSearchPlace,
+} from '../../domain/ankauf/search-place';
 import type {
   AnkaufListing,
   AnkaufResearchResult,
   ConditionPriceImpact,
   DealScore,
 } from '../../domain/ankauf/ankauf.types';
-
-const LOCATION = 'Berlin';
 
 // Documented approximations — not guarantees
 const CONDITION_IMPACT: Record<string, ConditionPriceImpact> = {
@@ -51,13 +54,14 @@ export class AnkaufResearchService {
     @Inject(MARKET_DISTRIBUTION_PROVIDER) private readonly ebayProvider: MarketDistributionProvider,
   ) {}
 
-  async search(keywords: string): Promise<AnkaufResearchResult> {
-    const cacheKey = keywords.trim().toLowerCase();
+  async search(keywords: string, place: AnkaufSearchPlace): Promise<AnkaufResearchResult> {
+    const location = formatSearchLocation(place.postalCode, place.radiusKm);
+    const cacheKey = `${keywords.trim().toLowerCase()}|${location}`;
     const cached = this.cache.get(cacheKey);
     if (cached && Date.now() < cached.expiresAt) return cached.result;
 
     const [raw, ebayResult] = await Promise.all([
-      this.provider.search({ keywords, location: LOCATION }),
+      this.provider.search({ keywords, location }),
       this.ebayProvider.search({ keywords, condition: null }),
     ]);
 
@@ -79,12 +83,24 @@ export class AnkaufResearchService {
     const listings: AnkaufListing[] = [...rawListings, ...ebayListings]
       .filter((l) => l.price > 0)
       .map((l) => {
+        const condition = l.condition?.trim() ? l.condition.trim() : null;
+        const { conditionKey, conditionUncertain } = classifySourceCondition(condition);
         const dealScore = marketMedian !== null ? computeDealScore(l.price, marketMedian) : null;
         const priceVsMarketPct =
           marketMedian !== null
             ? Math.round(((l.price - marketMedian) / marketMedian) * 1000) / 10
             : null;
-        return { ...l, dealScore, priceVsMarketPct };
+        return {
+          title: l.title,
+          price: l.price,
+          platform: l.platform,
+          url: l.url,
+          condition,
+          conditionKey,
+          conditionUncertain,
+          dealScore,
+          priceVsMarketPct,
+        };
       })
       .sort((a, b) => {
         const ai = a.dealScore ? DEAL_SCORE_ORDER.indexOf(a.dealScore) : 99;
@@ -95,7 +111,7 @@ export class AnkaufResearchService {
 
     const result: AnkaufResearchResult = {
       keywords,
-      location: LOCATION,
+      location,
       marketMedianEur: marketMedian,
       listings,
       conditionPriceImpact: CONDITION_IMPACT,

@@ -332,12 +332,16 @@ export interface PhotoQualityReport {
 export type DealScore = 'SEHR_GUT' | 'GUT' | 'FAIR' | 'TEUER';
 export type AnkaufPlatform = 'KLEINANZEIGEN' | 'EBAY' | 'VINTED' | 'FACEBOOK' | 'SONSTIGE';
 
+export type AnkaufConditionKey = 'wie_neu' | 'gut' | 'gebraucht' | 'defekt';
+
 export interface AnkaufListing {
   title: string;
   price: number;
   platform: AnkaufPlatform;
   url: string | null;
   condition: string | null;
+  conditionKey: AnkaufConditionKey | null;
+  conditionUncertain: boolean;
   dealScore: DealScore | null;
   priceVsMarketPct: number | null;
 }
@@ -353,6 +357,22 @@ export interface AnkaufResearchResult {
   marketMedianEur: number | null;
   listings: AnkaufListing[];
   conditionPriceImpact: Record<string, ConditionPriceImpact>;
+  searchedAt: string;
+}
+
+export interface AnkaufSearchProfile {
+  postalCode: string | null;
+  radiusKm: number;
+}
+
+export interface AnkaufSearchSummary {
+  id: string;
+  keywords: string;
+  postalCode: string;
+  radiusKm: number;
+  location: string;
+  marketMedianEur: number | null;
+  listingCount: number;
   searchedAt: string;
 }
 
