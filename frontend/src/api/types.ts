@@ -88,6 +88,7 @@ export interface ItemPhoto {
   id: string;
   itemId: string;
   url: string;
+  shot: string | null;
   createdAt: string;
 }
 
@@ -258,9 +259,21 @@ export interface PhotoQualityIssue {
   message: string;
 }
 
+export interface PhotoShotNeed {
+  shot: string;
+  label: string;
+}
+
+export interface MissingPhotoShot extends PhotoShotNeed {
+  message: string;
+}
+
 export interface PhotoQualityReport {
   photoCount: number;
   issues: PhotoQualityIssue[];
+  category: string | null;
+  requiredShots: PhotoShotNeed[];
+  missingShots: MissingPhotoShot[];
 }
 
 // --- Ankauf-Recherche ---

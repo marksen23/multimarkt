@@ -1,4 +1,15 @@
-import { ArrayNotEmpty, IsArray, IsNumber, IsOptional, IsPositive, IsString, IsUUID, MinLength } from 'class-validator';
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+  MinLength,
+} from 'class-validator';
+import { PHOTO_SHOTS, PhotoShot } from '../../domain/photo-quality/photo-briefing';
 
 export class CreateItemDto {
   @IsOptional()
@@ -39,6 +50,13 @@ export class UpdateTitleDto {
   @IsString()
   @MinLength(1)
   title: string;
+}
+
+/** Zuordnung einer Aufnahme. `null` nimmt die Zuordnung zurück und blockiert nichts. */
+export class AssignPhotoShotDto {
+  @IsOptional()
+  @IsIn(PHOTO_SHOTS)
+  shot?: PhotoShot | null;
 }
 
 export class BundleItemsDto {

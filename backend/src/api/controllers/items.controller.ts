@@ -23,6 +23,7 @@ import { CurrentActor } from '../auth/actor.decorator';
 import { ActorContextGuard } from '../auth/actor-context.guard';
 import { ResponseEnvelopeInterceptor } from '../interceptors/response-envelope.interceptor';
 import {
+  AssignPhotoShotDto,
   BundleItemsDto,
   ConfirmAttributeDto,
   ConfirmTruthDto,
@@ -77,6 +78,7 @@ import {
   PriceTriangulationService,
 } from '../../application/pricing/price-triangulation.service';
 import { PhotoQualityService } from '../../application/photo-quality/photo-quality.service';
+import { buildPhotoBriefing, isPhotoShot } from '../../domain/photo-quality/photo-briefing';
 import { PhotoQualityReport } from '../../domain/photo-quality/photo-quality.types';
 import {
   TitleGenerationService,
@@ -402,11 +404,8 @@ export class ItemsController {
     return this.canonicalListing.generateDescription(id, goal);
   }
 
-  // Rein technischer Hinweis (Schärfe/Belichtung/Auflösung/Duplikate) über
-  // die eigenen hochgeladenen Fotos — keine KI, keine Konkurrenzdaten,
-  // blockiert nie das Anlegen des Listings (siehe docs zur Methodik-Anfrage
-  // September 2026: Konkurrenz-Bildscoring ist mangels Datenzugriff bewusst
-  // NICHT gebaut).
+  // Pixel-Check (Schärfe/Belichtung/Auflösung/Duplikate) plus Foto-Briefing.
+  // Fehlende Aufnahmen sind ein Hinweis und blockieren das Speichern nicht.
   @Get(':id/photo-quality')
   async photoQualityReport(
     @Param('id', ParseUUIDPipe) id: string,
@@ -415,7 +414,83 @@ export class ItemsController {
       where: { itemId: id },
       order: { createdAt: 'ASC' },
     });
-    return this.photoQuality.analyzeUrls(photos.map((p) => p.url));
+    const attributes = await this.dataSource.manager.find(ItemAttributeEntity, {
+      where: { itemId: id },
+    });
+    const pixel = await this.photoQuality.check(photos.map((p) => p.url));
+    return {
+      ...pixel,
+      ...buildPhotoBriefing(
+        attributes,
+        photos.map((p) => p.shot),
+      ),
+    };
+  }
+
+  /**
+   * Weiteres Foto, ohne die Analyse neu zu starten und ohne den
+   * Artikelstatus zu ändern. Die Aufnahme (`shot`) ist optional.
+   */
+  @Post(':id/photos')
+  @UseInterceptors(
+    FilesInterceptor('files', MAX_PHOTOS_PER_UPLOAD, {
+      storage: memoryStorage(),
+      limits: { fileSize: MAX_PHOTO_SIZE_BYTES },
+    }),
+  )
+  async addPhotos(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body('shot') shot?: string,
+  ): Promise<ItemPhotoEntity[]> {
+    const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
+    if (!item) throw new NotFoundException(`Item ${id} not found`);
+    if (!files?.length) {
+      throw new BadRequestException('At least one photo is required (field "files")');
+    }
+    for (const file of files) {
+      if (!ALLOWED_PHOTO_MIME_TYPES.has(file.mimetype)) {
+        throw new BadRequestException(`Unsupported image type: ${file.mimetype}`);
+      }
+    }
+    const assigned = shot == null || shot === '' ? null : shot;
+    if (assigned != null && !isPhotoShot(assigned)) {
+      throw new BadRequestException(`Unknown photo shot: ${assigned}`);
+    }
+
+    const uploaded = await Promise.all(
+      files.map((file) =>
+        this.storage.upload({
+          buffer: file.buffer,
+          mimeType: file.mimetype,
+          originalName: file.originalname,
+        }),
+      ),
+    );
+    return this.dataSource.manager.save(
+      ItemPhotoEntity,
+      uploaded.map((file) => ({
+        itemId: id,
+        url: file.url,
+        storageKey: file.key,
+        shot: assigned,
+      })),
+    );
+  }
+
+  @Patch(':id/photos/:photoId')
+  async assignPhotoShot(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('photoId', ParseUUIDPipe) photoId: string,
+    @Body() dto: AssignPhotoShotDto,
+  ): Promise<ItemPhotoEntity> {
+    const photo = await this.dataSource.manager.findOneBy(ItemPhotoEntity, {
+      id: photoId,
+      itemId: id,
+    });
+    if (!photo) throw new NotFoundException(`Photo ${photoId} not found`);
+    photo.shot = dto.shot ?? null;
+    return this.dataSource.manager.save(photo);
   }
 
   // §9e-Ergänzung (September 2026): reine Vorschau wie bei generate-description
