@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { bundlesApi } from '../api/bundles';
 import { ApiRequestError } from '../api/client';
 import type { BundleListEntry } from '../api/types';
+import { BundleSuggestions } from '../components/BundleSuggestions';
 import { ListSkeleton } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
 
@@ -29,6 +30,8 @@ export function BundlesPage() {
         </Link>
       </div>
 
+      <BundleSuggestions />
+
       {error && (
         <div className="bg-danger-soft border border-danger/20 rounded-xl p-4 text-sm text-danger">
           {error}
@@ -47,6 +50,8 @@ export function BundlesPage() {
           </Link>
         </div>
       )}
+
+      <h2 className="text-xs font-bold text-ink-muted uppercase tracking-wide">Angelegte Bundles</h2>
 
       <div className="space-y-2">
         {entries?.map(({ bundle }) => (

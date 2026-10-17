@@ -124,6 +124,37 @@ export interface BundleDetail {
   listings: ListingSummary[];
 }
 
+export type BundleMatchDimension = 'category' | 'size' | 'brand';
+
+export interface BundleSuggestionItem {
+  id: string;
+  title: string | null;
+  salePriceEur: number;
+  singleNetEur: number;
+  marginEur: number;
+  shippingEur: number;
+}
+
+export interface BundleSuggestion {
+  fingerprint: string;
+  title: string;
+  description: string;
+  dimension: BundleMatchDimension;
+  dimensionLabel: string;
+  matchValue: string;
+  itemIds: string[];
+  items: BundleSuggestionItem[];
+  suggestedPriceEur: number;
+  bundleNetEur: number;
+  bundleMarginEur: number;
+  thresholdEur: number;
+}
+
+export interface BundleSuggestionList {
+  thresholdEur: number | null;
+  suggestions: BundleSuggestion[];
+}
+
 export interface CanonicalListing {
   id: string;
   userId: string;
