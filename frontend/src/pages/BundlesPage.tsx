@@ -63,6 +63,7 @@ export function BundlesPage() {
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-4">
       <PageHeader
         title="Bundles"
+        subtitle={entries ? `${entries.length} ${entries.length === 1 ? 'Bundle' : 'Bundles'}` : undefined}
         action={
           <ButtonLink to="/bundles/new" size="sm" icon="plus">
             Neues Bundle
@@ -74,7 +75,6 @@ export function BundlesPage() {
 
       {error && <Notice tone="danger">{error}</Notice>}
 
-      {/* Filter + Sort */}
       {entries && entries.length > 0 && (
         <div className="flex items-center justify-between gap-2">
           <div className="flex gap-1.5 overflow-x-auto">
@@ -97,7 +97,7 @@ export function BundlesPage() {
                   }`}
                 >
                   {FILTER_LABELS[key]}
-                  {count > 0 && <span className="ml-1 tabular-nums opacity-70">({count})</span>}
+                  {count > 0 && <span className="ml-1 tabular-nums opacity-70">{count}</span>}
                 </button>
               );
             })}
@@ -151,7 +151,7 @@ export function BundlesPage() {
       {sorted.length === 0 && entries && entries.length > 0 && (
         <EmptyState
           icon="search"
-          title="Keine Bundles für diesen Filter."
+          title="Keine Bundles in dieser Kategorie"
           action={
             <Button variant="secondary" size="sm" onClick={() => setFilterPersist('alle')}>
               Filter zurücksetzen

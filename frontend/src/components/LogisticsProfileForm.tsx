@@ -83,6 +83,7 @@ export function LogisticsProfileForm({
       postalCode: postalCode.trim() || null,
     });
     setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   return (
@@ -197,7 +198,7 @@ export function LogisticsProfileForm({
         <p className="text-label font-normal text-ink-muted">Keine Versandportale. Text wird Nur Abholung.</p>
       )}
 
-      <Button block size="md" disabled={!canSave} onClick={() => void save()}>
+      <Button block size="md" loading={busy} disabled={!canSave} icon={saved ? 'check' : undefined} onClick={() => void save()}>
         {saved ? 'Logistik gespeichert' : 'Logistik speichern'}
       </Button>
     </Card>

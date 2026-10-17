@@ -356,12 +356,15 @@ function NegotiationEntry({ itemId }: { itemId: string }) {
   return (
     <Link
       to={`/items/${itemId}/verhandlung`}
-      className="block bg-surface border border-line rounded-card p-4 hover:bg-surface-hover transition-colors"
+      className="flex items-center gap-3 bg-surface border border-line rounded-card p-4 hover:bg-surface-hover transition-colors"
     >
-      <span className="text-micro uppercase text-ink-muted">Verhandlung</span>
-      <p className="text-body text-ink mt-1">
-        Käufernachricht einfügen. Drei Antworten zum Kopieren, nichts wird gesendet.
-      </p>
+      <div className="flex-1 min-w-0">
+        <span className="text-micro uppercase text-ink-muted">Verhandlung</span>
+        <p className="text-body text-ink mt-1">
+          Käufernachricht einfügen. Drei Antworten zum Kopieren, nichts wird gesendet.
+        </p>
+      </div>
+      <Icon name="chevronRight" className="shrink-0 text-ink-faint" size={18} />
     </Link>
   );
 }
@@ -396,6 +399,11 @@ function SoldSheet({
       <div className="space-y-4">
         {online.length > 0 && selected ? (
           <>
+            {online.length === 1 && (
+              <p className="text-label font-normal text-ink-muted">
+                Verkauft über <span className="font-semibold text-ink">{portalLabel(selected.p.marketplaceId)}</span>
+              </p>
+            )}
             {online.length > 1 && (
               <Field label="Verkauft über">
                 <select value={projectionId ?? ''} onChange={(e) => setProjectionId(e.target.value)} className={inputClass}>
@@ -499,7 +507,7 @@ function AnalyzeStep({
         <div>
           <p className="text-body font-semibold text-ink">KI analysiert die Fotos</p>
           <p className="text-label font-normal text-ink-faint">
-            {elapsed > 0 ? `${elapsed} s` : 'Dauert meist 15–30 Sekunden.'} Du kannst die Seite verlassen.
+            {elapsed > 0 ? `${elapsed} s · ` : 'Dauert meist 15–30 Sekunden. '}Du kannst die Seite verlassen.
           </p>
         </div>
       </Card>

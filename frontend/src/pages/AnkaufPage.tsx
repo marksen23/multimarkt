@@ -10,7 +10,7 @@ import type {
   AnkaufSearchSummary,
   DealScore,
 } from '../api/types';
-import { Button, Card, EmptyState, Field, Icon, Notice, PageHeader, SectionLabel, inputClass } from '../ui';
+import { Button, Card, EmptyState, Field, Icon, Notice, PageHeader, SectionLabel, Spinner, inputClass } from '../ui';
 import { formatEuro } from '../lib/format';
 
 type ConditionKey = 'alle' | 'wie_neu' | 'gut' | 'gebraucht' | 'defekt' | 'unsicher';
@@ -234,14 +234,17 @@ export function AnkaufPage() {
               </select>
             </Field>
           </div>
-          <p className="text-label font-normal text-ink-faint">
-            {profileLoading
-              ? 'Suchprofil wird geladen…'
-              : placeLabel
-                ? `Suchprofil: ${placeLabel}`
-                : 'Die Suche startet, sobald die PLZ steht.'}
-            {postalCode.length > 0 && !postalOk ? ' · PLZ mit fünf Ziffern.' : ''}
-          </p>
+          <div className="text-label font-normal text-ink-faint flex items-center gap-1.5">
+            {profileLoading && <Spinner />}
+            <span>
+              {profileLoading
+                ? 'Suchprofil wird geladen…'
+                : placeLabel
+                  ? `Suchprofil: ${placeLabel}`
+                  : 'Die Suche startet, sobald die PLZ steht.'}
+              {postalCode.length > 0 && !postalOk ? ' · PLZ mit fünf Ziffern.' : ''}
+            </span>
+          </div>
         </div>
 
         <form
@@ -272,7 +275,7 @@ export function AnkaufPage() {
         {searches.length > 0 && (
           <div>
             <SectionLabel>Letzte Suchen</SectionLabel>
-            <div className="-mx-4 px-4 flex gap-2 overflow-x-auto pb-1">
+            <div className="-mx-4 px-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
               {searches.map((item) => (
                 <button
                   key={item.id}
@@ -346,7 +349,7 @@ export function AnkaufPage() {
                   }`}
                 >
                   {CONDITION_LABELS[key]}
-                  {count > 0 && <span className="ml-1 tabular-nums opacity-70">({count})</span>}
+                  {count > 0 && <span className="ml-1 tabular-nums opacity-70">{count}</span>}
                 </button>
               );
             })}
@@ -378,7 +381,7 @@ export function AnkaufPage() {
 
           <div className="space-y-3">
             {visibleListings.length === 0 && (
-              <EmptyState icon="search" title="Keine Angebote für diesen Filter gefunden." />
+              <EmptyState icon="search" title="Keine Angebote für diesen Filter" />
             )}
             {visibleListings.map((listing, i) => {
               const key = `${listing.platform}-${listing.title}-${i}`;

@@ -5,7 +5,7 @@ import { ApiRequestError } from '../api/client';
 import { clearAccessToken } from '../components/TokenGate';
 import { useTheme } from '../hooks/useTheme';
 import type { DeletionAuditLog, ItemListEntry } from '../api/types';
-import { Button, Card, Icon, PageHeader } from '../ui';
+import { Button, Card, Icon, PageHeader, SectionLabel } from '../ui';
 import { formatEuro, realizedPrice } from '../lib/format';
 
 /** Doc 04 §16 / Doc 01 §15 — Hard-Delete-Lifecycle (T08-1). */
@@ -70,6 +70,8 @@ export function AccountPage() {
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-5">
       <PageHeader title="Konto" />
 
+      <SectionLabel>Statistik</SectionLabel>
+
       {entries === null ? (
         <div className="grid grid-cols-2 gap-2">
           {[1, 2, 3, 4].map((i) => (
@@ -87,6 +89,7 @@ export function AccountPage() {
               label="Erlös"
               value={revenue > 0 ? formatEuro(revenue, 0) : '—'}
               highlight={revenue > 0}
+              wide
             />
           </div>
           {lagerwert > 0 && (
@@ -98,9 +101,8 @@ export function AccountPage() {
         </div>
       )}
 
-      {/* Darstellung */}
+      <SectionLabel>Darstellung</SectionLabel>
       <Card className="p-4 space-y-3">
-        <p className="text-body font-semibold text-ink">Darstellung</p>
         <div className="flex gap-2">
           {(['auto', 'light', 'dark'] as const).map((t) => (
             <button
@@ -127,11 +129,11 @@ export function AccountPage() {
         </p>
       </Card>
 
-      {/* Abmelden */}
+      <SectionLabel>Sitzung</SectionLabel>
       <Card className="p-4 space-y-2">
         <p className="text-body font-semibold text-ink">Sitzung</p>
         <p className="text-label font-normal text-ink-faint">
-          Personal Resale OS — Einzelnutzer-Modus. Kein Passwort, nur ein Zugriffstoken.
+          Einzelnutzer-Modus. Kein Passwort, nur ein Zugriffstoken.
         </p>
         <button
           type="button"
@@ -143,7 +145,7 @@ export function AccountPage() {
           }`}
         >
           <Icon name="logout" size={17} />
-          {confirmLogout ? 'Wirklich abmelden?' : 'Abmelden (Token entfernen)'}
+          {confirmLogout ? 'Wirklich abmelden? Nochmal tippen' : 'Abmelden (Token entfernen)'}
         </button>
       </Card>
 
@@ -237,13 +239,15 @@ function StatCard({
   label,
   value,
   highlight,
+  wide,
 }: {
   label: string;
   value: string;
   highlight?: boolean;
+  wide?: boolean;
 }) {
   return (
-    <Card className="p-4 space-y-1">
+    <Card className={`p-4 space-y-1${wide ? ' col-span-2' : ''}`}>
       <p className={`text-display tabular-nums ${highlight ? 'text-accent' : 'text-ink'}`}>{value}</p>
       <p className="text-micro uppercase text-ink-muted">{label}</p>
     </Card>

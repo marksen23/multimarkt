@@ -88,7 +88,15 @@ export function BestandPage() {
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-4">
       <PageHeader
         title="Bestand"
-        subtitle={entries ? `${entries.length} Artikel insgesamt` : undefined}
+        subtitle={
+          entries
+            ? q
+              ? `${visible.length} Treffer · ${entries.length} gesamt`
+              : filter !== 'active'
+              ? `${visible.length} angezeigt · ${entries.length} gesamt`
+              : `${entries.length} Artikel insgesamt`
+            : undefined
+        }
         action={
           soldCount > 0 && entries ? (
             <Button variant="ghost" size="sm" icon="download" onClick={() => exportSoldCsv(entries)}>

@@ -4,7 +4,7 @@ import { bundlesApi } from '../api/bundles';
 import { ApiRequestError } from '../api/client';
 import type { BundleSuggestion, BundleSuggestionList } from '../api/types';
 import { formatEur } from '../margin/sale-closeout';
-import { Button } from '../ui';
+import { Button, Spinner } from '../ui';
 
 /**
  * Paketvorschläge (Feature-Plan 3.8). Übernehmen legt ein normales Bundle
@@ -55,7 +55,12 @@ export function BundleSuggestions() {
     <section className="bg-surface border border-line rounded-card shadow-card p-4 space-y-3">
       <h2 className="text-micro uppercase text-ink-muted">Vorschläge</h2>
       {error && <p className="text-label text-danger">{error}</p>}
-      {!list && !error && <p className="text-label font-normal text-ink-faint">Vorschläge werden gesucht…</p>}
+      {!list && !error && (
+        <div className="flex items-center gap-2 text-label font-normal text-ink-faint">
+          <Spinner />
+          Vorschläge werden gesucht…
+        </div>
+      )}
       {list && list.thresholdEur == null && (
         <p className="text-body text-ink-muted">
           Lege unter Erwartete Marge eine Schwelle fest. Darunter schlägt die App Pakete vor, wenn

@@ -3,7 +3,7 @@ import { ApiRequestError } from '../api/client';
 import { exportApi, type MonthlySummary } from '../api/export';
 import { ListSkeleton } from '../components/Skeleton';
 import { formatEur } from '../margin/sale-closeout';
-import { Button, Card, Notice, PageHeader, SectionLabel } from '../ui';
+import { Button, Card, Icon, Notice, PageHeader, SectionLabel } from '../ui';
 
 function shiftMonth(month: string, delta: number): string {
   const [year, monthIndex] = month.split('-').map(Number);
@@ -92,31 +92,24 @@ export function SicherungPage() {
         <>
           <Card className="p-4 space-y-4">
             <div className="flex items-center justify-between gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setError(null);
-                  setSelected(shiftMonth(summary.month, -1));
-                }}
+              <button
+                type="button"
+                onClick={() => { setError(null); setSelected(shiftMonth(summary.month, -1)); }}
                 aria-label="Vorheriger Monat"
+                className="w-9 h-9 flex items-center justify-center rounded-control text-ink-muted hover:bg-surface-hover hover:text-ink transition-colors"
               >
-                Zurück
-              </Button>
+                <Icon name="chevronLeft" size={20} />
+              </button>
               <h2 className="text-title text-ink capitalize">{monthLabel(summary.month)}</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setError(null);
-                  setSelected(shiftMonth(summary.month, 1));
-                }}
+              <button
+                type="button"
+                onClick={() => { setError(null); setSelected(shiftMonth(summary.month, 1)); }}
                 disabled={atCurrentMonth}
-                className="disabled:bg-transparent"
                 aria-label="Nächster Monat"
+                className="w-9 h-9 flex items-center justify-center rounded-control text-ink-muted hover:bg-surface-hover hover:text-ink transition-colors disabled:opacity-30 disabled:pointer-events-none"
               >
-                Weiter
-              </Button>
+                <Icon name="chevronRight" size={20} />
+              </button>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -166,7 +159,7 @@ export function SicherungPage() {
               </p>
               {downloadError && <p className="text-label text-danger">{downloadError}</p>}
               {downloadedName && (
-                <p className="text-label font-normal text-ink">{downloadedName} wird heruntergeladen.</p>
+                <p className="text-label font-normal text-ink">{downloadedName} wurde heruntergeladen.</p>
               )}
               <Button
                 block

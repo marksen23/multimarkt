@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { itemsApi } from '../api/items';
 import type { PriceRecommendation, PriceResearchResult, PriceResearchSourceResult, SalesGoal } from '../api/types';
 import { SkeletonBlock } from './Skeleton';
-import { Button, Icon } from '../ui';
+import { Button, Icon, Spinner } from '../ui';
 import type { LogisticsProfile } from '../logistics/profile';
 import { ChannelNetComparison } from './ChannelNetComparison';
 import { ExpectedMarginFields } from './ExpectedMarginFields';
@@ -118,14 +118,8 @@ export function PriceResearchPanel({
             disabled={refreshing}
             className="inline-flex items-center gap-1 text-label text-ink-faint hover:text-accent disabled:opacity-60 transition-colors shrink-0"
           >
-            {refreshing ? (
-              'Aktualisiert…'
-            ) : (
-              <>
-                <Icon name="refresh" size={13} />
-                Neu abrufen
-              </>
-            )}
+            {refreshing ? <Spinner /> : <Icon name="refresh" size={13} />}
+            {refreshing ? 'Aktualisiert…' : 'Neu abrufen'}
           </button>
         </div>
       </div>
