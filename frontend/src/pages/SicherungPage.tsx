@@ -159,7 +159,7 @@ export function SicherungPage() {
               </p>
               {downloadError && <p className="text-label text-danger">{downloadError}</p>}
               {downloadedName && (
-                <p className="text-label font-normal text-ink">{downloadedName} wird heruntergeladen.</p>
+                <p className="text-label font-normal text-ink">{downloadedName} wurde heruntergeladen.</p>
               )}
               <Button
                 block

@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import { PhotoCapture } from '../components/PhotoCapture';
-import { ActionBar, Button, Card, PageHeader, Spinner, inputClass } from '../ui';
+import { ActionBar, Button, Card, Icon, PageHeader, Spinner, inputClass } from '../ui';
 
 /**
  * README §3 Schritt 1: "Fotografieren statt Formulare ausfüllen." Der
@@ -59,9 +59,14 @@ export function NewItemPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-4">
-      <Link to="/" className="inline-block text-label font-normal text-ink-faint hover:text-ink-muted">
-        ← Heute
-      </Link>
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-1 h-10 pl-1 pr-3 -ml-1 rounded-full text-body text-ink-muted hover:bg-surface-hover hover:text-ink"
+      >
+        <Icon name="chevronLeft" size={20} />
+        Heute
+      </button>
       <PageHeader
         title="Neuer Artikel"
         subtitle="Fotografiere den Gegenstand, ein Etikett oder Typenschild. Die KI trägt nur ein, was sie sieht. Fehlende Pflichtangaben der Kategorie fragst du danach."
