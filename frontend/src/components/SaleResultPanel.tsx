@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { Item } from '../api/types';
 import { computeSaleCloseout, formatEur, type SaleCloseoutDraft } from '../margin/sale-closeout';
+import { Card } from '../ui';
 import { SaleCloseoutForm } from './SaleCloseoutForm';
 
 function formatSoldAt(iso: string | null): string {
@@ -23,10 +24,10 @@ export function SaleResultPanel({
 }) {
   if (item.saleProceedsEur == null) {
     return (
-      <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
+      <Card className="p-4 space-y-3">
         <div>
-          <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">Verkaufsabschluss</p>
-          <p className="text-[11px] text-ink-faint mt-1">
+          <p className="text-micro uppercase text-ink-faint">Verkaufsabschluss</p>
+          <p className="text-label font-normal text-ink-faint mt-1">
             Der Artikel ist verkauft. Erlös, Portal, Gebühren und Versand fehlen noch.
           </p>
         </div>
@@ -39,7 +40,7 @@ export function SaleResultPanel({
           submitLabel="Abschluss speichern"
           onSubmit={(draft) => void onRecord(draft)}
         />
-      </div>
+      </Card>
     );
   }
 
@@ -51,12 +52,12 @@ export function SaleResultPanel({
   });
 
   return (
-    <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
+    <Card className="p-4 space-y-3">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">Verkaufsabschluss</p>
-        <p className="text-[11px] text-ink-faint">{formatSoldAt(item.soldAt)}</p>
+        <p className="text-micro uppercase text-ink-faint">Verkaufsabschluss</p>
+        <p className="text-label font-normal text-ink-faint">{formatSoldAt(item.soldAt)}</p>
       </div>
-      <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+      <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-body">
         <Figure label="Erlös" value={formatEur(item.saleProceedsEur)} />
         <Figure label="Portal" value={item.salePortal ?? '—'} />
         <Figure label="Gebühren" value={formatEur(item.saleFeeEur)} />
@@ -78,13 +79,13 @@ export function SaleResultPanel({
         />
       </dl>
       {result.netProfitEur == null && (
-        <p className="text-[11px] text-ink-muted">Einstand fehlt — Nettogewinn ist nicht gerechnet.</p>
+        <p className="text-label font-normal text-ink-muted">Einstand fehlt — Nettogewinn ist nicht gerechnet.</p>
       )}
-      <p className="text-[11px] text-ink-faint">Nettogewinn = Erlös − Gebühren − Versand − Einstand.</p>
-      <Link to="/verkaeufe" className="inline-block text-xs font-bold text-accent hover:text-accent-hover">
+      <p className="text-label font-normal text-ink-faint">Nettogewinn = Erlös − Gebühren − Versand − Einstand.</p>
+      <Link to="/verkaeufe" className="inline-block text-label text-accent hover:text-accent-hover">
         Zur Verkaufsliste
       </Link>
-    </div>
+    </Card>
   );
 }
 
@@ -101,7 +102,7 @@ function Figure({
 }) {
   return (
     <div>
-      <dt className="text-[10px] font-bold uppercase text-ink-faint">{label}</dt>
+      <dt className="text-micro uppercase text-ink-faint">{label}</dt>
       <dd className={emphasis ? `font-bold ${negative ? 'text-danger' : 'text-ink'}` : 'text-ink'}>{value}</dd>
     </div>
   );

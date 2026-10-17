@@ -7,6 +7,7 @@ import {
   type SaleCloseoutDraft,
 } from '../margin/sale-closeout';
 import { useMarginAssumptions } from '../margin/use-margin-assumptions';
+import { Button, inputClass } from '../ui';
 
 function parseAmount(raw: string): number | null {
   const normalized = raw.trim().replace(',', '.');
@@ -92,22 +93,22 @@ export function SaleCloseoutForm({
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <label className="space-y-1">
-          <span className="block text-[10px] font-bold text-ink-faint uppercase">Erlös €</span>
+          <span className="block text-micro uppercase text-ink-faint">Erlös €</span>
           <input
             type="text"
             inputMode="decimal"
             value={proceeds}
             onChange={(e) => setProceeds(e.target.value)}
-            className="w-full p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+            className={inputClass}
             autoFocus
           />
         </label>
         <label className="space-y-1">
-          <span className="block text-[10px] font-bold text-ink-faint uppercase">Portal</span>
+          <span className="block text-micro uppercase text-ink-faint">Portal</span>
           <select
             value={portal}
             onChange={(e) => setPortal(e.target.value)}
-            className="w-full p-2 border border-line rounded-lg text-xs bg-surface text-ink outline-none focus:border-accent"
+            className={inputClass}
           >
             {portals.map((option) => (
               <option key={option} value={option}>
@@ -117,7 +118,7 @@ export function SaleCloseoutForm({
           </select>
         </label>
         <label className="space-y-1">
-          <span className="block text-[10px] font-bold text-ink-faint uppercase">Gebühren €</span>
+          <span className="block text-micro uppercase text-ink-faint">Gebühren €</span>
           <input
             type="text"
             inputMode="decimal"
@@ -126,11 +127,11 @@ export function SaleCloseoutForm({
               setFeeTouched(true);
               setFee(e.target.value);
             }}
-            className="w-full p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+            className={inputClass}
           />
         </label>
         <label className="space-y-1">
-          <span className="block text-[10px] font-bold text-ink-faint uppercase">Versand €</span>
+          <span className="block text-micro uppercase text-ink-faint">Versand €</span>
           <input
             type="text"
             inputMode="decimal"
@@ -139,16 +140,16 @@ export function SaleCloseoutForm({
               setShippingTouched(true);
               setShipping(e.target.value);
             }}
-            className="w-full p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+            className={inputClass}
           />
         </label>
       </div>
       <label className="block space-y-1">
-        <span className="block text-[10px] font-bold text-ink-faint uppercase">Zahlungsweg</span>
+        <span className="block text-micro uppercase text-ink-faint">Zahlungsweg</span>
         <select
           value={paymentMethod}
           onChange={(e) => setPaymentMethod(e.target.value)}
-          className="w-full p-2 border border-line rounded-lg text-xs bg-surface text-ink outline-none focus:border-accent"
+          className={inputClass}
         >
           <option value="">optional</option>
           {PAYMENT_METHODS.map((method) => (
@@ -160,7 +161,7 @@ export function SaleCloseoutForm({
       </label>
 
       {preview && (
-        <div className="text-xs text-ink space-y-1">
+        <div className="text-label font-normal text-ink space-y-1 tabular-nums">
           <p>
             Netto {formatEur(preview.netEur)}
             {showProfit && (
@@ -180,23 +181,13 @@ export function SaleCloseoutForm({
       )}
 
       <div className="flex gap-2">
-        <button
-          type="button"
-          disabled={busy || !preview || !portal.trim()}
-          onClick={submit}
-          className="text-[11px] font-bold px-2 py-1 rounded-lg bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
-        >
+        <Button size="sm" disabled={busy || !preview || !portal.trim()} onClick={submit}>
           {submitLabel}
-        </button>
+        </Button>
         {onCancel && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onCancel}
-            className="text-[11px] font-bold px-2 py-1 rounded-lg bg-surface-hover text-ink-muted hover:bg-line disabled:opacity-60 transition-colors"
-          >
+          <Button variant="ghost" size="sm" disabled={busy} onClick={onCancel}>
             Abbrechen
-          </button>
+          </Button>
         )}
       </div>
     </div>

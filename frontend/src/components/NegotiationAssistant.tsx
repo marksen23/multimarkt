@@ -8,6 +8,7 @@ import {
 } from '../api/negotiation';
 import { ApiRequestError } from '../api/client';
 import { formatEur } from '../margin/sale-closeout';
+import { Button, Card, PageHeader, SectionLabel, inputClass } from '../ui';
 
 const PLATFORMS: { id: NegotiationPlatform; label: string }[] = [
   { id: 'KLEINANZEIGEN', label: 'Kleinanzeigen' },
@@ -53,29 +54,26 @@ export function NegotiationAssistant({
 
   return (
     <div className="space-y-4">
-      <header className="space-y-1">
-        <h1 className="text-xl font-extrabold text-ink tracking-tight">Verhandlung</h1>
-        <p className="text-sm text-ink-muted">{title?.trim() || 'Artikel'}</p>
-      </header>
+      <PageHeader title="Verhandlung" subtitle={title?.trim() || 'Artikel'} />
 
       <div className="grid grid-cols-2 gap-2">
         <PriceFigure label="Zielpreis" value={targetPrice} />
         <PriceFigure label="Schmerzgrenze" value={minPrice} />
       </div>
-      <p className="text-xs text-ink-muted">
+      <p className="text-label font-normal text-ink-muted">
         Preise aus der Preisrecherche dieses Artikels. Die Nachricht bleibt hier, nichts wird
         gesendet.
       </p>
 
       <div className="space-y-2">
-        <span className="block text-[10px] font-bold text-ink-faint uppercase">Einfügen bei</span>
+        <span className="block text-micro uppercase text-ink-faint">Einfügen bei</span>
         <div className="flex gap-2">
           {PLATFORMS.map((entry) => (
             <button
               key={entry.id}
               type="button"
               onClick={() => setPlatform(entry.id)}
-              className={`flex-1 px-2 py-2 rounded-xl text-xs font-bold border transition-colors ${
+              className={`flex-1 h-9 px-2 rounded-control text-label border transition-colors ${
                 platform === entry.id
                   ? 'border-accent bg-accent-soft text-accent'
                   : 'border-line bg-surface text-ink-muted hover:bg-surface-hover'
@@ -88,7 +86,7 @@ export function NegotiationAssistant({
       </div>
 
       <label className="block space-y-1">
-        <span className="block text-[10px] font-bold text-ink-faint uppercase">
+        <span className="block text-micro uppercase text-ink-faint">
           Käufernachricht einfügen
         </span>
         <textarea
@@ -96,20 +94,21 @@ export function NegotiationAssistant({
           onChange={(event) => setMessage(event.target.value)}
           rows={5}
           placeholder="Nachricht aus Kleinanzeigen, Vinted oder eBay hier einfügen"
-          className="w-full bg-surface p-3 rounded-xl border border-line text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft resize-none"
+          className={`${inputClass} resize-none`}
         />
       </label>
 
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {error && <p className="text-label text-danger">{error}</p>}
 
-      <button
-        type="button"
+      <Button
+        block
+        size="md"
+        icon="sparkle"
         disabled={busy || message.trim().length === 0}
         onClick={() => void submit()}
-        className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
       >
         {busy ? 'Liest das Gebot…' : 'Antworten vorschlagen'}
-      </button>
+      </Button>
 
       {result && (
         <SuggestionResult
@@ -124,10 +123,10 @@ export function NegotiationAssistant({
 
 function PriceFigure({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-surface border border-line rounded-xl p-3">
-      <span className="block text-[10px] font-bold text-ink-faint uppercase">{label}</span>
-      <span className="font-bold text-ink">{formatEur(value)}</span>
-    </div>
+    <Card className="p-3">
+      <span className="block text-micro uppercase text-ink-faint">{label}</span>
+      <span className="text-title text-ink tabular-nums">{formatEur(value)}</span>
+    </Card>
   );
 }
 
@@ -140,23 +139,23 @@ function SuggestionResult({
 }) {
   return (
     <div className="space-y-3">
-      <div className="bg-surface border border-line rounded-xl p-3 space-y-2">
+      <Card className="p-3 space-y-2">
         <div className="flex justify-between gap-3">
           <div>
-            <span className="block text-[10px] font-bold text-ink-faint uppercase">Gebot</span>
-            <span className="font-bold text-ink">
+            <span className="block text-micro uppercase text-ink-faint">Gebot</span>
+            <span className="font-bold text-ink tabular-nums">
               {result.offer == null ? 'kein Betrag' : formatEur(result.offer)}
             </span>
           </div>
           <div className="text-right">
-            <span className="block text-[10px] font-bold text-ink-faint uppercase">Schmerzgrenze</span>
-            <span className="font-medium text-ink-muted">{formatEur(result.minPrice)}</span>
+            <span className="block text-micro uppercase text-ink-faint">Schmerzgrenze</span>
+            <span className="font-medium text-ink-muted tabular-nums">{formatEur(result.minPrice)}</span>
           </div>
         </div>
-        <p className="text-sm text-ink">{result.assessment}</p>
-      </div>
+        <p className="text-body text-ink">{result.assessment}</p>
+      </Card>
 
-      <h2 className="text-xs font-bold text-ink-muted uppercase">Drei Antworten</h2>
+      <SectionLabel>Drei Antworten</SectionLabel>
       {result.replies.map((reply) => (
         <ReplyCard key={reply.id} reply={reply} platformLabel={platformLabel} />
       ))}
@@ -180,34 +179,35 @@ function ReplyCard({ reply, platformLabel }: { reply: NegotiationReply; platform
 
   return (
     <div
-      className={`bg-surface border rounded-xl p-3 space-y-2 ${
+      className={`bg-surface border rounded-card shadow-card p-3 space-y-2 ${
         reply.recommended ? 'border-accent' : 'border-line'
       }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-bold text-ink">{reply.label}</h3>
+        <h3 className="text-body font-bold text-ink">{reply.label}</h3>
         {reply.recommended && (
-          <span className="text-[10px] font-bold uppercase text-accent">Vorschlag</span>
+          <span className="text-micro uppercase text-accent">Vorschlag</span>
         )}
       </div>
       <textarea
         value={text}
         onChange={(event) => setText(event.target.value)}
         rows={4}
-        className="w-full bg-bg p-3 rounded-lg border border-line text-sm text-ink outline-none focus:border-accent resize-none"
+        className={`${inputClass} resize-none`}
       />
-      <button
-        type="button"
+      <Button
+        block
+        size="md"
+        icon={copyState === 'copied' ? 'check' : 'copy'}
         onClick={() => void copy()}
-        className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover transition-colors"
       >
         {copyState === 'copied'
           ? 'Antwort kopiert'
           : copyState === 'error'
             ? 'Kopieren nicht möglich — Text markieren'
             : 'Antwort kopieren'}
-      </button>
-      <p className="text-[10px] text-ink-faint text-center">
+      </Button>
+      <p className="text-label font-normal text-ink-faint text-center">
         Zum Einfügen bei {platformLabel}. Es wird nichts gesendet.
       </p>
     </div>

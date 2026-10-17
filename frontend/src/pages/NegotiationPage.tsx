@@ -5,6 +5,7 @@ import { ApiRequestError } from '../api/client';
 import type { PriceResearchResult } from '../api/types';
 import { NegotiationAssistant } from '../components/NegotiationAssistant';
 import { DetailPageSkeleton } from '../components/Skeleton';
+import { Card, Notice } from '../ui';
 
 /**
  * Verhandlung für einen echten Artikel. Die Seite zeigt P_min und P_target
@@ -39,7 +40,7 @@ export function NegotiationPage() {
     return (
       <div className="max-w-md mx-auto p-4 space-y-3">
         <BackLink itemId={id} />
-        <p className="text-sm text-danger">{error}</p>
+        <Notice tone="danger">{error}</Notice>
       </div>
     );
   }
@@ -63,13 +64,13 @@ export function NegotiationPage() {
           minPrice={recommendation.minPrice}
         />
       ) : (
-        <div className="bg-surface border border-line rounded-2xl p-4 space-y-2">
-          <h1 className="text-lg font-bold text-ink">Verhandlung</h1>
-          <p className="text-sm text-ink-muted">
+        <Card className="p-4 space-y-2">
+          <h1 className="text-title text-ink">Verhandlung</h1>
+          <p className="text-body text-ink-muted">
             Für {title?.trim() || 'diesen Artikel'} fehlen Zielpreis und Schmerzgrenze. Zuerst die
             Preisrecherche auf der Artikelseite ausführen.
           </p>
-        </div>
+        </Card>
       )}
     </div>
   );
@@ -77,7 +78,7 @@ export function NegotiationPage() {
 
 function BackLink({ itemId }: { itemId: string }) {
   return (
-    <Link to={`/items/${itemId}`} className="text-xs text-ink-faint hover:text-ink-muted">
+    <Link to={`/items/${itemId}`} className="inline-block text-label font-normal text-ink-faint hover:text-ink-muted">
       ← Artikel
     </Link>
   );

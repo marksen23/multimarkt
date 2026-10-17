@@ -5,6 +5,7 @@ import {
   type MarginAssumptions,
 } from '../margin/expected-margin';
 import { persistMarginAssumptions, useMarginAssumptions } from '../margin/use-margin-assumptions';
+import { Field, inputClass } from '../ui';
 
 function parseAmount(raw: string): number | null {
   const normalized = raw.trim().replace(',', '.');
@@ -60,21 +61,20 @@ export function ExpectedMarginFields({
       : null;
 
   if (!assumptions) {
-    return <p className="text-xs text-ink-faint">Marge lädt…</p>;
+    return <p className="text-label font-normal text-ink-faint">Marge lädt…</p>;
   }
 
   return (
-    <div className="bg-surface border border-line rounded-xl p-3 space-y-2">
-      <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">Erwartete Marge</p>
-      <p className="text-[11px] text-ink-faint">
+    <div className="bg-surface border border-line rounded-control p-3 space-y-2">
+      <p className="text-micro uppercase text-ink-muted">Erwartete Marge</p>
+      <p className="text-label font-normal text-ink-faint">
         Annahmen, die du pflegst
         {salePriceEur != null ? ` — bezogen auf den ${salePriceLabel} ${salePriceEur.toFixed(2)} €.` : '.'}{' '}
         Einstand {purchasePriceEur == null ? 'fehlt' : `${purchasePriceEur.toFixed(2)} €`}.
       </p>
 
       <div className="grid grid-cols-3 gap-2">
-        <label className="space-y-1">
-          <span className="block text-[10px] font-bold text-ink-faint uppercase">Gebühr %</span>
+        <Field label="Gebühr %">
           <input
             type="text"
             inputMode="decimal"
@@ -83,11 +83,10 @@ export function ExpectedMarginFields({
               setFeeOverride(e.target.value);
               commit(e.target.value, shippingRaw, thresholdRaw);
             }}
-            className="w-full p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+            className={`${inputClass} tabular-nums`}
           />
-        </label>
-        <label className="space-y-1">
-          <span className="block text-[10px] font-bold text-ink-faint uppercase">Versand €</span>
+        </Field>
+        <Field label="Versand €">
           <input
             type="text"
             inputMode="decimal"
@@ -96,11 +95,10 @@ export function ExpectedMarginFields({
               setShippingOverride(e.target.value);
               commit(feeRaw, e.target.value, thresholdRaw);
             }}
-            className="w-full p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+            className={`${inputClass} tabular-nums`}
           />
-        </label>
-        <label className="space-y-1">
-          <span className="block text-[10px] font-bold text-ink-faint uppercase">Schwelle €</span>
+        </Field>
+        <Field label="Schwelle €">
           <input
             type="text"
             inputMode="decimal"
@@ -110,11 +108,11 @@ export function ExpectedMarginFields({
               setThresholdOverride(e.target.value);
               commit(feeRaw, shippingRaw, e.target.value);
             }}
-            className="w-full p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+            className={`${inputClass} tabular-nums`}
           />
-        </label>
+        </Field>
       </div>
-      <p className="text-[10px] text-ink-faint">
+      <p className="text-label font-normal text-ink-faint">
         Schwelle ist die Mindestmarge in Euro. Darunter: nicht einzeln verkaufen.
       </p>
 
@@ -131,13 +129,13 @@ export function ExpectedMarginFields({
       )}
 
       {purchasePriceEur == null && (
-        <p className="text-[11px] text-ink-muted">
+        <p className="text-label font-normal text-ink-muted">
           Einstand fehlt — Marge in Euro und Prozent erst nach dem Einkauf.
         </p>
       )}
 
       {margin?.belowSingleSaleThreshold && (
-        <p className="text-sm font-bold text-danger">{NOT_INDIVIDUAL_SALE_NOTICE}</p>
+        <p className="text-body font-bold text-danger">{NOT_INDIVIDUAL_SALE_NOTICE}</p>
       )}
     </div>
   );
@@ -159,8 +157,8 @@ function readDraft(
 function Figure({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] text-ink-faint uppercase font-bold">{label}</p>
-      <p className="font-bold text-ink text-sm">{value}</p>
+      <p className="text-micro uppercase text-ink-faint">{label}</p>
+      <p className="font-bold text-ink text-body tabular-nums">{value}</p>
     </div>
   );
 }
