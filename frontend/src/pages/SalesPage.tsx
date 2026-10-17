@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ApiRequestError } from "../api/client";
 import { followUpsApi, type FollowUpCard } from "../api/follow-ups";
 import {
@@ -12,6 +12,7 @@ import { ListSkeleton } from "../components/Skeleton";
 import {
   Card,
   EmptyState,
+  Icon,
   Notice,
   PageHeader,
   PhaseBadge,
@@ -37,6 +38,7 @@ function soldDate(iso: string | null): string {
 }
 
 export function SalesPage() {
+  const navigate = useNavigate();
   const [overview, setOverview] = useState<Awaited<
     ReturnType<typeof salesApi.overview>
   > | null>(null);
@@ -64,6 +66,14 @@ export function SalesPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-6">
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-1 h-10 pl-1 pr-3 -ml-1 rounded-full text-body text-ink-muted hover:bg-surface-hover hover:text-ink"
+      >
+        <Icon name="chevronLeft" size={20} />
+        Mehr
+      </button>
       <PageHeader
         title="Verkäufe"
         subtitle="Offene Artikel, abgeschlossene Verkäufe und die Marge der letzten Wochen."
@@ -75,41 +85,43 @@ export function SalesPage() {
 
       {overview && (
         <>
-          <FollowUpSection followUps={followUps} />
+          {followUps.length > 0 && <FollowUpSection followUps={followUps} />}
 
-          <section>
-            <SectionLabel>Marge der letzten Wochen</SectionLabel>
-            <Card className="p-4 overflow-x-auto">
-              <table className="w-full text-body">
-                <thead>
-                  <tr className="text-left text-micro uppercase text-ink-faint">
-                    <th className="py-2 pr-3">Woche</th>
-                    <th className="py-2 pr-3 text-right">Verkäufe</th>
-                    <th className="py-2 text-right">Marge</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {overview.weeks.map((week) => (
-                    <tr key={week.weekStart} className="border-t border-line">
-                      <td className="py-2 pr-3 text-ink">{weekLabel(week)}</td>
-                      <td className="py-2 pr-3 text-right tabular-nums text-ink">
-                        {week.salesCount}
-                      </td>
-                      <td
-                        className={`py-2 text-right tabular-nums font-bold ${
-                          week.netProfitEur != null && week.netProfitEur < 0
-                            ? "text-danger"
-                            : "text-ink"
-                        }`}
-                      >
-                        {formatEur(week.netProfitEur)}
-                      </td>
+          {overview.weeks.length > 0 && (
+            <section>
+              <SectionLabel>Marge der letzten Wochen</SectionLabel>
+              <Card className="p-4 overflow-x-auto">
+                <table className="w-full text-body">
+                  <thead>
+                    <tr className="text-left text-micro uppercase text-ink-faint">
+                      <th className="py-2 pr-3">Woche</th>
+                      <th className="py-2 pr-3 text-right">Verkäufe</th>
+                      <th className="py-2 text-right">Marge</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Card>
-          </section>
+                  </thead>
+                  <tbody>
+                    {overview.weeks.map((week) => (
+                      <tr key={week.weekStart} className="border-t border-line">
+                        <td className="py-2 pr-3 text-ink">{weekLabel(week)}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums text-ink">
+                          {week.salesCount}
+                        </td>
+                        <td
+                          className={`py-2 text-right tabular-nums font-bold ${
+                            week.netProfitEur != null && week.netProfitEur < 0
+                              ? "text-danger"
+                              : "text-ink"
+                          }`}
+                        >
+                          {formatEur(week.netProfitEur)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
+            </section>
+          )}
 
           <ItemTable
             title={`Offen (${overview.openItems.length})`}
@@ -253,7 +265,7 @@ function OpenRow({
         </Link>
         {followUp && (
           <div className="text-label text-accent">
-            Nachfassen · {followUp.stage} Tage
+            Seit {followUp.stage} Tagen online
           </div>
         )}
       </td>
