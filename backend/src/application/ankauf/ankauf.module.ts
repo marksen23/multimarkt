@@ -5,6 +5,7 @@ import type { AnkaufSearchProvider } from '../../domain/ankauf/ankauf-search-pro
 import { MockAnkaufSearchProvider } from '../../infrastructure/ankauf/mock-ankauf-search.provider';
 import { RealAnkaufGeminiProvider } from '../../infrastructure/ankauf/real-ankauf-gemini.provider';
 import { PriceTriangulationModule } from '../pricing/price-triangulation.module';
+import { AnkaufProfileService } from './ankauf-profile.service';
 import { AnkaufResearchService } from './ankauf-research.service';
 
 const GEMINI_PLACEHOLDER_KEY = 'unused-mock-provider-active';
@@ -13,6 +14,7 @@ const GEMINI_PLACEHOLDER_KEY = 'unused-mock-provider-active';
   imports: [ConfigModule, PriceTriangulationModule],
   providers: [
     AnkaufResearchService,
+    AnkaufProfileService,
     {
       provide: ANKAUF_SEARCH_PROVIDER,
       inject: [ConfigService],
@@ -24,6 +26,6 @@ const GEMINI_PLACEHOLDER_KEY = 'unused-mock-provider-active';
       },
     },
   ],
-  exports: [AnkaufResearchService],
+  exports: [AnkaufResearchService, AnkaufProfileService],
 })
 export class AnkaufModule {}

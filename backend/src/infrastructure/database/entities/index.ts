@@ -1,4 +1,5 @@
 export * from './user.entity';
+export * from './ankauf-search.entity';
 export * from './item.entity';
 export * from './item-attribute.entity';
 export * from './bundle.entity';
