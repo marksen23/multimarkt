@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -25,7 +25,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api', { exclude: ['/healthz'] });
   // LocalDiskStorageProvider (Dev/Demo — siehe dortige Doku zum flüchtigen
   // Render-Dateisystem). UPLOAD_DIR muss mit dem Provider übereinstimmen.
-  app.useStaticAssets(join(process.cwd(), process.env.UPLOAD_DIR ?? 'uploads'), {
+  app.useStaticAssets(resolve(process.cwd(), process.env.UPLOAD_DIR ?? 'uploads'), {
     prefix: '/uploads/',
   });
 

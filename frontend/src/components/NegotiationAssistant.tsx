@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { copyText } from '../lib/clipboard';
 import {
   negotiationApi,
   type NegotiationPlatform,
@@ -169,7 +170,7 @@ function ReplyCard({ reply, platformLabel }: { reply: NegotiationReply; platform
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(text);
+      await copyText(text);
       setCopyState('copied');
     } catch {
       setCopyState('error');

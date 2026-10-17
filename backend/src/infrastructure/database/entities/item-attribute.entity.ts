@@ -42,6 +42,9 @@ export class ItemAttributeEntity {
   @Column()
   source: string;
 
+  @Column({ type: 'float', nullable: true })
+  confidence: number | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

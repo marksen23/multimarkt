@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import { PhotoCapture } from '../components/PhotoCapture';
+import { ActionBar, Button, Card, PageHeader, Spinner, inputClass } from '../ui';
 
 /**
  * README §3 Schritt 1: "Fotografieren statt Formulare ausfüllen." Der
@@ -11,8 +12,11 @@ import { PhotoCapture } from '../components/PhotoCapture';
  * drei separate Klicks.
  */
 export function NewItemPage() {
+  const location = useLocation();
+  const prefillTitle = (location.state as { title?: string } | null)?.title ?? '';
   const [photos, setPhotos] = useState<File[]>([]);
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(prefillTitle);
+  const [titleExpanded, setTitleExpanded] = useState(!!prefillTitle);
   const [stage, setStage] = useState<'idle' | 'creating' | 'uploading' | 'analyzing'>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -54,19 +58,23 @@ export function NewItemPage() {
   };
 
   return (
-    <div className="max-w-sm mx-auto p-6">
-      <div className="bg-surface rounded-2xl shadow-sm border border-line p-6 space-y-4">
-        <div>
-          <h1 className="text-xl font-extrabold text-ink tracking-tight">Neuer Artikel</h1>
-          <p className="text-sm text-ink-muted mt-1">
-            Fotografiere den Gegenstand, ein Etikett oder Typenschild. Die KI trägt nur ein,
-            was sie sieht. Fehlende Pflichtangaben der Kategorie fragst du danach.
-          </p>
-        </div>
+    <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-4">
+      <Link to="/" className="inline-block text-label font-normal text-ink-faint hover:text-ink-muted">
+        ← Heute
+      </Link>
+      <PageHeader
+        title="Neuer Artikel"
+        subtitle="Fotografiere den Gegenstand, ein Etikett oder Typenschild. Die KI trägt nur ein, was sie sieht. Fehlende Pflichtangaben der Kategorie fragst du danach."
+      />
 
+      <Card className="p-4 space-y-4">
         <PhotoCapture files={photos} onChange={setPhotos} />
 
-        <details className="text-sm">
+        <details
+          className="text-body"
+          open={titleExpanded}
+          onToggle={(e) => setTitleExpanded((e.target as HTMLDetailsElement).open)}
+        >
           <summary className="cursor-pointer text-ink-muted font-medium">
             Titel schon jetzt vergeben (optional)
           </summary>
@@ -75,11 +83,11 @@ export function NewItemPage() {
             placeholder="z.B. Herrenjacke schwarz"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="mt-2 w-full p-3 border border-line rounded-xl text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft transition"
+            className={`${inputClass} mt-2`}
           />
         </details>
 
-        {error && <p className="text-xs text-danger">{error}</p>}
+        {error && <p className="text-label text-danger">{error}</p>}
 
         {stage === 'uploading' && (
           <div className="w-full h-1.5 rounded-full bg-line overflow-hidden">
@@ -89,28 +97,21 @@ export function NewItemPage() {
             />
           </div>
         )}
+      </Card>
 
-        <button
-          type="button"
-          disabled={creating || photos.length === 0}
-          onClick={start}
-          className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
-        >
+      <ActionBar>
+        <Button size="lg" disabled={creating || photos.length === 0} onClick={start}>
           {stage === 'creating' && 'Artikel wird angelegt…'}
           {stage === 'uploading' && `Fotos werden hochgeladen… ${Math.round(uploadProgress * 100)}%`}
-          {stage === 'analyzing' && 'KI analysiert die Fotos…'}
-          {stage === 'idle' && 'Weiter'}
-        </button>
-
-        <div className="flex justify-center gap-4">
-          <a href="/demo/confidence-center" className="text-xs text-ink-faint hover:text-ink-muted">
-            Confidence-Center-Demo
-          </a>
-          <a href="/demo/negotiation" className="text-xs text-ink-faint hover:text-ink-muted">
-            Verhandlung
-          </a>
-        </div>
-      </div>
+          {stage === 'analyzing' && (
+            <span className="inline-flex items-center gap-2">
+              <Spinner />
+              KI analysiert die Fotos…
+            </span>
+          )}
+          {stage === 'idle' && 'Analysieren'}
+        </Button>
+      </ActionBar>
     </div>
   );
 }

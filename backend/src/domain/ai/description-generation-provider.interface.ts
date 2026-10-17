@@ -17,6 +17,9 @@ export interface ComparableListingRef {
 /** Dieselbe Vokabel wie DispositionEngineService.DispositionUserGoal — steuert nur den Ton, nie die Fakten. */
 export type SalesGoal = 'MAX_PROFIT' | 'BALANCED' | 'FAST_SALE' | 'MINIMAL_EFFORT';
 
+/** Zielplattform steuert Länge, Ton und Struktur der generierten Beschreibung. */
+export type DescriptionChannel = 'KLEINANZEIGEN' | 'EBAY' | 'VINTED' | 'GENERIC';
+
 export interface DescriptionGenerationInput {
   title: string | null;
   condition: string | null;
@@ -39,6 +42,8 @@ export interface DescriptionGenerationInput {
    * an, damit ein Modell sie nicht in die andere Richtung umschreibt.
    */
   logisticsHint?: string | null;
+  /** Zielplattform für kanal-spezifische Länge/Tonality. Default: GENERIC. */
+  channel?: DescriptionChannel;
 }
 
 export interface DescriptionGenerationProvider {

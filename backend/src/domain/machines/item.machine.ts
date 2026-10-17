@@ -27,6 +27,7 @@ export type ItemMachineEvent =
   | { type: 'SALE_CONFLICT_DETECTED'; actor: ActorContext }
   | { type: 'RESOLVE_CONFLICT_SOLD'; actor: ActorContext }
   | { type: 'RESOLVE_CONFLICT_CANCEL'; actor: ActorContext }
+  | { type: 'MARK_SOLD_MANUALLY'; actor: ActorContext }
   | { type: 'ARCHIVE'; actor: ActorContext }
   | { type: 'DISCARD'; actor: ActorContext }
   | { type: 'BUNDLE_SOLD'; actor: ActorContext }
@@ -70,6 +71,10 @@ export const itemMachine = createMachine({
           target: 'LISTED',
           guard: ({ event }) => isUser(event.actor),
         },
+        MARK_SOLD_MANUALLY: {
+          target: 'SOLD',
+          guard: ({ event }) => isUser(event.actor),
+        },
         DISCARD: { target: 'CANCELLED', guard: ({ event }) => isUser(event.actor) },
       },
     },
@@ -97,6 +102,10 @@ export const itemMachine = createMachine({
         },
         // Deterministischer Aggregat-Schutz — kein Human-Gate (Doc 02 §10).
         SALE_CONFLICT_DETECTED: { target: 'SALE_CONFLICT' },
+        MARK_SOLD_MANUALLY: {
+          target: 'SOLD',
+          guard: ({ event }) => isUser(event.actor),
+        },
       },
     },
     SALE_CONFLICT: {

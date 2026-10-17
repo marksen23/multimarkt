@@ -67,6 +67,7 @@ export interface ItemAttribute {
   attributeValue: string | null;
   truthState: TruthState;
   source: string;
+  confidence: number | null;
   createdAt: string;
 }
 
@@ -103,6 +104,8 @@ export interface ItemListEntry {
   item: Item;
   listings: ListingSummary[];
   thumbnailUrl: string | null;
+  /** Tatsächlicher Verkaufspreis (Gewinner-Verkaufsmeldung), sonst null. */
+  soldPrice: number | null;
 }
 
 export interface Bundle {
@@ -117,6 +120,7 @@ export interface Bundle {
 export interface BundleListEntry {
   bundle: Bundle;
   listings: ListingSummary[];
+  itemCount: number;
 }
 
 export interface BundleDetail {
@@ -190,6 +194,7 @@ export type PriceResearchSource = 'EBAY_ACTIVE_LISTINGS' | 'ANKAUF_PORTAL' | 'GE
 export interface ComparableListing {
   title: string;
   price: number;
+  url?: string | null;
 }
 
 export interface PriceResearchSourceResult {
@@ -245,10 +250,56 @@ export interface VaguePhraseMatch {
   suggestion: string;
 }
 
+export type DescriptionQualityIssueType =
+  | 'CONDITION_LANGUAGE_MISMATCH'
+  | 'MISSING_ATTRIBUTES'
+  | 'TOO_SHORT'
+  | 'EXTERNAL_CONTACT'
+  | 'DEFECT_NOT_MENTIONED';
+
+export type IssueSeverity = 'ERROR' | 'WARNING' | 'INFO';
+
+export interface DescriptionQualityIssue {
+  type: DescriptionQualityIssueType;
+  severity: IssueSeverity;
+  message: string;
+}
+
+export interface AttributeCoverage {
+  key: string;
+  value: string;
+  mentioned: boolean;
+}
+
+export interface DescriptionQualityResult {
+  score: number;
+  issues: DescriptionQualityIssue[];
+  attributeCoverage: AttributeCoverage[];
+}
+
+export type PriceTier = 'BELOW_MARKET' | 'MARKET' | 'ABOVE_MARKET' | 'PREMIUM';
+
+export interface PriceAlignmentIssue {
+  type: string;
+  severity: 'WARNING' | 'INFO';
+  message: string;
+}
+
+export interface PriceDescriptionAlignment {
+  alignmentScore: number;
+  priceTier: PriceTier;
+  issues: PriceAlignmentIssue[];
+  missingValueSignals: string[];
+}
+
+export type DescriptionChannel = 'KLEINANZEIGEN' | 'EBAY' | 'VINTED' | 'GENERIC';
+
 export interface DescriptionSuggestion {
   descriptionText: string;
   gapAnalysis: TitleGapAnalysis;
   vaguePhrases: VaguePhraseMatch[];
+  quality: DescriptionQualityResult;
+  priceAlignment: PriceDescriptionAlignment | null;
 }
 
 export type PhotoQualityIssueType = 'BLURRY' | 'TOO_DARK' | 'TOO_BRIGHT' | 'LOW_RESOLUTION' | 'DUPLICATE';
@@ -309,4 +360,39 @@ export interface ApiError {
   error_code: string;
   message: string;
   details: Record<string, unknown>;
+}
+
+// --- Marktplatz-Empfehlung ---
+
+export type SecondhandMarketplace =
+  | 'KLEINANZEIGEN'
+  | 'EBAY'
+  | 'VINTED'
+  | 'MARKT_DE'
+  | 'QUOKA'
+  | 'FACEBOOK'
+  | 'MOMOX'
+  | 'REBUY';
+
+export type MarketplaceType = 'CLASSIFIED' | 'AUCTION_PLATFORM' | 'FASHION_COMMUNITY' | 'BUYBACK';
+export type EstimatedTimeToSale = 'INSTANT' | 'FAST' | 'MEDIUM' | 'SLOW';
+
+export interface MarketplaceRecommendation {
+  marketplace: SecondhandMarketplace;
+  label: string;
+  type: MarketplaceType;
+  score: number;
+  rank: number;
+  reasons: string[];
+  cautions: string[];
+  estimatedTimeToSale: EstimatedTimeToSale;
+  feePercent: number;
+  listingUrl: string;
+}
+
+export interface MarketplaceRecommendationResult {
+  itemId: string;
+  salesGoal: SalesGoal;
+  detectedCategory: string;
+  recommendations: MarketplaceRecommendation[];
 }

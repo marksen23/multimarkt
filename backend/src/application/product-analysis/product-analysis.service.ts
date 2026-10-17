@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { ActorContext } from '../../domain/actor-context';
@@ -8,7 +8,11 @@ import {
 } from '../../domain/ai/ai-vision-provider.interface';
 import { projectVisionClaims } from '../../domain/category/taxonomy';
 import { TruthState } from '../../domain/state-vocabulary';
-import { ItemAttributeEntity, ItemEntity } from '../../infrastructure/database/entities';
+import {
+  ItemAttributeEntity,
+  ItemEntity,
+  ItemPhotoEntity,
+} from '../../infrastructure/database/entities';
 import { StateGuardService } from '../state-guard/state-guard.service';
 
 /**
@@ -38,13 +42,11 @@ export class ProductAnalysisService {
     if (!item) throw new NotFoundException(`Item ${itemId} not found`);
 
     const result = await this.aiProvider.analyzeItem({ imageUrls });
-    // Nur Sichtbares übernehmen, Kategorie auf die Taxonomie legen, Lücken
-    // nur für die Pflichtangaben dieser Kategorie (Feature-Plan 3.9).
-    const claims = projectVisionClaims(result.attributes);
+    const claims = claimsForStorage(result.attributes);
 
     await this.dataSource.transaction(async (manager) => {
       for (const claim of claims) {
-        const truthState: TruthState = claim.value ? 'INFERRED' : 'UNKNOWN';
+        const { truthState, autoConfirm } = classifyClaim(claim);
         await manager.upsert(
           ItemAttributeEntity,
           {
@@ -52,7 +54,8 @@ export class ProductAnalysisService {
             attributeKey: claim.key,
             attributeValue: truthState === 'UNKNOWN' ? null : claim.value,
             truthState,
-            source: result.modelId,
+            source: autoConfirm ? `${result.modelId}:auto` : result.modelId,
+            confidence: claim.confidence,
           },
           ['itemId', 'attributeKey'],
         );
@@ -61,4 +64,90 @@ export class ProductAnalysisService {
 
     return this.stateGuard.transitionItem(itemId, { type: 'AI_ANALYSIS_COMPLETE', actor });
   }
+
+  /**
+   * Re-Analyse auf vorhandenen Fotos — nur für REVIEW_REQUIRED.
+   *
+   * Aktualisiert Attribute in-place ohne State-Transition: der Nutzer hat
+   * z.B. zusätzliche Infos durch bessere Fotos, will aber nicht die gesamte
+   * Upload-Pipeline nochmal durchlaufen. USER_CONFIRMED-Attribute werden
+   * NICHT überschrieben — nur UNKNOWN und INFERRED Attribute werden neu
+   * bewertet, damit menschliche Bestätigungen erhalten bleiben.
+   */
+  async reanalyzeInPlace(itemId: string): Promise<ItemEntity> {
+    const item = await this.dataSource.manager.findOneBy(ItemEntity, { id: itemId });
+    if (!item) throw new NotFoundException(`Item ${itemId} not found`);
+    if (item.status !== 'REVIEW_REQUIRED') {
+      throw new BadRequestException(
+        `Re-Analyse nur im Status REVIEW_REQUIRED möglich (aktuell: ${item.status})`,
+      );
+    }
+
+    const photos = await this.dataSource.manager.findBy(ItemPhotoEntity, { itemId });
+    if (!photos.length) {
+      throw new BadRequestException('Keine Fotos vorhanden für Re-Analyse');
+    }
+
+    const result = await this.aiProvider.analyzeItem({
+      imageUrls: photos.map((p) => p.url),
+    });
+    const claims = claimsForStorage(result.attributes);
+
+    await this.dataSource.transaction(async (manager) => {
+      for (const claim of claims) {
+        const existing = await manager.findOneBy(ItemAttributeEntity, {
+          itemId,
+          attributeKey: claim.key,
+        });
+
+        // USER_CONFIRMED-Attribute nie überschreiben
+        if (existing?.truthState === 'USER_CONFIRMED') continue;
+
+        const { truthState, autoConfirm } = classifyClaim(claim);
+
+        await manager.upsert(
+          ItemAttributeEntity,
+          {
+            itemId,
+            attributeKey: claim.key,
+            attributeValue: truthState === 'UNKNOWN' ? null : claim.value,
+            truthState,
+            source: autoConfirm ? `${result.modelId}:auto` : result.modelId,
+            confidence: claim.confidence,
+          },
+          ['itemId', 'attributeKey'],
+        );
+      }
+    });
+
+    return this.dataSource.manager.findOneByOrFail(ItemEntity, { id: itemId });
+  }
+}
+
+/** Marktplatz-Merkmale, die die Taxonomie nicht kennt, bleiben trotzdem erhalten. */
+const PASSTHROUGH_ATTRIBUTE_KEYS = ['notable_features', 'visible_defects'] as const;
+
+function claimsForStorage(
+  raw: { key: string; value: string | null; confidence: number }[],
+) {
+  const projected = projectVisionClaims(raw);
+  const seen = new Set(projected.map((claim) => claim.key));
+  const extras = raw.filter(
+    (claim) =>
+      (PASSTHROUGH_ATTRIBUTE_KEYS as readonly string[]).includes(claim.key) && !seen.has(claim.key),
+  );
+  return [...projected, ...extras];
+}
+
+/**
+ * condition bleibt immer INFERRED — CONFIRM_TRUTH ist menschlich gegatet.
+ * Andere sichtbare Angaben ab Konfidenz 0.85 gelten als bestätigt.
+ */
+function classifyClaim(claim: { key: string; value: string | null; confidence: number }): {
+  truthState: TruthState;
+  autoConfirm: boolean;
+} {
+  const autoConfirm = claim.value !== null && claim.confidence >= 0.85 && claim.key !== 'condition';
+  const truthState: TruthState = !claim.value ? 'UNKNOWN' : autoConfirm ? 'USER_CONFIRMED' : 'INFERRED';
+  return { truthState, autoConfirm };
 }

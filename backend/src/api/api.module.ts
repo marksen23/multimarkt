@@ -23,9 +23,11 @@ import { ProductAnalysisModule } from '../application/product-analysis/product-a
 import { TitleGenerationModule } from '../application/title-generation/title-generation.module';
 import { StorageModule } from '../infrastructure/storage/storage.module';
 import { SaleIngestionModule } from '../application/sale-conflict/sale-ingestion.module';
+import { BackupExportModule } from '../application/export/backup-export.module';
 import { SalesModule } from '../application/sales/sales.module';
 import { StateGuardModule } from '../application/state-guard/state-guard.module';
 import { AccountController } from './controllers/account.controller';
+import { ExportController } from './controllers/export.controller';
 import { AnkaufController } from './controllers/ankauf.controller';
 import { BundlesController } from './controllers/bundles.controller';
 import { FollowUpsController } from './controllers/follow-ups.controller';
@@ -33,6 +35,7 @@ import { ItemsController } from './controllers/items.controller';
 import { ListingsController } from './controllers/listings.controller';
 import { SaleEventsController } from './controllers/sale-events.controller';
 import { SalesController } from './controllers/sales.controller';
+import { StorageController } from './controllers/storage.controller';
 import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
@@ -59,6 +62,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     ConflictResolutionModule,
     SaleIngestionModule,
     SalesModule,
+    BackupExportModule,
     NegotiationModule,
     AccountDeletionModule,
     WebhooksModule,
@@ -71,6 +75,8 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     BundlesController,
     SaleEventsController,
     SalesController,
+    ExportController,
+    StorageController,
     AccountController,
     AnkaufController,
   ],

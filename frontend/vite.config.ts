@@ -10,7 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Personal Resale OS',
         short_name: 'Resale OS',
@@ -18,17 +18,15 @@ export default defineConfig({
         theme_color: '#059669',
         background_color: '#f7f7f5',
         display: 'standalone',
+        orientation: 'portrait',
         start_url: '/',
-        // HINWEIS: nur ein SVG-Icon vorhanden. Für vollständige "Add to
-        // Home Screen"-Unterstützung (insb. iOS) fehlen noch echte
-        // 192x192/512x512-PNG-Icons — ein Asset-/Design-Task, kein Code-Gap.
+        scope: '/',
+        lang: 'de',
         icons: [
-          {
-            src: 'favicon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
-            purpose: 'any maskable',
-          },
+          { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
       },
       workbox: {

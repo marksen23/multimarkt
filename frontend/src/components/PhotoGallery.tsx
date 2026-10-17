@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ItemPhoto } from '../api/types';
 import {
   isPhotoShot,
@@ -6,6 +6,7 @@ import {
   type MissingPhotoShot,
   type PhotoShotNeed,
 } from '../category/photo-briefing';
+import { Icon } from '../ui';
 
 /**
  * Fotogalerie pro Artikel. Sobald die Kategorie feststeht, trägt jedes
@@ -14,20 +15,21 @@ import {
  */
 export function PhotoGallery({
   photos,
-  requiredShots,
-  missingShots,
+  requiredShots = [],
+  missingShots = [],
   busy,
   onShotChange,
   onAdd,
 }: {
   photos: ItemPhoto[];
-  requiredShots: PhotoShotNeed[];
-  missingShots: MissingPhotoShot[];
+  requiredShots?: PhotoShotNeed[];
+  missingShots?: MissingPhotoShot[];
   busy?: boolean;
   onShotChange?: (photoId: string, shot: string | null) => void;
   onAdd?: (file: File, shot: string | null) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [lightbox, setLightbox] = useState<number | null>(null);
   const missingKey = missingShots.map((shot) => shot.shot).join('|');
   const [picked, setPicked] = useState<string | null>(null);
   const [pickedFor, setPickedFor] = useState(missingKey);
@@ -48,42 +50,42 @@ export function PhotoGallery({
   return (
     <div className="space-y-3">
       {photos.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
-          {photos.map((photo, index) => {
-            const options = [...requiredShots];
-            if (isPhotoShot(photo.shot) && !options.some((shot) => shot.shot === photo.shot)) {
-              options.unshift({ shot: photo.shot, label: PHOTO_SHOT_LABELS[photo.shot] });
-            }
-            return (
-              <div key={photo.id} className="space-y-1">
-                <a
-                  href={photo.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="aspect-square rounded-xl overflow-hidden border border-line block hover:opacity-90 transition"
-                >
-                  <img src={photo.url} alt="" className="w-full h-full object-cover" />
-                </a>
-                {requiredShots.length > 0 && onShotChange && (
-                  <select
-                    aria-label={`Aufnahme für Foto ${index + 1}`}
-                    value={photo.shot ?? ''}
-                    disabled={busy}
-                    onChange={(event) => onShotChange(photo.id, event.target.value || null)}
-                    className="w-full text-[11px] border border-line rounded-lg px-1 py-1 bg-surface text-ink outline-none focus:border-accent"
-                  >
-                    <option value="">Aufnahme wählen…</option>
-                    {options.map((shot) => (
-                      <option key={shot.shot} value={shot.shot}>
-                        {shot.label}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            );
-          })}
-        </div>
+      <div className="grid grid-cols-3 gap-2">
+        {photos.map((photo, i) => {
+          const options = [...requiredShots];
+          if (isPhotoShot(photo.shot) && !options.some((shot) => shot.shot === photo.shot)) {
+            options.unshift({ shot: photo.shot, label: PHOTO_SHOT_LABELS[photo.shot] });
+          }
+          return (
+          <div key={photo.id} className="space-y-1">
+          <button
+            type="button"
+            onClick={() => setLightbox(i)}
+            className="aspect-square w-full rounded-control overflow-hidden border border-line hover:opacity-90 transition focus:outline-none focus:ring-2 focus:ring-accent-soft"
+            aria-label={`Foto ${i + 1} vergrößern`}
+          >
+            <img src={photo.url} alt="" className="w-full h-full object-cover" />
+          </button>
+          {requiredShots.length > 0 && onShotChange && (
+            <select
+              aria-label={`Aufnahme für Foto ${i + 1}`}
+              value={photo.shot ?? ''}
+              disabled={busy}
+              onChange={(event) => onShotChange(photo.id, event.target.value || null)}
+              className="w-full text-label border border-line rounded-control px-1 py-1 bg-surface text-ink outline-none focus:border-accent"
+            >
+              <option value="">Aufnahme wählen…</option>
+              {options.map((shot) => (
+                <option key={shot.shot} value={shot.shot}>
+                  {shot.label}
+                </option>
+              ))}
+            </select>
+          )}
+          </div>
+          );
+        })}
+      </div>
       )}
 
       {onAdd && (
@@ -94,7 +96,7 @@ export function PhotoGallery({
               value={nextShot}
               disabled={busy}
               onChange={(event) => setPicked(event.target.value)}
-              className="min-w-0 flex-1 text-xs border border-line rounded-lg px-2 py-2 bg-surface text-ink outline-none focus:border-accent"
+              className="min-w-0 flex-1 text-label border border-line rounded-control px-2 py-2 bg-surface text-ink outline-none focus:border-accent"
             >
               <option value="">Ohne Zuordnung</option>
               {requiredShots.map((shot) => (
@@ -108,7 +110,7 @@ export function PhotoGallery({
             type="button"
             disabled={busy}
             onClick={() => inputRef.current?.click()}
-            className="shrink-0 px-3 py-2 rounded-lg border border-line text-xs font-semibold text-ink-muted hover:border-accent hover:text-accent disabled:opacity-60 transition-colors"
+            className="shrink-0 px-3 py-2 rounded-control border border-line text-label font-semibold text-ink-muted hover:border-accent hover:text-accent disabled:opacity-60 transition-colors"
           >
             Foto hinzufügen
           </button>
@@ -123,6 +125,118 @@ export function PhotoGallery({
               event.target.value = '';
             }}
           />
+        </div>
+      )}
+
+      {lightbox !== null && (
+        <PhotoLightbox
+          photos={photos}
+          index={lightbox}
+          onChange={setLightbox}
+          onClose={() => setLightbox(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function PhotoLightbox({
+  photos,
+  index,
+  onChange,
+  onClose,
+}: {
+  photos: ItemPhoto[];
+  index: number;
+  onChange: (i: number) => void;
+  onClose: () => void;
+}) {
+  const canPrev = index > 0;
+  const canNext = index < photos.length - 1;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft' && canPrev) onChange(index - 1);
+      if (e.key === 'ArrowRight' && canNext) onChange(index + 1);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [index, canPrev, canNext, onChange, onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+      onClick={onClose}
+    >
+      {/* Main image */}
+      <img
+        src={photos[index].url}
+        alt=""
+        className="max-h-[85vh] max-w-[90vw] object-contain rounded-control shadow-float"
+        onClick={(e) => e.stopPropagation()}
+      />
+
+      {/* Close */}
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition"
+        aria-label="Schließen"
+      >
+        <Icon name="x" size={20} />
+      </button>
+
+      {/* Counter */}
+      {photos.length > 1 && (
+        <span className="absolute top-4 left-4 text-label tabular-nums text-white/70 bg-black/30 px-2 py-1 rounded-full">
+          {index + 1} / {photos.length}
+        </span>
+      )}
+
+      {/* Prev */}
+      {canPrev && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onChange(index - 1); }}
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition"
+          aria-label="Vorheriges Foto"
+        >
+          <Icon name="chevronLeft" size={22} />
+        </button>
+      )}
+
+      {/* Next */}
+      {canNext && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onChange(index + 1); }}
+          className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition"
+          aria-label="Nächstes Foto"
+        >
+          <Icon name="chevronRight" size={22} />
+        </button>
+      )}
+
+      {/* Thumbnail strip for multi-photo */}
+      {photos.length > 1 && (
+        <div
+          className="absolute bottom-4 flex gap-1.5 px-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {photos.map((p, i) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => onChange(i)}
+              className={`w-10 h-10 rounded-control overflow-hidden border-2 transition flex-shrink-0 ${
+                i === index ? 'border-white' : 'border-white/20 opacity-60 hover:opacity-80'
+              }`}
+              aria-label={`Foto ${i + 1}`}
+            >
+              <img src={p.url} alt="" className="w-full h-full object-cover" />
+            </button>
+          ))}
         </div>
       )}
     </div>
