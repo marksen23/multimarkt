@@ -186,7 +186,7 @@ export function BundleDetailPage() {
         action={<PhaseBadge status={bundle.status} className="mt-1" />}
       />
 
-      {error && <p className="text-label text-danger">{error}</p>}
+      {error && <Notice tone="danger">{error}</Notice>}
 
       <section>
         <SectionLabel>Enthaltene Artikel ({items.length})</SectionLabel>
