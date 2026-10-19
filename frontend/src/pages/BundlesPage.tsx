@@ -77,7 +77,7 @@ export function BundlesPage() {
 
       {entries && entries.length > 0 && (
         <div className="flex items-center justify-between gap-2">
-          <div className="flex gap-1.5 overflow-x-auto">
+          <div className="flex gap-1.5 overflow-x-auto" role="tablist">
             {(Object.keys(FILTER_LABELS) as FilterKey[]).map((key) => {
               const count =
                 key === 'alle'
@@ -89,6 +89,8 @@ export function BundlesPage() {
                 <button
                   key={key}
                   type="button"
+                  role="tab"
+                  aria-selected={filter === key}
                   onClick={() => setFilterPersist(key)}
                   className={`shrink-0 h-8 px-3 rounded-full text-label border transition-colors ${
                     filter === key
@@ -104,6 +106,7 @@ export function BundlesPage() {
           </div>
           <select
             value={sort}
+            aria-label="Sortierung"
             onChange={(e) => setSortPersist(e.target.value as SortKey)}
             className="shrink-0 h-8 text-label text-ink-muted bg-surface border border-line rounded-control px-2.5 outline-none focus:border-accent"
           >

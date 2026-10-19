@@ -5,7 +5,7 @@ import {
   type MarginAssumptions,
 } from '../margin/expected-margin';
 import { persistMarginAssumptions, useMarginAssumptions } from '../margin/use-margin-assumptions';
-import { Field, inputClass } from '../ui';
+import { Field, Notice, inputClass } from '../ui';
 
 function parseAmount(raw: string): number | null {
   const normalized = raw.trim().replace(',', '.');
@@ -135,7 +135,7 @@ export function ExpectedMarginFields({
       )}
 
       {margin?.belowSingleSaleThreshold && (
-        <p className="text-body font-bold text-danger">{NOT_INDIVIDUAL_SALE_NOTICE}</p>
+        <Notice tone="danger">{NOT_INDIVIDUAL_SALE_NOTICE}</Notice>
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ApiRequestError } from '../api/client';
 import { itemsApi } from '../api/items';
-import { Button, Card, Notice, inputClass } from '../ui';
+import { Button, Card, Notice, Spinner, inputClass } from '../ui';
 import { LogoMark } from './AppShell';
 
 const STORAGE_KEY = 'resale_os_access_token';
@@ -71,7 +71,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-ink-muted">
-          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <Spinner className="w-8 h-8 border-accent" />
           <p className="text-body">Verbindung wird geprüft…</p>
         </div>
       </div>
@@ -106,8 +106,8 @@ export function TokenGate({ children }: { children: ReactNode }) {
             autoFocus
           />
           {error && <Notice tone="danger">{error}</Notice>}
-          <Button block size="lg" disabled={checking || !input.trim()} onClick={submit}>
-            {checking ? 'Prüft…' : 'Bestätigen'}
+          <Button block size="lg" loading={checking} disabled={checking || !input.trim()} onClick={submit}>
+            Bestätigen
           </Button>
         </Card>
       </div>
