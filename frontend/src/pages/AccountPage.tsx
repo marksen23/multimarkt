@@ -131,7 +131,6 @@ export function AccountPage() {
 
       <SectionLabel>Sitzung</SectionLabel>
       <Card className="p-4 space-y-2">
-        <p className="text-body font-semibold text-ink">Sitzung</p>
         <p className="text-label font-normal text-ink-faint">
           Einzelnutzer-Modus. Kein Passwort, nur ein Zugriffstoken.
         </p>
@@ -224,9 +223,9 @@ function DeletionSuccessScreen({ mediaDeleted }: { mediaDeleted: boolean }) {
           </p>
         </div>
         {!mediaDeleted && (
-          <p className="text-label font-normal text-warning">
+          <Notice tone="warning">
             Hochgeladene Fotos werden separat verwaltet und können noch einen Moment verfügbar sein.
-          </p>
+          </Notice>
         )}
         <p className="text-label font-normal text-ink-faint">
           Abmeldung in {countdown} Sekunde{countdown !== 1 ? 'n' : ''}…

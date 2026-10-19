@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import { PhotoCapture } from '../components/PhotoCapture';
-import { ActionBar, Button, Card, Icon, Notice, PageHeader, Spinner, inputClass } from '../ui';
+import { ActionBar, Button, Card, Icon, Notice, PageHeader, inputClass } from '../ui';
 
 /**
  * README §3 Schritt 1: "Fotografieren statt Formulare ausfüllen." Der
@@ -105,15 +105,10 @@ export function NewItemPage() {
       </Card>
 
       <ActionBar>
-        <Button size="lg" disabled={creating || photos.length === 0} onClick={start}>
+        <Button size="lg" loading={creating} disabled={creating || photos.length === 0} onClick={start}>
           {stage === 'creating' && 'Artikel wird angelegt…'}
           {stage === 'uploading' && `Fotos werden hochgeladen… ${Math.round(uploadProgress * 100)}%`}
-          {stage === 'analyzing' && (
-            <span className="inline-flex items-center gap-2">
-              <Spinner />
-              KI analysiert die Fotos…
-            </span>
-          )}
+          {stage === 'analyzing' && 'KI analysiert die Fotos…'}
           {stage === 'idle' && 'Analysieren'}
         </Button>
       </ActionBar>

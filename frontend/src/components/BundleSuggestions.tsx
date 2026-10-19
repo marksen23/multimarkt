@@ -123,7 +123,7 @@ function SuggestionCard({
         <Button size="sm" loading={busy} disabled={disabled} onClick={onAccept}>
           Übernehmen
         </Button>
-        <Button size="sm" variant="secondary" disabled={disabled} onClick={onDismiss}>
+        <Button size="sm" variant="secondary" loading={busy} disabled={disabled} onClick={onDismiss}>
           Verwerfen
         </Button>
       </div>

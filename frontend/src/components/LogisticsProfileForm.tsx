@@ -98,6 +98,7 @@ export function LogisticsProfileForm({
       <input
         type="text"
         inputMode="numeric"
+        aria-label="Gewicht in Gramm"
         placeholder="Gewicht in g"
         value={weight}
         onChange={(e) => setWeight(e.target.value)}
@@ -107,6 +108,7 @@ export function LogisticsProfileForm({
         <input
           type="text"
           inputMode="decimal"
+          aria-label="Länge in cm"
           placeholder="Länge cm"
           value={length}
           onChange={(e) => setLength(e.target.value)}
@@ -115,6 +117,7 @@ export function LogisticsProfileForm({
         <input
           type="text"
           inputMode="decimal"
+          aria-label="Breite in cm"
           placeholder="Breite cm"
           value={width}
           onChange={(e) => setWidth(e.target.value)}
@@ -123,6 +126,7 @@ export function LogisticsProfileForm({
         <input
           type="text"
           inputMode="decimal"
+          aria-label="Höhe in cm"
           placeholder="Höhe cm"
           value={height}
           onChange={(e) => setHeight(e.target.value)}
@@ -178,6 +182,7 @@ export function LogisticsProfileForm({
       <input
         type="text"
         inputMode="numeric"
+        aria-label="Postleitzahl"
         placeholder="PLZ"
         maxLength={5}
         value={postalCode}
