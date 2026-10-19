@@ -7,7 +7,7 @@ import { ApiRequestError } from '../api/client';
 import type { BundleDetail, Item, ItemListEntry } from '../api/types';
 import { ListingsManager } from '../components/ListingsManager';
 import { DetailPageSkeleton } from '../components/Skeleton';
-import { Button, Card, EmptyState, Icon, Notice, PageHeader, PhaseBadge, SectionLabel, Spinner, inputClass } from '../ui';
+import { Button, Card, EmptyState, Field, Icon, Notice, PageHeader, PhaseBadge, SectionLabel, Spinner, inputClass } from '../ui';
 
 function AddItemsSection({
   bundleId,
@@ -240,21 +240,20 @@ export function BundleDetailPage() {
         <Card className="p-4 space-y-3">
           <p className="text-micro uppercase text-ink-muted">Listing anlegen</p>
 
-          {/* Description with suggestion button */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-label text-ink-muted">Beschreibung</label>
-              {items.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setDescription(buildBundleDescription(items))}
-                  className="inline-flex items-center gap-1 text-label text-accent hover:text-accent-hover transition-colors"
-                >
-                  <Icon name="sparkle" size={14} />
-                  Vorschlag generieren
-                </button>
-              )}
-            </div>
+          <Field
+            label="Beschreibung"
+            count={descriptionValue.length > 0 ? { value: descriptionValue.length, max: 1500 } : undefined}
+            action={items.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setDescription(buildBundleDescription(items))}
+                className="inline-flex items-center gap-1 text-label text-accent hover:text-accent-hover transition-colors"
+              >
+                <Icon name="sparkle" size={14} />
+                Vorschlag generieren
+              </button>
+            ) : undefined}
+          >
             <textarea
               rows={5}
               placeholder="Beschreibung des Bundles…"
@@ -262,22 +261,9 @@ export function BundleDetailPage() {
               onChange={(e) => setDescription(e.target.value)}
               className={`${inputClass} resize-none`}
             />
-            <div className="flex items-center justify-between px-0.5">
-              <div className="flex-1 h-0.5 rounded-full bg-line overflow-hidden mr-3">
-                <div
-                  className={`h-full rounded-full transition-all ${descriptionValue.length > 1500 ? 'bg-danger' : 'bg-accent'}`}
-                  style={{ width: `${Math.min((descriptionValue.length / 1500) * 100, 100)}%` }}
-                />
-              </div>
-              <span className={`text-label tabular-nums shrink-0 ${descriptionValue.length > 1500 ? 'text-danger' : 'font-normal text-ink-faint'}`}>
-                {descriptionValue.length} / 1500
-              </span>
-            </div>
-          </div>
+          </Field>
 
-          {/* Price */}
-          <div className="space-y-1.5">
-            <label className="text-label text-ink-muted">Preis (€)</label>
+          <Field label="Preis (€)">
             <input
               type="number"
               inputMode="decimal"
@@ -288,7 +274,7 @@ export function BundleDetailPage() {
               onChange={(e) => setPrice(e.target.value)}
               className={inputClass}
             />
-          </div>
+          </Field>
 
           <Button
             block

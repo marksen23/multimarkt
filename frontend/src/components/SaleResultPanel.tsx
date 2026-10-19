@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { Item } from '../api/types';
 import { computeSaleCloseout, formatEur, type SaleCloseoutDraft } from '../margin/sale-closeout';
-import { Card } from '../ui';
+import { Card, Icon } from '../ui';
 import { SaleCloseoutForm } from './SaleCloseoutForm';
 
 function formatSoldAt(iso: string | null): string {
@@ -82,8 +82,9 @@ export function SaleResultPanel({
         <p className="text-label font-normal text-ink-muted">Einstand fehlt — Nettogewinn ist nicht gerechnet.</p>
       )}
       <p className="text-label font-normal text-ink-faint">Nettogewinn = Erlös − Gebühren − Versand − Einstand.</p>
-      <Link to="/verkaeufe" className="inline-block text-label text-accent hover:text-accent-hover">
+      <Link to="/verkaeufe" className="inline-flex items-center gap-1 text-label text-accent hover:text-accent-hover transition-colors">
         Zur Verkaufsliste
+        <Icon name="chevronRight" size={14} />
       </Link>
     </Card>
   );

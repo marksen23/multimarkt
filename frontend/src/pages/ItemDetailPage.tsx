@@ -761,7 +761,7 @@ function TitleEditor({
         ) : (
           <span />
         )}
-        <Button variant="secondary" size="sm" icon={saved ? 'check' : undefined} disabled={busy || !title || title === savedTitle} onClick={() => void saveTitle()}>
+        <Button variant="secondary" size="sm" icon={saved ? 'check' : undefined} loading={busy} disabled={busy || !title || title === savedTitle} onClick={() => void saveTitle()}>
           {saved ? 'Gespeichert' : 'Titel speichern'}
         </Button>
       </div>
@@ -809,7 +809,7 @@ function ConflictResolutionPanel({
               Meldung {event.externalEventId} · {new Date(event.reportedAt).toLocaleString('de-DE')}
             </p>
           </div>
-          <Button size="sm" disabled={busy} onClick={() => void run(() => itemsApi.resolveConflict(itemId, event.id))}>
+          <Button size="sm" loading={busy} disabled={busy} onClick={() => void run(() => itemsApi.resolveConflict(itemId, event.id))}>
             Auswählen
           </Button>
         </Card>
