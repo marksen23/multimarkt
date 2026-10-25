@@ -71,6 +71,7 @@ export function PurchasePanel({
         <input
           type="text"
           inputMode="decimal"
+          aria-label="Einkaufspreis in Euro"
           placeholder="Preis in €"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
@@ -78,6 +79,7 @@ export function PurchasePanel({
         />
         <input
           type="text"
+          aria-label="Einkaufsportal"
           placeholder="Portal"
           value={portal}
           onChange={(e) => setPortal(e.target.value)}
@@ -85,12 +87,14 @@ export function PurchasePanel({
         />
         <input
           type="date"
+          aria-label="Einkaufsdatum"
           value={date}
           onChange={(e) => setDate(e.target.value)}
           className={inputClass}
         />
         <input
           type="text"
+          aria-label="Zustand beim Einkauf"
           placeholder="Zustand"
           value={condition}
           onChange={(e) => setCondition(e.target.value)}
@@ -99,6 +103,7 @@ export function PurchasePanel({
       </div>
       <input
         type="url"
+        aria-label="Link zur Kaufanzeige"
         placeholder="Link zur Anzeige"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
