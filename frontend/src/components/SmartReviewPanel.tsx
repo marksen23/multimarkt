@@ -217,6 +217,7 @@ export function SmartReviewPanel({
                 {key === 'category' ? (
                   <select
                     value={missingDrafts.category ?? ''}
+                    aria-label="Kategorie"
                     onChange={(e) => setMissingDrafts((prev) => ({ ...prev, category: e.target.value }))}
                     className={`${inputClass} flex-1 min-w-0`}
                   >
@@ -230,6 +231,7 @@ export function SmartReviewPanel({
                 ) : (
                   <input
                     type="text"
+                    aria-label={KEY_LABELS[key] ?? attributeLabel(key)}
                     placeholder={`${KEY_LABELS[key] ?? attributeLabel(key)} eingeben…`}
                     value={missingDrafts[key] ?? ''}
                     onChange={(e) => setMissingDrafts((prev) => ({ ...prev, [key]: e.target.value }))}
@@ -267,6 +269,7 @@ export function SmartReviewPanel({
             <div className="flex gap-2">
               <input
                 type="text"
+                aria-label={KEY_LABELS[a.attributeKey] ?? a.attributeKey}
                 placeholder={`${KEY_LABELS[a.attributeKey] ?? a.attributeKey} eingeben…`}
                 value={missingDrafts[a.attributeKey] ?? ''}
                 onChange={(e) =>
@@ -335,6 +338,7 @@ export function SmartReviewPanel({
                     <div className="flex gap-2">
                       <input
                         type="text"
+                        aria-label={KEY_LABELS[a.attributeKey] ?? a.attributeKey}
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         className={`${inputClass} flex-1 min-w-0`}
@@ -380,11 +384,13 @@ export function SmartReviewPanel({
               </span>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2" role="tablist">
             {CONDITION_OPTIONS.map((cond) => (
               <button
                 key={cond}
                 type="button"
+                role="tab"
+                aria-selected={selectedCondition === cond}
                 onClick={() => setSelectedCondition(cond)}
                 className={`py-2.5 px-1 text-body rounded-control border font-bold transition-all ${
                   selectedCondition === cond
