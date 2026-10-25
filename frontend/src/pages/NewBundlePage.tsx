@@ -59,8 +59,9 @@ export function NewBundlePage() {
       </button>
       <PageHeader title="Neues Bundle" />
       <input
-        type="text"
-        placeholder="Titel, z.B. „Kinderkleidung Gr. 98“"
+        type=”text”
+        aria-label=”Bundle-Titel”
+        placeholder=”Titel, z.B. „Kinderkleidung Gr. 98””
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         autoFocus

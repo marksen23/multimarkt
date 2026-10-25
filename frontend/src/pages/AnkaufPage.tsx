@@ -257,6 +257,7 @@ export function AnkaufPage() {
           <input
             ref={inputRef}
             type="search"
+            aria-label="Suchbegriff"
             placeholder="z. B. Nike Air Max 90 Gr. 42"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -280,6 +281,7 @@ export function AnkaufPage() {
                 <button
                   key={item.id}
                   type="button"
+                  aria-pressed={activeSearchId === item.id}
                   onClick={() => void openSaved(item)}
                   className={`shrink-0 text-left px-3 py-2 rounded-control border text-label font-normal transition-colors ${
                     activeSearchId === item.id
@@ -334,13 +336,15 @@ export function AnkaufPage() {
             </div>
           )}
 
-          <div className="-mx-4 px-4 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          <div className="-mx-4 px-4 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide" role="tablist">
             {(Object.keys(CONDITION_LABELS) as ConditionKey[]).map((key) => {
               const count = result.listings.filter((l) => matchesCondition(l, key)).length;
               return (
                 <button
                   key={key}
                   type="button"
+                  role="tab"
+                  aria-selected={activeCondition === key}
                   onClick={() => setActiveCondition(key)}
                   className={`shrink-0 h-8 px-3 rounded-full text-label border transition-colors ${
                     activeCondition === key
@@ -479,15 +483,9 @@ function ListingCard({
           <span className="text-label font-normal text-ink-faint shrink-0">Kein Link</span>
         )}
       </div>
-      <button
-        type="button"
-        disabled={adopting}
-        onClick={onAdopt}
-        className="w-full text-label px-3 py-2 rounded-control border border-accent text-accent hover:bg-accent-soft disabled:opacity-60 transition-colors inline-flex items-center justify-center gap-1.5"
-      >
-        {adopting && <Spinner />}
-        {adopting ? 'Übernimmt…' : 'Als Einkauf übernehmen'}
-      </button>
+      <Button block size="sm" loading={adopting} disabled={adopting} onClick={onAdopt}>
+        Als Einkauf übernehmen
+      </Button>
     </Card>
   );
 }
