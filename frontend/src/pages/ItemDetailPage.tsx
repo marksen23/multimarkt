@@ -753,7 +753,7 @@ function TitleEditor({
           </div>
         }
       >
-        <input type="text" placeholder="Titel" value={title} onChange={(e) => onTitleChange(e.target.value)} className={inputClass} />
+        <input type="text" aria-label="Artikeltitel" placeholder="Titel" value={title} onChange={(e) => onTitleChange(e.target.value)} className={inputClass} />
       </Field>
       <div className="flex items-center justify-between gap-2">
         {missingTokens.length > 0 ? (

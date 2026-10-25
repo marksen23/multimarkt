@@ -94,7 +94,7 @@ export function ConfidenceCenter({
             }`}
           >
             <label className="block text-body font-bold text-ink mb-2">Wie ist der Zustand?</label>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2" role="tablist">
               {CONDITION_OPTIONS.map((cond) => {
                 const isSelected = selectedCondition === cond;
                 const isConfirmed = isSelected && cond === detail.item.condition;
@@ -102,6 +102,8 @@ export function ConfidenceCenter({
                   <button
                     key={cond}
                     type="button"
+                    role="tab"
+                    aria-selected={isSelected}
                     onClick={() => setSelectedCondition(cond)}
                     className={`py-2 px-1 text-label rounded-control border font-bold transition ${
                       isConfirmed
@@ -126,6 +128,7 @@ export function ConfidenceCenter({
               <div className="flex gap-2">
                 <input
                   type="text"
+                  aria-label={a.attributeKey}
                   placeholder={`${a.attributeKey} eingeben…`}
                   value={missingDrafts[a.attributeKey] ?? ''}
                   onChange={(e) =>
@@ -191,6 +194,7 @@ export function ConfidenceCenter({
                     <div className="flex gap-2">
                       <input
                         type="text"
+                        aria-label={a.attributeKey}
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         className={`${inputClass} flex-1 min-w-0`}
