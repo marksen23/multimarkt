@@ -103,11 +103,13 @@ export function AccountPage() {
 
       <SectionLabel>Darstellung</SectionLabel>
       <Card className="p-4 space-y-3">
-        <div className="flex gap-2">
+        <div className="flex gap-2" role="tablist">
           {(['auto', 'light', 'dark'] as const).map((t) => (
             <button
               key={t}
               type="button"
+              role="tab"
+              aria-selected={themePref === t}
               onClick={() => setThemePref(t)}
               className={`flex-1 h-9 inline-flex items-center justify-center gap-1.5 rounded-control text-label border transition-colors ${
                 themePref === t

@@ -67,11 +67,13 @@ export function NegotiationAssistant({
 
       <div className="space-y-2">
         <span className="block text-micro uppercase text-ink-faint">Einfügen bei</span>
-        <div className="flex gap-2">
+        <div className="flex gap-2" role="tablist">
           {PLATFORMS.map((entry) => (
             <button
               key={entry.id}
               type="button"
+              role="tab"
+              aria-selected={platform === entry.id}
               onClick={() => setPlatform(entry.id)}
               className={`flex-1 h-9 px-2 rounded-control text-label border transition-colors ${
                 platform === entry.id
@@ -194,6 +196,7 @@ function ReplyCard({ reply, platformLabel }: { reply: NegotiationReply; platform
         value={text}
         onChange={(event) => setText(event.target.value)}
         rows={4}
+        aria-label={reply.label}
         className={`${inputClass} resize-none`}
       />
       <Button

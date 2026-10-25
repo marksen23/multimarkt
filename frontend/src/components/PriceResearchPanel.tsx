@@ -104,6 +104,7 @@ export function PriceResearchPanel({
         <div className="flex items-center gap-2">
           <select
             value={salesGoal}
+            aria-label="Verkaufsziel"
             onChange={(e) => setSalesGoal(e.target.value as SalesGoal)}
             className="text-label font-normal border border-line rounded-control px-1.5 py-1 bg-surface text-ink-muted outline-none focus:border-accent"
           >

@@ -196,6 +196,7 @@ export function DispositionPanel({
         inputMode="decimal"
         min="0"
         step="0.01"
+        aria-label="Geschätzter Marktpreis in Euro"
         placeholder="Geschätzter Marktpreis (€)"
         value={marketMedianPrice}
         onChange={(e) => setMarketMedianPrice(e.target.value)}
