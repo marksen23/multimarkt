@@ -19,7 +19,22 @@ export function MoreMenu({ items, label = 'Weitere Aktionen' }: { items: MoreMen
     const onDown = (e: PointerEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setOpen(false); return; }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') return;
+      e.preventDefault();
+      const menu = ref.current?.querySelector('[role="menu"]');
+      if (!menu) return;
+      const items = Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)'));
+      if (items.length === 0) return;
+      const current = items.indexOf(document.activeElement as HTMLElement);
+      let next = current;
+      if (e.key === 'ArrowDown') next = current < items.length - 1 ? current + 1 : 0;
+      else if (e.key === 'ArrowUp') next = current > 0 ? current - 1 : items.length - 1;
+      else if (e.key === 'Home') next = 0;
+      else if (e.key === 'End') next = items.length - 1;
+      items[next]?.focus();
+    };
     document.addEventListener('pointerdown', onDown);
     document.addEventListener('keydown', onKey);
     return () => {

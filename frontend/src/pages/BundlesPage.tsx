@@ -163,7 +163,7 @@ export function BundlesPage() {
         />
       )}
 
-      <div className="space-y-2">
+      <div aria-live="polite" className="space-y-2">
         {sorted.map(({ bundle, listings, itemCount }) => {
           const activeListing = listings.find((l) =>
             l.projections.some((p) => p.status === 'ONLINE' || p.status === 'PUBLISHING'),

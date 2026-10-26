@@ -69,6 +69,7 @@ export function SalesPage() {
       <button
         type="button"
         onClick={() => navigate(-1)}
+        aria-label="Zurück"
         className="inline-flex items-center gap-1 h-10 pl-1 pr-3 -ml-1 rounded-full text-body text-ink-muted hover:bg-surface-hover hover:text-ink"
       >
         <Icon name="chevronLeft" size={20} />
@@ -88,7 +89,7 @@ export function SalesPage() {
           {followUps.length > 0 && <FollowUpSection followUps={followUps} />}
 
           {overview.weeks.length > 0 && (
-            <section>
+            <section aria-label="Marge der letzten Wochen">
               <SectionLabel>Marge der letzten Wochen</SectionLabel>
               <Card className="p-4 overflow-x-auto">
                 <table className="w-full text-body">
@@ -197,7 +198,7 @@ function ItemTable({
   children: ReactNode;
 }) {
   return (
-    <section>
+    <section aria-label={title}>
       <SectionLabel>{title}</SectionLabel>
       {isEmpty ? (
         <EmptyState icon={emptyIcon} title={empty} />
@@ -210,7 +211,7 @@ function ItemTable({
 
 function FollowUpSection({ followUps }: { followUps: FollowUpCard[] }) {
   return (
-    <section>
+    <section aria-label="Nachfassen">
       <SectionLabel>Nachfassen ({followUps.length})</SectionLabel>
       {followUps.length === 0 ? (
         <EmptyState
