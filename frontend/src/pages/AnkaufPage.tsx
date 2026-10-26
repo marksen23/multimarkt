@@ -337,7 +337,7 @@ export function AnkaufPage() {
             </div>
           )}
 
-          <div className="-mx-4 px-4 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide" role="tablist">
+          <div className="-mx-4 px-4 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide" role="tablist" aria-label="Zustand filtern">
             {(Object.keys(CONDITION_LABELS) as ConditionKey[]).map((key) => {
               const count = result.listings.filter((l) => matchesCondition(l, key)).length;
               return (

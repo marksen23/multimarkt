@@ -94,7 +94,7 @@ export function ConfidenceCenter({
             }`}
           >
             <label className="block text-body font-bold text-ink mb-2">Wie ist der Zustand?</label>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2" role="tablist">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2" role="tablist" aria-label="Zustand auswählen">
               {CONDITION_OPTIONS.map((cond) => {
                 const isSelected = selectedCondition === cond;
                 const isConfirmed = isSelected && cond === detail.item.condition;

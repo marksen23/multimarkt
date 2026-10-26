@@ -67,7 +67,7 @@ export function NegotiationAssistant({
 
       <div className="space-y-2">
         <span className="block text-micro uppercase text-ink-faint">Einfügen bei</span>
-        <div className="flex gap-2" role="tablist">
+        <div className="flex gap-2" role="tablist" aria-label="Plattform">
           {PLATFORMS.map((entry) => (
             <button
               key={entry.id}

@@ -103,7 +103,7 @@ export function AccountPage() {
 
       <SectionLabel>Darstellung</SectionLabel>
       <Card className="p-4 space-y-3">
-        <div className="flex gap-2" role="tablist">
+        <div className="flex gap-2" role="tablist" aria-label="Farbschema">
           {(['auto', 'light', 'dark'] as const).map((t) => (
             <button
               key={t}

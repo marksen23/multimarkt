@@ -77,7 +77,7 @@ export function BundlesPage() {
 
       {entries && entries.length > 0 && (
         <div className="flex items-center justify-between gap-2">
-          <div className="flex gap-1.5 overflow-x-auto" role="tablist">
+          <div className="flex gap-1.5 overflow-x-auto" role="tablist" aria-label="Bundles filtern">
             {(Object.keys(FILTER_LABELS) as FilterKey[]).map((key) => {
               const count =
                 key === 'alle'
