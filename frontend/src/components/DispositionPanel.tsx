@@ -170,6 +170,7 @@ export function DispositionPanel({
       <div className="grid grid-cols-2 gap-2">
         <select
           value={category}
+          aria-label="Kategorie"
           onChange={(e) => setCategory(e.target.value as ResaleCategory)}
           className={inputClass}
         >
@@ -181,6 +182,7 @@ export function DispositionPanel({
         </select>
         <select
           value={userGoal}
+          aria-label="Verkaufsziel"
           onChange={(e) => setUserGoal(e.target.value as DispositionUserGoal)}
           className={inputClass}
         >

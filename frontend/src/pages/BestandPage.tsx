@@ -116,6 +116,7 @@ export function BestandPage() {
               <input
                 type="search"
                 placeholder="Artikel suchen"
+                enterKeyHint="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className={`${inputClass} pl-9`}

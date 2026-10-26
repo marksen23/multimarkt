@@ -85,6 +85,7 @@ export function NewItemPage() {
           </summary>
           <input
             type="text"
+            aria-label="Artikeltitel (optional)"
             placeholder="z.B. Herrenjacke schwarz"
             value={title}
             onChange={(e) => setTitle(e.target.value)}

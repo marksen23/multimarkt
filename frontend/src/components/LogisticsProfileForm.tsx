@@ -182,6 +182,7 @@ export function LogisticsProfileForm({
       <input
         type="text"
         inputMode="numeric"
+        autoComplete="postal-code"
         aria-label="Postleitzahl"
         placeholder="PLZ"
         maxLength={5}
