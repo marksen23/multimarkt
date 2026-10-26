@@ -203,7 +203,7 @@ export function BestandPage() {
         />
       )}
 
-      <div className="space-y-2">
+      <div aria-live="polite" className="space-y-2">
         {visible.map((e) => (
           <ItemRow key={e.item.id} entry={e} />
         ))}

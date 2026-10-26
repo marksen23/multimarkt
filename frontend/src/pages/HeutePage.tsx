@@ -54,7 +54,7 @@ export function HeutePage() {
       )}
 
       {sections.map((sec) => (
-        <section key={sec.slot}>
+        <section key={sec.slot} aria-label={sec.title}>
           <SectionLabel>
             {sec.title} · {sec.rows.length}
           </SectionLabel>

@@ -47,11 +47,13 @@ export function MoreMenu({ items, label = 'Weitere Aktionen' }: { items: MoreMen
           role="menu"
           className="absolute right-0 top-11 z-30 min-w-52 bg-surface border border-line rounded-card shadow-float p-1.5 animate-fade-in"
         >
-          {items.map((item) => (
+          {items.map((item, index) => (
             <button
               key={item.label}
               type="button"
               role="menuitem"
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus={index === 0}
               disabled={item.disabled}
               onClick={() => {
                 setOpen(false);
