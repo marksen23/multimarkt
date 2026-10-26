@@ -257,6 +257,7 @@ export function AnkaufPage() {
           <input
             ref={inputRef}
             type="search"
+            enterKeyHint="search"
             aria-label="Suchbegriff"
             placeholder="z. B. Nike Air Max 90 Gr. 42"
             value={query}

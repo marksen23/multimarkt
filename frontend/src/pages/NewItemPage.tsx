@@ -85,6 +85,7 @@ export function NewItemPage() {
           </summary>
           <input
             type="text"
+            enterKeyHint="done"
             aria-label="Artikeltitel (optional)"
             placeholder="z.B. Herrenjacke schwarz"
             value={title}

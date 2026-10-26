@@ -196,6 +196,7 @@ export function DispositionPanel({
       <input
         type="number"
         inputMode="decimal"
+        enterKeyHint="done"
         min="0"
         step="0.01"
         aria-label="Geschätzter Marktpreis in Euro"

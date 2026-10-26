@@ -97,6 +97,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
           </div>
           <input
             type="password"
+            enterKeyHint="done"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submit()}

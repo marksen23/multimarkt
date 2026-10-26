@@ -103,6 +103,7 @@ export function PurchasePanel({
       </div>
       <input
         type="url"
+        enterKeyHint="go"
         aria-label="Link zur Kaufanzeige"
         placeholder="Link zur Anzeige"
         value={url}
