@@ -147,7 +147,7 @@ export function BestandPage() {
               </select>
             </label>
           </div>
-          <div className="-mx-4 px-4 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]" role="tablist">
+          <div className="-mx-4 px-4 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]" role="tablist" aria-label="Artikel filtern">
               {FILTERS.map(({ key, label }) => {
                 const count = searched.filter((e) => matches(e, key)).length;
                 const active = filter === key;

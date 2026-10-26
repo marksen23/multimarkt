@@ -145,6 +145,7 @@ export function DispositionPanel({
     return (
       <button
         type="button"
+        aria-expanded={false}
         onClick={() => void openPanel()}
         className="w-full p-3 rounded-control border border-line text-body font-bold text-ink-muted hover:bg-surface-hover transition-colors flex items-center justify-between gap-2"
       >
@@ -214,8 +215,9 @@ export function DispositionPanel({
         Berechnen
       </Button>
 
+      <div aria-live="polite">
       {result && (
-        <div aria-live="polite" className="space-y-2 pt-2 border-t border-line">
+        <div className="space-y-2 pt-2 border-t border-line">
           <span
             className={`inline-block px-2 py-1 rounded-control text-label font-bold ${ACTION_COLORS[result.action] ?? ACTION_COLOR_FALLBACK}`}
           >
@@ -278,6 +280,7 @@ export function DispositionPanel({
           </p>
         </div>
       )}
+      </div>
     </Card>
   );
 }

@@ -142,6 +142,7 @@ function BottomTab({ item, pendingCount }: { item: NavItem; pendingCount: number
     <NavLink
       to={item.to}
       end={item.end}
+      aria-current={extraActive ? 'page' : undefined}
       className={({ isActive }) =>
         `flex-1 flex flex-col items-center justify-center gap-1 text-micro normal-case tracking-normal transition-colors outline-none ${
           isActive || extraActive ? 'text-accent' : 'text-ink-faint'

@@ -160,25 +160,27 @@ export function SaleCloseoutForm({
         </select>
       </label>
 
-      {preview && (
-        <div className="text-label font-normal text-ink space-y-1 tabular-nums">
-          <p>
-            Netto {formatEur(preview.netEur)}
-            {showProfit && (
-              <>
-                {' '}
-                · Nettogewinn{' '}
-                <span className={preview.netProfitEur != null && preview.netProfitEur < 0 ? 'text-danger font-bold' : 'font-bold'}>
-                  {formatEur(preview.netProfitEur)}
-                </span>
-              </>
+      <div aria-live="polite">
+        {preview && (
+          <div className="text-label font-normal text-ink space-y-1 tabular-nums">
+            <p>
+              Netto {formatEur(preview.netEur)}
+              {showProfit && (
+                <>
+                  {' '}
+                  · Nettogewinn{' '}
+                  <span className={preview.netProfitEur != null && preview.netProfitEur < 0 ? 'text-danger font-bold' : 'font-bold'}>
+                    {formatEur(preview.netProfitEur)}
+                  </span>
+                </>
+              )}
+            </p>
+            {showProfit && purchasePriceEur == null && (
+              <p className="text-ink-muted">Einstand fehlt — Nettogewinn erst nach dem Einkauf.</p>
             )}
-          </p>
-          {showProfit && purchasePriceEur == null && (
-            <p className="text-ink-muted">Einstand fehlt — Nettogewinn erst nach dem Einkauf.</p>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       <div className="flex gap-2">
         <Button size="sm" loading={busy} disabled={busy || !preview || !portal.trim()} onClick={submit}>

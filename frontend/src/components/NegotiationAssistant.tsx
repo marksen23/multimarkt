@@ -113,13 +113,15 @@ export function NegotiationAssistant({
         Antworten vorschlagen
       </Button>
 
-      {result && (
-        <SuggestionResult
-          key={`${result.platform}-${result.offer ?? 'none'}-${result.assessment}`}
-          result={result}
-          platformLabel={PLATFORMS.find((entry) => entry.id === result.platform)?.label ?? platformLabel}
-        />
-      )}
+      <div aria-live="polite">
+        {result && (
+          <SuggestionResult
+            key={`${result.platform}-${result.offer ?? 'none'}-${result.assessment}`}
+            result={result}
+            platformLabel={PLATFORMS.find((entry) => entry.id === result.platform)?.label ?? platformLabel}
+          />
+        )}
+      </div>
     </div>
   );
 }
