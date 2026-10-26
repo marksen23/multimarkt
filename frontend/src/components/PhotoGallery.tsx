@@ -166,6 +166,9 @@ function PhotoLightbox({
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Fotogalerie"
       className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
       onClick={onClose}
     >
@@ -181,6 +184,7 @@ function PhotoLightbox({
       <button
         type="button"
         onClick={onClose}
+        autoFocus
         className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition"
         aria-label="Schließen"
       >

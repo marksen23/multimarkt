@@ -306,8 +306,9 @@ export function AnkaufPage() {
         {error && <Notice tone="danger">{error}</Notice>}
       </div>
 
+      <div aria-live="polite">
       {loading && (
-        <div className="space-y-3">
+        <div role="status" aria-label="Suche läuft…" className="space-y-3">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="p-4 space-y-2 animate-pulse">
               <div className="h-4 bg-line rounded w-3/4" />
@@ -402,6 +403,7 @@ export function AnkaufPage() {
           </div>
         </div>
       )}
+      </div>
 
       {!result && !loading && !error && (
         <div className="pt-2 text-center">

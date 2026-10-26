@@ -109,7 +109,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex-1 min-w-0">
-        <main className="pb-[calc(76px+env(safe-area-inset-bottom,0px))] sm:pb-0">{children}</main>
+        <main aria-label="Hauptinhalt" className="pb-[calc(76px+env(safe-area-inset-bottom,0px))] sm:pb-0">{children}</main>
       </div>
 
       <nav

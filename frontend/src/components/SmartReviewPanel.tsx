@@ -391,7 +391,7 @@ export function SmartReviewPanel({
               </span>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-2" role="tablist">
+          <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Zustand auswählen">
             {CONDITION_OPTIONS.map((cond) => (
               <button
                 key={cond}
