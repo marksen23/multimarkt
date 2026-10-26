@@ -519,7 +519,7 @@ function AnalyzeStep({
       <SectionLabel>Fotos hinzufügen</SectionLabel>
       <PhotoCapture files={photos} onChange={setPhotos} itemId={itemId} />
       {busy && uploadProgress > 0 && !uploaded && (
-        <div className="h-1.5 rounded-full bg-line overflow-hidden" role="progressbar" aria-valuenow={Math.round(uploadProgress * 100)}>
+        <div className="h-1.5 rounded-full bg-line overflow-hidden" role="progressbar" aria-valuenow={Math.round(uploadProgress * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Upload-Fortschritt">
           <div className="h-full bg-accent transition-all duration-150" style={{ width: `${Math.round(uploadProgress * 100)}%` }} />
         </div>
       )}

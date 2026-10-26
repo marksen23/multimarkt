@@ -215,7 +215,7 @@ export function DispositionPanel({
       </Button>
 
       {result && (
-        <div className="space-y-2 pt-2 border-t border-line">
+        <div aria-live="polite" className="space-y-2 pt-2 border-t border-line">
           <span
             className={`inline-block px-2 py-1 rounded-control text-label font-bold ${ACTION_COLORS[result.action] ?? ACTION_COLOR_FALLBACK}`}
           >

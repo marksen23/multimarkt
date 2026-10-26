@@ -158,7 +158,7 @@ export function SmartReviewPanel({
             <h1 className="text-title text-ink">
               {isOneTap ? 'Fast fertig!' : 'Kurze Fragen'}
             </h1>
-            <p className="text-label font-normal text-ink-muted mt-0.5">
+            <p aria-live="polite" className="text-label font-normal text-ink-muted mt-0.5">
               {isOneTap
                 ? 'KI hat alles erkannt — nur Zustand bestätigen'
                 : `${missingCount + inferred.length + 1} Angabe${missingCount + inferred.length + 1 !== 1 ? 'n' : ''} nötig`}
@@ -174,7 +174,14 @@ export function SmartReviewPanel({
           <Notice tone="danger">{reanalyzeError}</Notice>
         )}
         {/* Progress bar */}
-        <div className="mt-3 h-1.5 bg-line rounded-full overflow-hidden">
+        <div
+          role="progressbar"
+          aria-valuenow={totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Fortschritt"
+          className="mt-3 h-1.5 bg-line rounded-full overflow-hidden"
+        >
           <div
             className="h-full bg-accent rounded-full transition-all duration-300"
             style={{

@@ -97,7 +97,14 @@ export function NewItemPage() {
         {error && <Notice tone="danger">{error}</Notice>}
 
         {stage === 'uploading' && (
-          <div className="w-full h-1.5 rounded-full bg-line overflow-hidden">
+          <div
+            role="progressbar"
+            aria-valuenow={Math.round(uploadProgress * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Upload-Fortschritt"
+            className="w-full h-1.5 rounded-full bg-line overflow-hidden"
+          >
             <div
               className="h-full bg-accent transition-all duration-150"
               style={{ width: `${Math.round(uploadProgress * 100)}%` }}
