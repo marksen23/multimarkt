@@ -135,6 +135,13 @@ export function ItemDetailPage() {
   const logistics = toLogisticsProfile(item);
   const categoryValue =
     detail.attributes.find((attribute) => attribute.attributeKey === 'category')?.attributeValue ?? null;
+  const projections = detail.listings.flatMap((listing) => listing.projections);
+  // Gespeicherte Kanal-Karten (eigener Text je Portal) — dann ist das Angebotspaket gleich offen.
+  const hasChannelCards = projections.some((p) => p.descriptionText);
+  const onPackageChanged = () => {
+    void reload();
+    refreshItems();
+  };
 
   const menu: MoreMenuItem[] = [];
   if (item.status === 'READY') {
@@ -254,13 +261,7 @@ export function ItemDetailPage() {
             />
           ) : (
             <>
-              <Angebotspaket
-                itemId={id}
-                onListed={() => {
-                  void reload();
-                  refreshItems();
-                }}
-              />
+              <Angebotspaket itemId={id} onListed={onPackageChanged} onChanged={onPackageChanged} projections={projections} />
               <DispositionPanel itemId={id} logistics={logistics} itemCategory={categoryValue} />
             </>
           )}
@@ -283,11 +284,11 @@ export function ItemDetailPage() {
               emptyLabel="Noch kein Listing vorhanden."
             />
           </section>
-          {detail.listings[0]?.descriptionText && <CopyDescriptionButton text={detail.listings[0].descriptionText} />}
-          {showTexts ? (
+          {detail.listings[0]?.descriptionText && !hasChannelCards && <CopyDescriptionButton text={detail.listings[0].descriptionText} />}
+          {showTexts || hasChannelCards ? (
             <section>
-              <SectionLabel>Texte für weitere Portale</SectionLabel>
-              <Angebotspaket itemId={id} />
+              <SectionLabel>{hasChannelCards ? 'Texte je Portal' : 'Texte für weitere Portale'}</SectionLabel>
+              <Angebotspaket itemId={id} onChanged={onPackageChanged} projections={projections} />
             </section>
           ) : (
             <Button variant="ghost" block icon="sparkle" onClick={() => setShowTexts(true)}>
@@ -417,7 +418,7 @@ function SoldSheet({
             )}
             <SaleCloseoutForm
               key={selected.p.id}
-              initialProceeds={selected.listing.sellingPrice}
+              initialProceeds={selected.p.suggestedPrice ?? selected.listing.sellingPrice}
               initialPortal={portalLabel(selected.p.marketplaceId)}
               purchasePriceEur={detail.item.purchasePriceEur}
               showProfit

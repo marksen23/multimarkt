@@ -73,12 +73,17 @@ function ListingCard({
   // der Zahlungsweg dazu.
   const [reportingSoldFor, setReportingSoldFor] = useState<string | null>(null);
   const [confirmingCancelFor, setConfirmingCancelFor] = useState<string | null>(null);
+  // Kanal-Karten tragen eigenen Text und Preis je Portal — dann ist der
+  // Listing-Text nur ein Platzhalter und wird nicht gezeigt.
+  const hasChannelCards = listing.projections.some((p) => p.descriptionText);
 
   return (
     <Card className="p-4 space-y-3">
       <div>
         <p className="text-title tabular-nums text-ink">{formatEuro(listing.sellingPrice)}</p>
-        {listing.descriptionText && <p className="text-label font-normal text-ink-muted line-clamp-2 mt-0.5">{listing.descriptionText}</p>}
+        {listing.descriptionText && !hasChannelCards && (
+          <p className="text-label font-normal text-ink-muted line-clamp-2 mt-0.5">{listing.descriptionText}</p>
+        )}
       </div>
       <div className="space-y-2">
         {listing.projections.map((p) => (
@@ -87,9 +92,14 @@ function ListingCard({
               <div className="flex items-center gap-2">
                 <span className="text-body font-semibold text-ink">{MP_LABELS[p.marketplaceId] ?? p.marketplaceId}</span>
                 <PhaseBadge status={p.status} />
+                {p.suggestedPrice != null && p.suggestedPrice !== listing.sellingPrice && (
+                  <span className="text-label tabular-nums text-ink-muted">{formatEuro(p.suggestedPrice)}</span>
+                )}
               </div>
               <div className="flex gap-1.5 flex-wrap">
-                {(p.status === 'DRAFT' || p.status === 'READY') && (
+                {/* Nur Kleinanzeigen hat den Veröffentlichen-Weg (Formatierungshilfe + Bestätigung);
+                    Vinted/eBay-Karten laufen über „Kopiert“ im Angebotspaket. */}
+                {(p.status === 'DRAFT' || p.status === 'READY') && p.marketplaceId === MARKETPLACE && (
                   <Button size="sm" disabled={busy} onClick={() => void run(() => listingsApi.publish(p.id))}>
                     Veröffentlichen
                   </Button>
@@ -97,6 +107,11 @@ function ListingCard({
                 {p.status === 'PUBLISHING' && (
                   <Button size="sm" disabled={busy} onClick={() => void run(() => listingsApi.confirmPublished(p.id))}>
                     Ich habe es eingestellt
+                  </Button>
+                )}
+                {p.status === 'COPIED' && (
+                  <Button size="sm" disabled={busy} onClick={() => void run(() => listingsApi.confirmOnline(p.id))}>
+                    Online bestätigen
                   </Button>
                 )}
                 {p.status === 'ONLINE' && reportingSoldFor !== p.id && confirmingCancelFor !== p.id && (
@@ -142,7 +157,7 @@ function ListingCard({
             </div>
             {reportingSoldFor === p.id && (
               <SaleCloseoutForm
-                initialProceeds={listing.sellingPrice}
+                initialProceeds={p.suggestedPrice ?? listing.sellingPrice}
                 initialPortal={portalLabel(p.marketplaceId)}
                 purchasePriceEur={purchasePriceEur ?? null}
                 showProfit={purchasePriceEur !== undefined}

@@ -41,11 +41,20 @@ export class SaleConflictSchedulerService implements OnModuleInit {
    */
   async onModuleInit(): Promise<void> {
     const everyMs = this.config.get<number>('SALE_CONFLICT_SWEEP_INTERVAL_MS', 5 * 60 * 1000);
+    // Timeout-Schutz: upsertJobScheduler wartet auf eine Redis-Verbindung,
+    // die nie kommt, wenn Redis nicht verfügbar ist — Promise bleibt dann
+    // ewig offen. Race gegen 5 s stellt sicher, dass der Prozessstart nicht
+    // blockiert (Kommentar unten).
+    const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T> =>
+      Promise.race([p, new Promise<T>((_, reject) => setTimeout(() => reject(new Error('redis unavailable')), ms))]);
     try {
-      await this.queue.upsertJobScheduler(
-        SALE_CONFLICT_SWEEP_SCHEDULER_ID,
-        { every: everyMs },
-        { name: SALE_CONFLICT_SWEEP_JOB_NAME, data: {} },
+      await withTimeout(
+        this.queue.upsertJobScheduler(
+          SALE_CONFLICT_SWEEP_SCHEDULER_ID,
+          { every: everyMs },
+          { name: SALE_CONFLICT_SWEEP_JOB_NAME, data: {} },
+        ),
+        5_000,
       );
     } catch (error) {
       // Darf den Prozessstart nie verhindern — der Sweep ist ein
