@@ -252,6 +252,7 @@ export function AnkaufPage() {
             e.preventDefault();
             void search(query);
           }}
+          aria-label="Artikelsuche"
           className="flex gap-2"
         >
           <input
@@ -465,7 +466,7 @@ function ListingCard({
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: platformColor }} />
+          <div aria-hidden="true" className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: platformColor }} />
           <span className="text-label font-normal text-ink-muted">{platformLabel}</span>
           <span className="text-ink-faint">·</span>
           <span className="text-label font-normal text-ink-faint truncate">
@@ -477,6 +478,7 @@ function ListingCard({
             href={listing.url}
             target="_blank"
             rel="noopener noreferrer"
+            aria-label={`${listing.title} auf ${platformLabel} ansehen`}
             className="inline-flex items-center gap-1 text-label text-accent hover:text-accent-hover transition-colors shrink-0"
           >
             Anzeige

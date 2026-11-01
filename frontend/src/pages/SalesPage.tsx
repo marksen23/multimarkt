@@ -93,6 +93,7 @@ export function SalesPage() {
               <SectionLabel>Marge der letzten Wochen</SectionLabel>
               <Card className="p-4 overflow-x-auto">
                 <table className="w-full text-body">
+                  <caption className="sr-only">Wochenmarge</caption>
                   <thead>
                     <tr className="text-left text-micro uppercase text-ink-faint">
                       <th className="py-2 pr-3">Woche</th>
@@ -131,6 +132,7 @@ export function SalesPage() {
             isEmpty={overview.openItems.length === 0}
           >
             <table className="w-full text-body">
+              <caption className="sr-only">Offene Artikel</caption>
               <thead>
                 <tr className="text-left text-micro uppercase text-ink-faint">
                   <th className="py-2 pr-3">Artikel</th>
@@ -160,6 +162,7 @@ export function SalesPage() {
             isEmpty={overview.soldItems.length === 0}
           >
             <table className="w-full text-body">
+              <caption className="sr-only">Verkaufte Artikel</caption>
               <thead>
                 <tr className="text-left text-micro uppercase text-ink-faint">
                   <th className="py-2 pr-3">Artikel</th>

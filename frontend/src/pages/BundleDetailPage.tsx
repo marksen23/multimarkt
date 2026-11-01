@@ -179,6 +179,7 @@ export function BundleDetailPage() {
       <button
         type="button"
         onClick={() => navigate(-1)}
+        aria-label="Zurück zu Bundles"
         className="inline-flex items-center gap-1 h-10 pl-1 pr-3 -ml-1 rounded-full text-body text-ink-muted hover:bg-surface-hover hover:text-ink"
       >
         <Icon name="chevronLeft" size={20} />
