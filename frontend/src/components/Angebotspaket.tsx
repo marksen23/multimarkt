@@ -1,25 +1,49 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { copyText } from '../lib/clipboard';
 import { itemsApi } from '../api/items';
 import { listingsApi } from '../api/listings';
 import { ApiRequestError } from '../api/client';
 import type {
+  ChannelCard,
+  ChannelPackage,
   DescriptionChannel,
   DescriptionQualityResult,
   EstimatedTimeToSale,
   IssueSeverity,
   ListingChannel,
+  MarketplaceProjectionSummary,
   MarketplaceRecommendation,
   PriceDescriptionAlignment,
   PriceTier,
+  ProjectionLifecycleState,
   SalesGoal,
   SecondhandMarketplace,
 } from '../api/types';
 import { shippingPortalsAllowed, toLogisticsProfile } from '../logistics/profile';
 import { useToast } from './Toast';
-import { ActionBar, Button, Card, Field, Icon, Notice, SectionLabel, Sheet, Spinner, inputClass } from '../ui';
+import { ActionBar, Button, Card, Field, Icon, Notice, PhaseBadge, SectionLabel, Sheet, Spinner, inputClass } from '../ui';
 
 const SHIPPING_PORTALS = new Set<SecondhandMarketplace>(['EBAY', 'VINTED']);
+
+/**
+ * Portale mit gespeicherter Kanal-Karte (Titel, Text, Preis und Status je
+ * Portal). Das Backend speichert immer alle drei zusammen.
+ */
+const CARD_MARKETS: ListingChannel[] = ['KLEINANZEIGEN', 'VINTED', 'EBAY'];
+const isCardMarket = (m: SecondhandMarketplace): m is ListingChannel => (CARD_MARKETS as string[]).includes(m);
+
+/** Texte einer Karte lassen sich nur bis „kopiert“ ändern, danach steht die Anzeige. */
+const EDITABLE_CARD_STATES = new Set<ProjectionLifecycleState>(['DRAFT', 'COPIED']);
+
+interface CardState {
+  id: string;
+  status: ProjectionLifecycleState;
+}
+
+function errorMessage(e: unknown, fallback: string): string {
+  if (e instanceof ApiRequestError) return e.body.message;
+  return e instanceof Error && e.message ? e.message : fallback;
+}
 
 interface PortalTextConfig {
   titleChannel: ListingChannel;
@@ -53,6 +77,37 @@ interface PortalDraft {
   description: string;
   quality: DescriptionQualityResult | null;
   priceAlignment: PriceDescriptionAlignment | null;
+  /** Eigener Preis der Karte; null folgt dem Startpreis. */
+  price: string | null;
+  /** Abweichend vom gespeicherten Stand der Kanal-Karte. */
+  dirty: boolean;
+}
+
+const emptyDraft = (loadState: TextLoadState): PortalDraft => ({
+  loadState,
+  title: '',
+  description: '',
+  quality: null,
+  priceAlignment: null,
+  price: null,
+  dirty: false,
+});
+
+function draftFromCard(card: ChannelCard): PortalDraft {
+  return {
+    ...emptyDraft('loaded'),
+    title: card.title,
+    description: card.descriptionText,
+    price: card.suggestedPrice === null ? null : card.suggestedPrice.toFixed(2),
+  };
+}
+
+function cardStates(pack: ChannelPackage): Partial<Record<ListingChannel, CardState>> {
+  const states: Partial<Record<ListingChannel, CardState>> = {};
+  for (const card of pack.cards) {
+    if (card.id && card.status) states[card.marketplaceId] = { id: card.id, status: card.status };
+  }
+  return states;
 }
 
 type CopyState = 'idle' | 'copied' | 'error';
@@ -82,8 +137,25 @@ function parsePrice(v: string): number | null {
  * Schritt „Inserieren“: Preis, Portal-Empfehlung und fertige Texte je Portal.
  * Mit `onListed` (Status READY) gibt es die Primäraktion „Inseriert“, die
  * das Listing anlegt; ohne (Status LISTED) dient es nur zum erneuten Kopieren.
+ *
+ * Kleinanzeigen, Vinted und eBay sind Kanal-Karten: Titel, Text und Preis
+ * werden gespeichert und beim nächsten Öffnen wieder geladen statt neu
+ * erzeugt. Je Karte gibt es die Schritte „Kopiert“ und „Online bestätigt“.
+ * Die erste gespeicherte Karte legt bei einem bereiten Artikel das Listing an.
+ * `projections` hält Status-Änderungen aus „Online auf“ synchron, `onChanged`
+ * meldet eigene Änderungen an die Seite.
  */
-export function Angebotspaket({ itemId, onListed }: { itemId: string; onListed?: () => void }) {
+export function Angebotspaket({
+  itemId,
+  onListed,
+  onChanged,
+  projections,
+}: {
+  itemId: string;
+  onListed?: () => void;
+  onChanged?: () => void;
+  projections?: MarketplaceProjectionSummary[];
+}) {
   const toast = useToast();
   const [salesGoal, setSalesGoal] = useState<SalesGoal>('BALANCED');
   const [loadingRecs, setLoadingRecs] = useState(true);
@@ -93,6 +165,10 @@ export function Angebotspaket({ itemId, onListed }: { itemId: string; onListed?:
   const [recommendations, setRecommendations] = useState<MarketplaceRecommendation[]>([]);
   const [detectedCategory, setDetectedCategory] = useState('');
   const [drafts, setDrafts] = useState<Partial<Record<SecondhandMarketplace, PortalDraft>>>({});
+  const draftsRef = useRef(drafts);
+  const [cards, setCards] = useState<Partial<Record<ListingChannel, CardState>>>({});
+  const [hasListing, setHasListing] = useState(false);
+  const [cardBusy, setCardBusy] = useState<ListingChannel | 'SAVE' | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [listingPrice, setListingPrice] = useState('');
   const [listingBusy, setListingBusy] = useState(false);
@@ -101,50 +177,84 @@ export function Angebotspaket({ itemId, onListed }: { itemId: string; onListed?:
   const [fix, setFix] = useState<{ projectionId: string; missing: string[] } | null>(null);
   const [fixValues, setFixValues] = useState<Record<string, string>>({});
 
-  const loadPortalText = useCallback(
-    async (marketplace: SecondhandMarketplace, goal: SalesGoal) => {
-      const cfg = TEXT_CONFIGS[marketplace];
-      if (!cfg) return;
-      setDrafts((prev) => ({
-        ...prev,
-        [marketplace]: { loadState: 'loading', title: '', description: '', quality: null, priceAlignment: null },
-      }));
-      try {
-        const [titleResult, descResult] = await Promise.all([
-          itemsApi.generateTitle(itemId, cfg.titleChannel),
-          itemsApi.generateDescription(itemId, goal, cfg.descChannel),
-        ]);
-        setDrafts((prev) => ({
-          ...prev,
-          [marketplace]: {
-            loadState: 'loaded',
-            title: titleResult.title,
-            description: descResult.descriptionText,
-            quality: descResult.quality,
-            priceAlignment: descResult.priceAlignment,
-          },
-        }));
-      } catch {
-        setDrafts((prev) => ({
-          ...prev,
-          [marketplace]: { loadState: 'error', title: '', description: '', quality: null, priceAlignment: null },
-        }));
+  useEffect(() => {
+    draftsRef.current = drafts;
+  }, [drafts]);
+
+  // Status-Änderungen aus „Online auf“ (z. B. Online bestätigt, Storno) übernehmen.
+  useEffect(() => {
+    if (!projections) return;
+    setCards((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const market of CARD_MARKETS) {
+        const card = prev[market];
+        const projection = card && projections.find((p) => p.id === card.id);
+        if (card && projection && projection.status !== card.status) {
+          next[market] = { ...card, status: projection.status };
+          changed = true;
+        }
       }
+      return changed ? next : prev;
+    });
+  }, [projections]);
+
+  const fetchPortalText = useCallback(
+    async (marketplace: SecondhandMarketplace, goal: SalesGoal): Promise<PortalDraft> => {
+      const cfg = TEXT_CONFIGS[marketplace]!;
+      const [titleResult, descResult] = await Promise.all([
+        itemsApi.generateTitle(itemId, cfg.titleChannel),
+        itemsApi.generateDescription(itemId, goal, cfg.descChannel),
+      ]);
+      return {
+        loadState: 'loaded',
+        title: titleResult.title,
+        description: descResult.descriptionText,
+        quality: descResult.quality,
+        priceAlignment: descResult.priceAlignment,
+        price: null,
+        dirty: true,
+      };
     },
     [itemId],
   );
 
+  const loadPortalText = useCallback(
+    async (marketplace: SecondhandMarketplace, goal: SalesGoal) => {
+      if (!TEXT_CONFIGS[marketplace]) return;
+      setDrafts((prev) => ({ ...prev, [marketplace]: emptyDraft('loading') }));
+      try {
+        const draft = await fetchPortalText(marketplace, goal);
+        setDrafts((prev) => ({ ...prev, [marketplace]: draft }));
+      } catch {
+        setDrafts((prev) => ({ ...prev, [marketplace]: emptyDraft('error') }));
+      }
+    },
+    [fetchPortalText],
+  );
+
+  /**
+   * `initial`: gespeicherte Kanal-Karten übernehmen. Sonst (Ziel geändert,
+   * „Neu erzeugen“) werden alle Texte neu erzeugt, außer bei Karten, die
+   * schon kopiert oder online sind — deren Text steht bereits im Portal.
+   */
   const generate = useCallback(
-    async (goal: SalesGoal) => {
+    async (goal: SalesGoal, initial: boolean) => {
       setLoadingRecs(true);
       setError(null);
-      setDrafts({});
       try {
         const [detail, recResult, priceResult] = await Promise.all([
           itemsApi.get(itemId),
           itemsApi.marketplaceRecommendations(itemId, goal),
           itemsApi.priceResearch(itemId, false, goal),
         ]);
+        // Nur nachladen, wenn es Kanal-Projektionen gibt — sonst würde der
+        // Endpoint eine frische Vorschau mit drei Texten erzeugen.
+        const hasCardProjections = detail.listings.some((l) =>
+          l.projections.some((p) => (CARD_MARKETS as string[]).includes(p.marketplaceId)),
+        );
+        const pack = hasCardProjections ? await itemsApi.channelPackage(itemId) : null;
+
         const profile = toLogisticsProfile(detail.item);
         const hideShipping = profile.captured && !shippingPortalsAllowed(profile);
         setPickupOnlyNote(hideShipping);
@@ -153,7 +263,8 @@ export function Angebotspaket({ itemId, onListed }: { itemId: string; onListed?:
           : recResult.recommendations;
         setRecommendations(visible);
         setDetectedCategory(recResult.detectedCategory);
-        setLoadingRecs(false);
+        setHasListing(detail.listings.length > 0);
+        setCards(pack ? cardStates(pack) : {});
 
         const rec = priceResult.recommendation;
         if (rec?.startPriceRecommended) setPrice(rec.listPrice.toFixed(2));
@@ -162,8 +273,30 @@ export function Angebotspaket({ itemId, onListed }: { itemId: string; onListed?:
           if (medians.length) setPrice(Math.round(medians.reduce((a, b) => a + b, 0) / medians.length).toFixed(2));
         }
 
-        const autoLoad = visible.filter((r) => r.marketplace in TEXT_CONFIGS).slice(0, 2);
-        await Promise.all(autoLoad.map((r) => loadPortalText(r.marketplace, goal)));
+        const previous = draftsRef.current;
+        const kept: Partial<Record<SecondhandMarketplace, PortalDraft>> = {};
+        for (const card of pack?.cards ?? []) {
+          if (!card.id || !card.status) continue;
+          // Ältere Kleinanzeigen-Projektionen haben keinen eigenen Text.
+          if (!card.title && !card.descriptionText) continue;
+          if (initial) kept[card.marketplaceId] = draftFromCard(card);
+          else if (card.status !== 'DRAFT') {
+            const prev = previous[card.marketplaceId];
+            kept[card.marketplaceId] = prev?.loadState === 'loaded' ? prev : draftFromCard(card);
+          }
+        }
+        setDrafts(kept);
+        setLoadingRecs(false);
+
+        const toLoad = new Set<SecondhandMarketplace>(
+          visible
+            .filter((r) => r.marketplace in TEXT_CONFIGS)
+            .slice(0, 2)
+            .map((r) => r.marketplace),
+        );
+        if (!initial) for (const m of Object.keys(previous) as SecondhandMarketplace[]) toLoad.add(m);
+        for (const m of Object.keys(kept)) toLoad.delete(m as SecondhandMarketplace);
+        await Promise.all([...toLoad].map((m) => loadPortalText(m, goal)));
       } catch {
         setError('Generierung fehlgeschlagen. Bitte erneut versuchen.');
         setLoadingRecs(false);
@@ -173,15 +306,125 @@ export function Angebotspaket({ itemId, onListed }: { itemId: string; onListed?:
   );
 
   useEffect(() => {
-    void generate('BALANCED');
+    void generate('BALANCED', true);
   }, [generate]);
 
-  const updateDraft = (marketplace: SecondhandMarketplace, field: 'title' | 'description', value: string) => {
+  const updateDraft = (marketplace: SecondhandMarketplace, field: 'title' | 'description' | 'price', value: string) => {
     setDrafts((prev) => {
       const existing = prev[marketplace];
-      return existing ? { ...prev, [marketplace]: { ...existing, [field]: value } } : prev;
+      return existing ? { ...prev, [marketplace]: { ...existing, [field]: value, dirty: true } } : prev;
     });
   };
+
+  const cardEditable = (market: ListingChannel) => {
+    const status = cards[market]?.status;
+    return !status || EDITABLE_CARD_STATES.has(status);
+  };
+  const cardPrice = (draft: PortalDraft | undefined) => draft?.price ?? price;
+  const unsavedCards = CARD_MARKETS.some((m) => drafts[m]?.dirty && drafts[m]?.loadState === 'loaded' && cardEditable(m));
+  const cardsLoading = CARD_MARKETS.some((m) => drafts[m]?.loadState === 'loading');
+
+  /**
+   * Speichert alle drei Kanal-Karten. Fehlt einer Karte noch der Text (nicht
+   * geöffnet oder bei Abholware ausgeblendet), wird er vorher erzeugt — das
+   * Backend nimmt das Paket nur vollständig an.
+   */
+  const savePackage = async (): Promise<ChannelPackage> => {
+    const complete = { ...drafts };
+    await Promise.all(
+      CARD_MARKETS.filter((m) => complete[m]?.loadState !== 'loaded').map(async (m) => {
+        complete[m] = await fetchPortalText(m, salesGoal);
+      }),
+    );
+    const payload = CARD_MARKETS.map((m) => {
+      const draft = complete[m]!;
+      return {
+        marketplaceId: m,
+        title: draft.title.trim(),
+        descriptionText: draft.description.trim(),
+        suggestedPrice: parsePrice(cardPrice(draft)),
+      };
+    });
+    if (payload.some((card) => !card.title || !card.descriptionText || card.suggestedPrice === null)) {
+      throw new Error('Jede Karte braucht Titel, Text und einen Preis.');
+    }
+    const pack = await itemsApi.saveChannelPackage(
+      itemId,
+      payload.map((card) => ({ ...card, suggestedPrice: card.suggestedPrice! })),
+    );
+    setCards(cardStates(pack));
+    setHasListing(true);
+    setDrafts((prev) => {
+      const next = { ...prev };
+      for (const card of pack.cards) {
+        const base = prev[card.marketplaceId] ?? complete[card.marketplaceId]!;
+        // Gesperrte Karten (online, verkauft …) ändert das Backend nicht — dort gilt der gespeicherte Text.
+        const editable = !card.status || EDITABLE_CARD_STATES.has(card.status);
+        next[card.marketplaceId] =
+          editable || !card.title ? { ...base, price: cardPrice(complete[card.marketplaceId]), dirty: false } : { ...base, ...draftFromCard(card) };
+      }
+      return next;
+    });
+    return pack;
+  };
+
+  const runCardAction = async (key: ListingChannel | 'SAVE', fn: () => Promise<string>) => {
+    setCardBusy(key);
+    try {
+      const message = await fn();
+      toast(message, 'success');
+      onChanged?.();
+    } catch (e) {
+      toast(errorMessage(e, 'Das hat nicht geklappt.'), 'error');
+    } finally {
+      setCardBusy(null);
+    }
+  };
+
+  const ensureSavedCard = async (market: ListingChannel): Promise<string> => {
+    let id = cards[market]?.id;
+    if (!id || unsavedCards) {
+      const pack = await savePackage();
+      id = pack.cards.find((card) => card.marketplaceId === market)?.id ?? undefined;
+    }
+    if (!id) throw new Error('Kanal-Karte konnte nicht gespeichert werden.');
+    return id;
+  };
+
+  const setCardStatus = (market: ListingChannel, projection: MarketplaceProjectionSummary) =>
+    setCards((prev) => ({ ...prev, [market]: { id: projection.id, status: projection.status } }));
+
+  const markCopied = (market: ListingChannel) =>
+    runCardAction(market, async () => {
+      const id = await ensureSavedCard(market);
+      setCardStatus(market, await listingsApi.markCopied(id));
+      return 'Als kopiert markiert. Nach dem Einstellen „Online bestätigen“.';
+    });
+
+  const confirmOnline = (market: ListingChannel) =>
+    runCardAction(market, async () => {
+      const id = await ensureSavedCard(market);
+      setCardStatus(market, await listingsApi.confirmOnline(id));
+      return 'Als online bestätigt';
+    });
+
+  const confirmPublished = (market: ListingChannel) =>
+    runCardAction(market, async () => {
+      setCardStatus(market, await listingsApi.confirmPublished(cards[market]!.id));
+      return 'Als online bestätigt';
+    });
+
+  const confirmCancellation = (market: ListingChannel) =>
+    runCardAction(market, async () => {
+      setCardStatus(market, await listingsApi.confirmCancellation(cards[market]!.id));
+      return 'Zurückziehen bestätigt';
+    });
+
+  const saveCards = () =>
+    runCardAction('SAVE', async () => {
+      await savePackage();
+      return 'Texte gespeichert';
+    });
 
   const worstAlignment =
     Object.values(drafts)
@@ -290,7 +533,7 @@ export function Angebotspaket({ itemId, onListed }: { itemId: string; onListed?:
           onChange={(e) => {
             const goal = e.target.value as SalesGoal;
             setSalesGoal(goal);
-            void generate(goal);
+            void generate(goal, false);
           }}
           className={`${inputClass} flex-1`}
           aria-label="Verkaufsziel"
@@ -301,13 +544,13 @@ export function Angebotspaket({ itemId, onListed }: { itemId: string; onListed?:
             </option>
           ))}
         </select>
-        <Button variant="secondary" icon="refresh" loading={loadingRecs} onClick={() => void generate(salesGoal)} aria-label="Neu erzeugen" />
+        <Button variant="secondary" icon="refresh" loading={loadingRecs} onClick={() => void generate(salesGoal, false)} aria-label="Neu erzeugen" />
       </div>
 
       {error && (
         <Notice tone="danger">
           {error}{' '}
-          <button type="button" onClick={() => void generate(salesGoal)} className="underline font-semibold">
+          <button type="button" onClick={() => void generate(salesGoal, true)} className="underline font-semibold">
             Erneut versuchen
           </button>
         </Notice>
@@ -371,6 +614,7 @@ export function Angebotspaket({ itemId, onListed }: { itemId: string; onListed?:
                   key={rec.marketplace}
                   rec={rec}
                   draftState={drafts[rec.marketplace]?.loadState}
+                  cardStatus={isCardMarket(rec.marketplace) ? cards[rec.marketplace]?.status : undefined}
                   onLoadText={() => void loadPortalText(rec.marketplace, salesGoal)}
                 />
               ))}
@@ -379,20 +623,53 @@ export function Angebotspaket({ itemId, onListed }: { itemId: string; onListed?:
 
       {textMarkets.length > 0 && (
         <section className="space-y-3">
-          <SectionLabel>Texte zum Kopieren</SectionLabel>
+          <SectionLabel
+            action={
+              hasListing && unsavedCards ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon="check"
+                  loading={cardBusy === 'SAVE'}
+                  disabled={cardBusy !== null || cardsLoading}
+                  onClick={() => void saveCards()}
+                >
+                  Änderungen speichern
+                </Button>
+              ) : undefined
+            }
+          >
+            Texte zum Kopieren
+          </SectionLabel>
           {textMarkets.map((rec) => {
             const draft = drafts[rec.marketplace]!;
             const cfg = TEXT_CONFIGS[rec.marketplace]!;
+            const market = rec.marketplace;
+            const channel = isCardMarket(market)
+              ? {
+                  status: cards[market]?.status ?? null,
+                  editable: cardEditable(market),
+                  busy: cardBusy === market,
+                  disabled: cardBusy !== null || cardsLoading,
+                  createsListing: !hasListing,
+                  onMarkCopied: () => void markCopied(market),
+                  onConfirmOnline: () => void confirmOnline(market),
+                  onConfirmPublished: () => void confirmPublished(market),
+                  onConfirmCancellation: () => void confirmCancellation(market),
+                }
+              : null;
             return (
               <PortalCard
-                key={rec.marketplace}
+                key={market}
                 rec={rec}
                 cfg={cfg}
                 draft={draft}
-                price={price}
-                onRetry={() => void loadPortalText(rec.marketplace, salesGoal)}
-                onTitleChange={(v) => updateDraft(rec.marketplace, 'title', v)}
-                onDescriptionChange={(v) => updateDraft(rec.marketplace, 'description', v)}
+                price={channel ? cardPrice(draft) : price}
+                channel={channel}
+                onRetry={() => void loadPortalText(market, salesGoal)}
+                onTitleChange={(v) => updateDraft(market, 'title', v)}
+                onDescriptionChange={(v) => updateDraft(market, 'description', v)}
+                onPriceChange={(v) => updateDraft(market, 'price', v)}
               />
             );
           })}
@@ -538,10 +815,12 @@ const TIME_LABEL: Record<EstimatedTimeToSale, string> = {
 function MarketplaceRankRow({
   rec,
   draftState,
+  cardStatus,
   onLoadText,
 }: {
   rec: MarketplaceRecommendation;
   draftState: TextLoadState | undefined;
+  cardStatus: ProjectionLifecycleState | undefined;
   onLoadText: () => void;
 }) {
   const isBuyback = rec.type === 'BUYBACK';
@@ -573,6 +852,8 @@ function MarketplaceRankRow({
           <a href={rec.listingUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-label text-ink-muted hover:text-accent">
             Website <Icon name="external" size={13} />
           </a>
+        ) : cardStatus && cardStatus !== 'DRAFT' ? (
+          <PhaseBadge status={cardStatus} />
         ) : draftState === 'loaded' ? (
           <span className="inline-flex items-center gap-1 text-label text-accent">
             <Icon name="check" size={14} strokeWidth={2.6} /> Text
@@ -589,28 +870,46 @@ function MarketplaceRankRow({
   );
 }
 
+interface ChannelCardControls {
+  status: ProjectionLifecycleState | null;
+  editable: boolean;
+  busy: boolean;
+  disabled: boolean;
+  /** Bereiter Artikel ohne Listing: der erste Schritt legt das Listing an. */
+  createsListing: boolean;
+  onMarkCopied: () => void;
+  onConfirmOnline: () => void;
+  onConfirmPublished: () => void;
+  onConfirmCancellation: () => void;
+}
+
 function PortalCard({
   rec,
   cfg,
   draft,
   price,
+  channel,
   onRetry,
   onTitleChange,
   onDescriptionChange,
+  onPriceChange,
 }: {
   rec: MarketplaceRecommendation;
   cfg: PortalTextConfig;
   draft: PortalDraft;
   price: string;
+  channel: ChannelCardControls | null;
   onRetry: () => void;
   onTitleChange: (v: string) => void;
   onDescriptionChange: (v: string) => void;
+  onPriceChange: (v: string) => void;
 }) {
   const titleCopy = useCopy();
   const descCopy = useCopy();
   const allCopy = useCopy();
   const [showQuality, setShowQuality] = useState(false);
   const loading = draft.loadState === 'loading';
+  const locked = channel !== null && !channel.editable;
   const quality = draft.quality;
   const hasQualityIssues = (quality?.issues.length ?? 0) > 0 || (quality?.attributeCoverage.some((a) => !a.mentioned) ?? false);
 
@@ -627,6 +926,7 @@ function PortalCard({
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-body font-semibold text-ink truncate">{rec.label}</span>
           {!loading && quality && <QualityBadge score={quality.score} />}
+          {channel?.status && <PhaseBadge status={channel.status} />}
         </div>
         <a
           href={rec.listingUrl}
@@ -649,6 +949,10 @@ function PortalCard({
         </div>
       ) : (
         <div className="p-4 space-y-4">
+          {channel?.status === 'CANCEL_PENDING' && (
+            <Notice tone="warning">Auf einem anderen Portal verkauft. Bitte die Anzeige auf {rec.label} zurückziehen und dann bestätigen.</Notice>
+          )}
+
           <Field
             label="Titel"
             count={loading ? undefined : { value: draft.title.length, max: cfg.titleMax }}
@@ -657,7 +961,7 @@ function PortalCard({
             {loading ? (
               <SkeletonLine className="h-11 rounded-control" />
             ) : (
-              <input type="text" value={draft.title} onChange={(e) => onTitleChange(e.target.value)} className={inputClass} />
+              <input type="text" value={draft.title} readOnly={locked} onChange={(e) => onTitleChange(e.target.value)} className={inputClass} />
             )}
           </Field>
 
@@ -669,9 +973,30 @@ function PortalCard({
             {loading ? (
               <SkeletonLine className="h-28 rounded-control" />
             ) : (
-              <textarea rows={6} value={draft.description} onChange={(e) => onDescriptionChange(e.target.value)} className={`${inputClass} resize-y`} />
+              <textarea
+                rows={6}
+                value={draft.description}
+                readOnly={locked}
+                onChange={(e) => onDescriptionChange(e.target.value)}
+                className={`${inputClass} resize-y`}
+              />
             )}
           </Field>
+
+          {channel && !loading && (
+            <Field label="Preis auf diesem Portal (€)" hint={locked ? 'Die Anzeige steht schon, Texte und Preis sind gesperrt.' : undefined}>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0.01"
+                value={price}
+                readOnly={locked}
+                onChange={(e) => onPriceChange(e.target.value)}
+                className={`${inputClass} tabular-nums`}
+              />
+            </Field>
+          )}
 
           {!loading && hasQualityIssues && quality && (
             <div>
@@ -708,9 +1033,77 @@ function PortalCard({
               {allCopy.state === 'copied' ? 'Titel, Preis und Text kopiert' : allCopy.state === 'error' ? 'Kopieren fehlgeschlagen' : 'Alles kopieren'}
             </Button>
           )}
+
+          {!loading && channel && <ChannelSteps channel={channel} />}
         </div>
       )}
     </Card>
+  );
+}
+
+/** Kopiert → Online bestätigt. Status setzt immer der Mensch, kein Portal wird angesprochen. */
+function ChannelSteps({ channel }: { channel: ChannelCardControls }) {
+  const { status } = channel;
+  const copied = status !== null && status !== 'DRAFT' && status !== 'READY' && status !== 'PUBLISHING';
+  const online = status === 'ONLINE' || status === 'SOLD';
+  if (status === 'CANCELLED') return null;
+
+  let action: ReactNode = null;
+  if (status === null || status === 'DRAFT') {
+    action = (
+      <Button block icon="check" loading={channel.busy} disabled={channel.disabled} onClick={channel.onMarkCopied}>
+        Als kopiert markieren
+      </Button>
+    );
+  } else if (status === 'COPIED') {
+    action = (
+      <Button block icon="check" loading={channel.busy} disabled={channel.disabled} onClick={channel.onConfirmOnline}>
+        Online bestätigen
+      </Button>
+    );
+  } else if (status === 'PUBLISHING') {
+    action = (
+      <Button block icon="check" loading={channel.busy} disabled={channel.disabled} onClick={channel.onConfirmPublished}>
+        Ich habe es eingestellt
+      </Button>
+    );
+  } else if (status === 'CANCEL_PENDING') {
+    action = (
+      <Button block variant="secondary" loading={channel.busy} disabled={channel.disabled} onClick={channel.onConfirmCancellation}>
+        Zurückziehen bestätigen
+      </Button>
+    );
+  }
+
+  return (
+    <div className="pt-4 border-t border-line space-y-3">
+      {status !== 'CANCEL_PENDING' && (
+        <ol className="flex items-center gap-2" aria-label="Schritte">
+          <StepDot index={1} label="Kopiert" done={copied} active={!copied} />
+          <span className={`h-px flex-1 ${copied ? 'bg-accent' : 'bg-line'}`} aria-hidden="true" />
+          <StepDot index={2} label="Online bestätigt" done={online} active={copied && !online} />
+        </ol>
+      )}
+      {action}
+      {action && (status === null || status === 'DRAFT') && channel.createsListing && (
+        <p className="text-label font-normal text-ink-faint">Speichert die Texte für Kleinanzeigen, Vinted und eBay und legt das Listing an.</p>
+      )}
+    </div>
+  );
+}
+
+function StepDot({ index, label, done, active }: { index: number; label: string; done: boolean; active: boolean }) {
+  return (
+    <li className="flex items-center gap-1.5 shrink-0" aria-current={active ? 'step' : undefined}>
+      <span
+        className={`w-6 h-6 rounded-full flex items-center justify-center text-micro tabular-nums ${
+          done ? 'bg-accent text-accent-ink' : active ? 'border border-accent text-accent' : 'border border-line text-ink-faint'
+        }`}
+      >
+        {done ? <Icon name="check" size={13} strokeWidth={3} /> : index}
+      </span>
+      <span className={`text-label ${done ? 'text-accent' : active ? 'text-ink' : 'text-ink-faint'}`}>{label}</span>
+    </li>
   );
 }
 
