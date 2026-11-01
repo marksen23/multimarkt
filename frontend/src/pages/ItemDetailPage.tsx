@@ -272,7 +272,7 @@ export function ItemDetailPage() {
         <div className="space-y-5">
           <NegotiationEntry itemId={id} />
           {followUp && <FollowUpPanel itemId={id} followUp={followUp} busy={busy} onRecord={run} />}
-          <section>
+          <section aria-label="Online auf">
             <SectionLabel>Online auf</SectionLabel>
             <ListingsManager
               listings={detail.listings}
@@ -285,7 +285,7 @@ export function ItemDetailPage() {
           </section>
           {detail.listings[0]?.descriptionText && <CopyDescriptionButton text={detail.listings[0].descriptionText} />}
           {showTexts ? (
-            <section>
+            <section aria-label="Texte für weitere Portale">
               <SectionLabel>Texte für weitere Portale</SectionLabel>
               <Angebotspaket itemId={id} />
             </section>
@@ -356,6 +356,7 @@ function NegotiationEntry({ itemId }: { itemId: string }) {
   return (
     <Link
       to={`/items/${itemId}/verhandlung`}
+      aria-label="Verhandlung — Käufernachricht einfügen und Antworten kopieren"
       className="flex items-center gap-3 bg-surface border border-line rounded-card p-4 hover:bg-surface-hover transition-colors"
     >
       <div className="flex-1 min-w-0">

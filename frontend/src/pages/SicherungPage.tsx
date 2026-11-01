@@ -90,6 +90,7 @@ export function SicherungPage() {
 
       {summary && (
         <>
+          <section aria-label="Monatsstatistik">
           <Card className="p-4 space-y-4">
             <div className="flex items-center justify-between gap-2">
               <button
@@ -149,6 +150,7 @@ export function SicherungPage() {
               haben. Einkäufe ohne Datum fehlen in der Monatszahl.
             </p>
           </Card>
+          </section>
 
           <section aria-label="Sicherung">
             <SectionLabel>Sicherung</SectionLabel>

@@ -88,7 +88,7 @@ function ListingCard({
                 <span className="text-body font-semibold text-ink">{MP_LABELS[p.marketplaceId] ?? p.marketplaceId}</span>
                 <PhaseBadge status={p.status} />
               </div>
-              <div className="flex gap-1.5 flex-wrap">
+              <div aria-live="polite" className="flex gap-1.5 flex-wrap">
                 {(p.status === 'DRAFT' || p.status === 'READY') && (
                   <Button size="sm" loading={busy} disabled={busy} onClick={() => void run(() => listingsApi.publish(p.id))}>
                     Veröffentlichen
