@@ -501,7 +501,7 @@ function AnalyzeStep({
 
   if (analyzing) {
     return (
-      <Card className="p-5 flex items-center gap-3">
+      <Card role="status" aria-label="KI analysiert die Fotos" className="p-5 flex items-center gap-3">
         <span className="w-10 h-10 rounded-full bg-phase-capture-soft text-phase-capture flex items-center justify-center">
           <Spinner />
         </span>
@@ -516,7 +516,7 @@ function AnalyzeStep({
   }
 
   return (
-    <section className="space-y-3">
+    <section aria-label="Fotos hinzufügen" className="space-y-3">
       <SectionLabel>Fotos hinzufügen</SectionLabel>
       <PhotoCapture files={photos} onChange={setPhotos} itemId={itemId} />
       {busy && uploadProgress > 0 && !uploaded && (
@@ -600,7 +600,7 @@ function PrepareListingStep({
   const anyGenerating = generating || autoFilling;
 
   return (
-    <section className="space-y-4">
+    <section aria-label="Manuell inserieren" className="space-y-4">
       <SectionLabel
         action={
           <Button variant="ghost" size="sm" icon="sparkle" loading={autoFilling} disabled={anyGenerating || busy} onClick={() => void autoFill()}>

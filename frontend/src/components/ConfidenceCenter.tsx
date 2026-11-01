@@ -82,9 +82,9 @@ export function ConfidenceCenter({
           Die KI hat das Foto analysiert. <strong className="text-ink">Keine Information geht ohne deine Bestätigung online.</strong>
         </p>
 
-        <section className="space-y-3">
+        <section aria-label="Zwingend erforderlich" className="space-y-3">
           <h2 className="text-micro uppercase text-ink-muted flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-danger" />
+            <span aria-hidden="true" className="w-2 h-2 rounded-full bg-danger" />
             Zwingend erforderlich
           </h2>
 
@@ -153,9 +153,9 @@ export function ConfidenceCenter({
         </section>
 
         {inferred.length > 0 && (
-          <section className="space-y-3">
+          <section aria-label="KI-Vermutungen" className="space-y-3">
             <h2 className="text-micro uppercase text-ink-muted flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-warning" />
+              <span aria-hidden="true" className="w-2 h-2 rounded-full bg-warning" />
               KI-Vermutungen (Bitte prüfen)
             </h2>
             <div className="bg-warning/5 rounded-card border border-warning/25 divide-y divide-warning/15 overflow-hidden">
