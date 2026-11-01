@@ -194,7 +194,7 @@ export function BundleDetailPage() {
 
       {error && <Notice tone="danger">{error}</Notice>}
 
-      <section>
+      <section aria-label={`Enthaltene Artikel (${items.length})`}>
         <SectionLabel>Enthaltene Artikel ({items.length})</SectionLabel>
         {items.length === 0 && bundle.status !== 'NEW' ? (
           <EmptyState icon="package" title="Noch keine Artikel in diesem Bundle" />
@@ -226,7 +226,7 @@ export function BundleDetailPage() {
       )}
 
       {listings.length > 0 && (
-        <section>
+        <section aria-label="Listings">
           <SectionLabel>Listings</SectionLabel>
           <ListingsManager
             listings={listings}

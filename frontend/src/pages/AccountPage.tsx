@@ -150,8 +150,7 @@ export function AccountPage() {
         </button>
       </Card>
 
-      {/* Danger zone */}
-      <div className="bg-danger-soft/40 border border-danger/20 rounded-card p-4 space-y-3">
+      <div role="region" aria-label="Konto löschen" className="bg-danger-soft/40 border border-danger/20 rounded-card p-4 space-y-3">
         <h2 className="text-title text-danger">Account löschen</h2>
         <p className="text-label font-normal text-danger/90">
           Löscht unwiderruflich alle Items, Listings, Bundles und Verkaufsdaten (DB-Kaskade). Diese

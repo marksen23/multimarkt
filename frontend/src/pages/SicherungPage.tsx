@@ -150,7 +150,7 @@ export function SicherungPage() {
             </p>
           </Card>
 
-          <section>
+          <section aria-label="Sicherung">
             <SectionLabel>Sicherung</SectionLabel>
             <Card className="p-4 space-y-3">
               <p className="text-body text-ink-muted">
