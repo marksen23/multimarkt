@@ -370,7 +370,7 @@ export class FollowUpService {
         detail: row.rawResponse ?? undefined,
       }));
       const recommendation = this.priceRecommendation.recommend(sources, null);
-      if (recommendation && recommendation.targetPrice > 0) {
+      if (recommendation?.startPriceRecommended && recommendation.targetPrice > 0) {
         targets.set(itemId, recommendation.targetPrice);
       }
     }

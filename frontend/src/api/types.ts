@@ -224,6 +224,12 @@ export interface PriceRecommendation {
   confidence: PriceConfidence;
   buybackRecommended: boolean;
   reasoning: string[];
+  sampleSize: number;
+  rangeLow: number;
+  rangeHigh: number;
+  /** Unter fünf Vergleichen false: dann nur Spanne, keine Startpreis-Empfehlung. */
+  startPriceRecommended: boolean;
+  priceBasisNote: string;
 }
 
 export interface PriceResearchResult {

@@ -52,10 +52,11 @@ export function NegotiationPage() {
   }
 
   const recommendation = research.recommendation;
+  const thinSample = recommendation != null && !recommendation.startPriceRecommended;
   return (
     <div className="max-w-md mx-auto p-4 space-y-4">
       <BackLink itemId={id} />
-      {recommendation ? (
+      {recommendation?.startPriceRecommended ? (
         <NegotiationAssistant
           itemId={id}
           title={title}
@@ -65,10 +66,18 @@ export function NegotiationPage() {
       ) : (
         <div className="bg-surface border border-line rounded-2xl p-4 space-y-2">
           <h1 className="text-lg font-bold text-ink">Verhandlung</h1>
-          <p className="text-sm text-ink-muted">
-            Für {title?.trim() || 'diesen Artikel'} fehlen Zielpreis und Schmerzgrenze. Zuerst die
-            Preisrecherche auf der Artikelseite ausführen.
-          </p>
+          {thinSample ? (
+            <p className="text-sm text-ink-muted">
+              Stichprobengröße: {recommendation.sampleSize}. Spanne {recommendation.rangeLow.toFixed(2)}–
+              {recommendation.rangeHigh.toFixed(2)} €. {recommendation.priceBasisNote}. Unter fünf
+              Vergleichen kein konkreter Startpreis.
+            </p>
+          ) : (
+            <p className="text-sm text-ink-muted">
+              Für {title?.trim() || 'diesen Artikel'} fehlen Zielpreis und Schmerzgrenze. Zuerst die
+              Preisrecherche auf der Artikelseite ausführen.
+            </p>
+          )}
         </div>
       )}
     </div>

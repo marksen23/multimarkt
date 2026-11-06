@@ -40,10 +40,10 @@ export interface MarketDistributionResult {
 
 export interface MarketDistributionProvider {
   /**
-   * Liefert `null`, wenn keine Treffer gefunden wurden. Die Mindest-
-   * Stichprobengröße (§9d Punkt 4) wird bewusst NICHT hier, sondern
-   * zentral im `PriceTriangulationService` durchgesetzt — der Provider
-   * kennt nur Rohdaten, keine Geschäftsregeln.
+   * Liefert `null`, wenn keine Treffer gefunden wurden. Ob aus der
+   * Stichprobe ein konkreter Startpreis wird (§9d Punkt 4, Feature 2.7:
+   * unter fünf Vergleichen nur die Spanne), entscheidet
+   * `PriceRecommendationService` — der Provider kennt nur Rohdaten.
    */
   search(query: MarketDistributionQuery): Promise<MarketDistributionResult | null>;
 }
@@ -60,5 +60,5 @@ export const MARKET_DISTRIBUTION_PROVIDER = Symbol('MARKET_DISTRIBUTION_PROVIDER
  */
 export const GEMINI_GROUNDING_PROVIDER = Symbol('GEMINI_GROUNDING_PROVIDER');
 
-/** §9d Punkt 4: unter dieser Stichprobengröße wird kein Vorschlag angezeigt. */
+/** Unter dieser Stichprobengröße gibt es keinen konkreten Startpreis, nur die Spanne. */
 export const MIN_MARKET_SAMPLE_SIZE = 5;

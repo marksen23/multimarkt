@@ -1,4 +1,8 @@
-import { ASKING_TO_REALIZED_FACTOR, PriceRecommendationService } from './price-recommendation.service';
+import {
+  ASKING_PRICE_NOTE,
+  ASKING_TO_REALIZED_FACTOR,
+  PriceRecommendationService,
+} from './price-recommendation.service';
 import { PriceResearchSourceResult } from './price-triangulation.service';
 
 function marketSource(overrides: Partial<PriceResearchSourceResult> = {}): PriceResearchSourceResult {
@@ -131,6 +135,43 @@ describe('PriceRecommendationService', () => {
     expect(low.confidence).toBe('LOW');
     expect(medium.confidence).toBe('MEDIUM');
     expect(high.confidence).toBe('HIGH');
+  });
+
+  it('always attaches sample size, the asking-price span, and the factor note', () => {
+    const result = service.recommend(
+      [
+        marketSource({ median: 100, p25: 90, p75: 110, sampleSize: 12 }),
+        marketSource({
+          source: 'GEMINI_GROUNDING',
+          median: 80,
+          p25: 70,
+          p75: 130,
+          sampleSize: 4,
+        }),
+      ],
+      'BALANCED',
+    )!;
+
+    expect(result.sampleSize).toBe(16);
+    expect(result.rangeLow).toBe(70);
+    expect(result.rangeHigh).toBe(130);
+    expect(result.priceBasisNote).toBe('Angebotspreise, nicht erzielte Verkäufe, Faktor 0,87');
+    expect(result.priceBasisNote).toBe(ASKING_PRICE_NOTE);
+    expect(result.startPriceRecommended).toBe(true);
+  });
+
+  it('withholds a concrete start price below five comparisons and keeps only the span', () => {
+    const four = service.recommend([marketSource({ p25: 18, p75: 27, sampleSize: 4 })], 'BALANCED')!;
+    const five = service.recommend([marketSource({ p25: 18, p75: 27, sampleSize: 5 })], 'BALANCED')!;
+
+    expect(four.startPriceRecommended).toBe(false);
+    expect(four.sampleSize).toBe(4);
+    expect(four.rangeLow).toBe(18);
+    expect(four.rangeHigh).toBe(27);
+    expect(four.priceBasisNote).toBe(ASKING_PRICE_NOTE);
+    expect(four.reasoning.some((line) => line.includes('kein konkreter Startpreis'))).toBe(true);
+    expect(four.reasoning.some((line) => line.includes('Startpreis +'))).toBe(false);
+    expect(five.startPriceRecommended).toBe(true);
   });
 
   it('always includes a human-readable reasoning trail (never a blackbox number)', () => {

@@ -96,7 +96,7 @@ export class NegotiationService {
 
     const recommendation = this.priceRecommendation.recommend(sources, null);
     if (
-      !recommendation ||
+      !recommendation?.startPriceRecommended ||
       recommendation.targetPrice <= 0 ||
       recommendation.minPrice <= 0
     ) {

@@ -55,7 +55,7 @@ export function PriceResearchPanel({
       .then((r) => {
         if (!cancelled) {
           setResult(r);
-          const med = r.recommendation?.listPrice ?? r.sources.find((s) => s.median !== null)?.median;
+          const med = marketAnchor(r);
           if (med != null) onMedianAvailable?.(med);
         }
       })
@@ -136,16 +136,20 @@ export function PriceResearchPanel({
       {result.recommendation && (
         <>
           <RecommendationCard recommendation={result.recommendation} onSuggestPrice={onSuggestPrice} />
-          <ExpectedMarginFields
-            salePriceEur={result.recommendation.targetPrice}
-            purchasePriceEur={purchasePriceEur}
-            salePriceLabel="Zielpreis"
-          />
-          <ChannelNetComparison
-            salePriceEur={result.recommendation.targetPrice}
-            salePriceLabel="Zielpreis"
-            logistics={logistics}
-          />
+          {result.recommendation.startPriceRecommended && (
+            <>
+              <ExpectedMarginFields
+                salePriceEur={result.recommendation.targetPrice}
+                purchasePriceEur={purchasePriceEur}
+                salePriceLabel="Zielpreis"
+              />
+              <ChannelNetComparison
+                salePriceEur={result.recommendation.targetPrice}
+                salePriceLabel="Zielpreis"
+                logistics={logistics}
+              />
+            </>
+          )}
         </>
       )}
 
@@ -156,6 +160,16 @@ export function PriceResearchPanel({
   );
 }
 
+function marketAnchor(result: PriceResearchResult): number | null {
+  if (result.recommendation?.startPriceRecommended) return result.recommendation.listPrice;
+  if (result.recommendation) return null;
+  return result.sources.find((s) => s.median !== null)?.median ?? null;
+}
+
+function formatSpan(low: number, high: number): string {
+  return `${low.toFixed(2)}–${high.toFixed(2)} €`;
+}
+
 function RecommendationCard({
   recommendation,
   onSuggestPrice,
@@ -163,35 +177,60 @@ function RecommendationCard({
   recommendation: PriceRecommendation;
   onSuggestPrice: (price: number) => void;
 }) {
+  const showPrices = recommendation.startPriceRecommended;
+
   return (
     <div className="bg-accent-soft border border-accent/20 rounded-control p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-label text-accent">Abgeleiteter Vorschlag</span>
+        <span className="text-label text-accent">
+          {showPrices ? 'Abgeleiteter Vorschlag' : 'Preisspanne'}
+        </span>
         <span className="text-micro uppercase text-accent/70">
           {CONFIDENCE_LABELS[recommendation.confidence]}
         </span>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <div>
-          <p className="text-micro uppercase text-ink-faint">Startpreis</p>
-          <p className="font-bold text-ink text-body tabular-nums">{recommendation.listPrice.toFixed(2)} €</p>
+      {showPrices ? (
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div>
+            <p className="text-micro uppercase text-ink-faint">Startpreis</p>
+            <p className="font-bold text-ink text-body tabular-nums">{recommendation.listPrice.toFixed(2)} €</p>
+          </div>
+          <div>
+            <p className="text-micro uppercase text-ink-faint">Zielpreis</p>
+            <p className="font-bold text-ink text-body tabular-nums">{recommendation.targetPrice.toFixed(2)} €</p>
+          </div>
+          <div>
+            <p className="text-micro uppercase text-ink-faint">Schmerzgrenze</p>
+            <p className="font-bold text-ink text-body tabular-nums">{recommendation.minPrice.toFixed(2)} €</p>
+          </div>
         </div>
-        <div>
-          <p className="text-micro uppercase text-ink-faint">Zielpreis</p>
-          <p className="font-bold text-ink text-body tabular-nums">{recommendation.targetPrice.toFixed(2)} €</p>
+      ) : (
+        <div className="text-center">
+          <p className="text-micro uppercase text-ink-faint">Spanne</p>
+          <p className="font-bold text-ink text-body tabular-nums">
+            {formatSpan(recommendation.rangeLow, recommendation.rangeHigh)}
+          </p>
         </div>
-        <div>
-          <p className="text-micro uppercase text-ink-faint">Schmerzgrenze</p>
-          <p className="font-bold text-ink text-body tabular-nums">{recommendation.minPrice.toFixed(2)} €</p>
-        </div>
+      )}
+
+      <div className="text-label font-normal text-ink-muted space-y-0.5">
+        <p>Stichprobengröße: {recommendation.sampleSize}</p>
+        {showPrices && <p>Spanne: {formatSpan(recommendation.rangeLow, recommendation.rangeHigh)}</p>}
+        <p>{recommendation.priceBasisNote}</p>
       </div>
 
-      <Button size="sm" block onClick={() => onSuggestPrice(recommendation.listPrice)}>
-        Startpreis übernehmen
-      </Button>
+      {showPrices ? (
+        <Button size="sm" block onClick={() => onSuggestPrice(recommendation.listPrice)}>
+          Startpreis übernehmen
+        </Button>
+      ) : (
+        <p className="text-label font-normal text-ink-muted">
+          Unter fünf Vergleichen kein konkreter Startpreis.
+        </p>
+      )}
 
-      {recommendation.buybackRecommended && (
+      {showPrices && recommendation.buybackRecommended && (
         <p className="flex items-start gap-1.5 text-label font-normal text-ink-muted">
           <Icon name="sparkle" size={14} className="mt-px text-accent" />
           Der Ankaufpreis liegt nah am Zielpreis — ein Sofortverkauf ans Ankaufportal könnte einfacher sein.

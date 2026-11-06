@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SalesGoal } from '../../domain/ai/description-generation-provider.interface';
+import { MIN_MARKET_SAMPLE_SIZE } from '../../domain/pricing/market-distribution-provider.interface';
 import { PriceConfidence, PriceRecommendation } from '../../domain/pricing/price-recommendation';
 import { PriceResearchSourceResult } from './price-triangulation.service';
 
@@ -12,6 +13,9 @@ import { PriceResearchSourceResult } from './price-triangulation.service';
 // Konstante statt versteckt in einer Formel (gleiches Prinzip wie
 // BUYBACK_TO_RESALE_MULTIPLIER).
 export const ASKING_TO_REALIZED_FACTOR = 0.87;
+
+/** Sichtbarer Hinweis neben P_list, P_target und P_min (Feature 2.7). */
+export const ASKING_PRICE_NOTE = `Angebotspreise, nicht erzielte Verkäufe, Faktor ${ASKING_TO_REALIZED_FACTOR.toFixed(2).replace('.', ',')}`;
 
 // §9e: grobe Verkaufsziel-Strategie (Markup fürs Startgebot / Abschlag für
 // die Schmerzgrenze), angelehnt an die Methodik-Vorlage Abschnitt 4.4.
@@ -70,24 +74,36 @@ export class PriceRecommendationService {
     const reasoning: string[] = [];
 
     const totalSamples = marketSources.reduce((sum, s) => sum + s.sampleSize, 0);
+    if (totalSamples <= 0) return null;
+
     const weightedMedian =
       marketSources.reduce((sum, s) => sum + (s.median ?? 0) * s.sampleSize, 0) / totalSamples;
+    const { rangeLow, rangeHigh } = askingPriceSpan(marketSources, weightedMedian);
+    const startPriceRecommended = totalSamples >= MIN_MARKET_SAMPLE_SIZE;
+
     reasoning.push(
-      `Gewichteter Median aus ${marketSources.length} Quelle(n) (${totalSamples} Vergleichsangebote insgesamt): ${weightedMedian.toFixed(2)} €.`,
+      `Stichprobengröße: ${totalSamples}. Spanne ${rangeLow.toFixed(2)}–${rangeHigh.toFixed(2)} €. ${ASKING_PRICE_NOTE}.`,
     );
 
     const estimatedRealized = weightedMedian * ASKING_TO_REALIZED_FACTOR;
-    reasoning.push(
-      `Angebotspreise liegen erfahrungsgemäß über tatsächlich erzielten Preisen (keine echten Sold-Daten verfügbar) — Schätzfaktor ×${ASKING_TO_REALIZED_FACTOR} ergibt einen realistischeren Zielanker von ${estimatedRealized.toFixed(2)} €.`,
-    );
-
     const band = STRATEGY_BANDS[salesGoal ?? 'BALANCED'];
     const targetPrice = round2(estimatedRealized);
     const listPrice = round2(estimatedRealized * (1 + band.markup));
     let minPrice = round2(estimatedRealized * (1 - band.discount));
-    reasoning.push(
-      `Verkaufsziel ${salesGoal ?? 'BALANCED'}: Startpreis +${Math.round(band.markup * 100)}%, Schmerzgrenze -${Math.round(band.discount * 100)}%.`,
-    );
+
+    if (startPriceRecommended) {
+      reasoning.push(
+        `Gewichteter Median aus ${marketSources.length} Quelle(n) (${totalSamples} Vergleichsangebote insgesamt): ${weightedMedian.toFixed(2)} €.`,
+      );
+      reasoning.push(
+        `Angebotspreise liegen erfahrungsgemäß über tatsächlich erzielten Preisen (keine echten Sold-Daten verfügbar) — Schätzfaktor ×${ASKING_TO_REALIZED_FACTOR} ergibt einen realistischeren Zielanker von ${estimatedRealized.toFixed(2)} €.`,
+      );
+      reasoning.push(
+        `Verkaufsziel ${salesGoal ?? 'BALANCED'}: Startpreis +${Math.round(band.markup * 100)}%, Schmerzgrenze -${Math.round(band.discount * 100)}%.`,
+      );
+    } else {
+      reasoning.push('Unter fünf Vergleichen wird kein konkreter Startpreis empfohlen, nur die Spanne.');
+    }
 
     const buybackSource = sources.find((s) => s.source === 'ANKAUF_PORTAL');
     const illustrativeBuyback = buybackSource != null && isIllustrativeBuyback(buybackSource);
@@ -96,16 +112,20 @@ export class PriceRecommendationService {
       buybackSource?.median != null &&
       buybackSource.median >= BUYBACK_RECOMMENDATION_THRESHOLD * targetPrice;
     if (illustrativeBuyback && buybackSource) {
-      reasoning.push(
-        `Ankaufsalternative (${buybackSource.providerLabel}) ist nur ein Beispiel und fließt weder in die Schmerzgrenze noch in eine Ankauf-Empfehlung ein.`,
-      );
+      if (startPriceRecommended) {
+        reasoning.push(
+          `Ankaufsalternative (${buybackSource.providerLabel}) ist nur ein Beispiel und fließt weder in die Schmerzgrenze noch in eine Ankauf-Empfehlung ein.`,
+        );
+      }
     } else if (buybackSource?.median != null) {
       minPrice = Math.max(minPrice, buybackSource.median);
-      reasoning.push(
-        `Ankaufsalternative (${buybackSource.providerLabel}): ${buybackSource.median.toFixed(2)} €${
-          buybackRecommended ? ' — liegt nah am Zielpreis, ggf. einfacher als ein Verkauf.' : '.'
-        }`,
-      );
+      if (startPriceRecommended) {
+        reasoning.push(
+          `Ankaufsalternative (${buybackSource.providerLabel}): ${buybackSource.median.toFixed(2)} €${
+            buybackRecommended ? ' — liegt nah am Zielpreis, ggf. einfacher als ein Verkauf.' : '.'
+          }`,
+        );
+      }
     }
 
     const confidence: PriceConfidence =
@@ -116,6 +136,34 @@ export class PriceRecommendationService {
           : 'LOW';
     reasoning.push(`Konfidenz: ${confidence} (basierend auf ${totalSamples} Vergleichsangeboten).`);
 
-    return { listPrice, targetPrice, minPrice, confidence, buybackRecommended, reasoning };
+    return {
+      listPrice,
+      targetPrice,
+      minPrice,
+      confidence,
+      buybackRecommended,
+      reasoning,
+      sampleSize: totalSamples,
+      rangeLow,
+      rangeHigh,
+      startPriceRecommended,
+      priceBasisNote: ASKING_PRICE_NOTE,
+    };
   }
+}
+
+/** Sichtbare Spanne: niedrigstes p25 bis höchstes p75, nicht ein neuer Perzentil-Mix. */
+function askingPriceSpan(
+  sources: PriceResearchSourceResult[],
+  fallback: number,
+): { rangeLow: number; rangeHigh: number } {
+  const lows = sources
+    .map((s) => s.p25 ?? s.median)
+    .filter((value): value is number => value != null && Number.isFinite(value));
+  const highs = sources
+    .map((s) => s.p75 ?? s.median)
+    .filter((value): value is number => value != null && Number.isFinite(value));
+  const low = lows.length > 0 ? Math.min(...lows) : fallback;
+  const high = highs.length > 0 ? Math.max(...highs) : fallback;
+  return { rangeLow: round2(Math.min(low, high)), rangeHigh: round2(Math.max(low, high)) };
 }

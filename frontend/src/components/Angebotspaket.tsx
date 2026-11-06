@@ -153,8 +153,8 @@ export function Angebotspaket({ itemId, onListed }: { itemId: string; onListed?:
         setLoadingRecs(false);
 
         const rec = priceResult.recommendation;
-        if (rec) setPrice(rec.listPrice.toFixed(2));
-        else {
+        if (rec?.startPriceRecommended) setPrice(rec.listPrice.toFixed(2));
+        else if (!rec) {
           const medians = priceResult.sources.map((s) => s.median).filter((m): m is number => m !== null);
           if (medians.length) setPrice(Math.round(medians.reduce((a, b) => a + b, 0) / medians.length).toFixed(2));
         }

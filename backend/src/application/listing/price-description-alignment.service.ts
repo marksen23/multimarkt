@@ -63,6 +63,8 @@ export class PriceDescriptionAlignmentService {
     sources: PriceResearchSourceResult[],
     condition: string | null,
   ): PriceDescriptionAlignment | null {
+    if (!recommendation.startPriceRecommended) return null;
+
     const marketSources = sources.filter(
       (s) => s.source === 'EBAY_ACTIVE_LISTINGS' || s.source === 'GEMINI_GROUNDING',
     );
