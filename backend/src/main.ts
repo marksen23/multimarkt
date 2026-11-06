@@ -22,7 +22,7 @@ async function bootstrap() {
   // Health-Check lebt unter /healthz (siehe app.controller.ts), unpräfigiert.
   // Alle echten API-Routen (Doc 04) liegen unter /api — passend zum
   // Frontend-Dev-Proxy (vite.config.ts).
-  app.setGlobalPrefix('api', { exclude: ['/healthz'] });
+  app.setGlobalPrefix('api', { exclude: ['/healthz', '/ready'] });
   // LocalDiskStorageProvider (Dev/Demo — siehe dortige Doku zum flüchtigen
   // Render-Dateisystem). UPLOAD_DIR muss mit dem Provider übereinstimmen.
   app.useStaticAssets(resolve(process.cwd(), process.env.UPLOAD_DIR ?? 'uploads'), {
@@ -37,9 +37,9 @@ async function bootstrap() {
   const frontendDistPath = join(process.cwd(), '..', 'frontend', 'dist');
   app.useStaticAssets(frontendDistPath, { index: false });
 
-  // SPA-Fallback: jede GET-Anfrage, die nicht zu einer der drei bekannten
-  // Nicht-SPA-Zonen gehört (/api/*, /uploads/*, /healthz) und auf keine
-  // echte Datei oben passt (z.B. /items/abc123, ein React-Router-
+  // SPA-Fallback: jede GET-Anfrage, die nicht zu einer der bekannten
+  // Nicht-SPA-Zonen gehört (/api/*, /uploads/*, /healthz, /ready) und auf
+  // keine echte Datei oben passt (z.B. /items/abc123, ein React-Router-
   // Client-Pfad), bekommt die index.html — React Router übernimmt das
   // Routing danach im Browser.
   //
@@ -50,14 +50,15 @@ async function bootstrap() {
   // nämlich selbst mit einem fertigen 404 (JSON-Exception-Handler), statt
   // per `next()` an nachfolgende Middleware weiterzureichen — eine NACH
   // Nest registrierte Fallback-Route würde also nie erreicht. Deshalb
-  // filtert diese Middleware selbst exakt die drei bekannten Nicht-SPA-
-  // Präfixe heraus, statt sich auf Nests 404-Verhalten zu verlassen.
+  // filtert diese Middleware selbst die bekannten Nicht-SPA-Präfixe heraus,
+  // statt sich auf Nests 404-Verhalten zu verlassen.
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (
       req.method !== 'GET' ||
       req.path.startsWith('/api') ||
       req.path.startsWith('/uploads') ||
-      req.path === '/healthz'
+      req.path === '/healthz' ||
+      req.path === '/ready'
     ) {
       return next();
     }
@@ -65,6 +66,8 @@ async function bootstrap() {
   });
 
   app.enableCors();
-  await app.listen(process.env.PORT ?? 3000);
+  app.enableShutdownHooks();
+  // 0.0.0.0, damit Render und Coolify den Prozess im Container erreichen.
+  await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 }
 bootstrap();

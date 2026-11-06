@@ -50,7 +50,7 @@ describe('Single-domain SPA fallback (frontend served by the backend process)', 
     });
     // Exakt dieselbe Verkabelung/Reihenfolge wie main.ts, nur mit einem
     // Fixture-Ordner statt dem echten ../frontend/dist.
-    nestApp.setGlobalPrefix('api', { exclude: ['/healthz'] });
+    nestApp.setGlobalPrefix('api', { exclude: ['/healthz', '/ready'] });
     nestApp.useStaticAssets(distDir, { index: false });
 
     // Muss VOR app.init()/app.listen() registriert werden — Nest
@@ -63,7 +63,8 @@ describe('Single-domain SPA fallback (frontend served by the backend process)', 
         req.method !== 'GET' ||
         req.path.startsWith('/api') ||
         req.path.startsWith('/uploads') ||
-        req.path === '/healthz'
+        req.path === '/healthz' ||
+        req.path === '/ready'
       ) {
         return next();
       }
@@ -102,5 +103,9 @@ describe('Single-domain SPA fallback (frontend served by the backend process)', 
 
   it('does NOT swallow an unknown /uploads/* route into the SPA shell — real 404', async () => {
     await request(app.getHttpServer()).get('/uploads/does-not-exist').expect(404);
+  });
+
+  it('does NOT swallow /ready into the SPA shell — the readiness route owns it', async () => {
+    await request(app.getHttpServer()).get('/ready').expect(404);
   });
 });
