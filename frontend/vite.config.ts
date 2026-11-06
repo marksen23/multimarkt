@@ -32,13 +32,13 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
         // API-Aufrufe niemals aus dem Service-Worker-Cache beantworten —
-        // ProductTruth muss immer frisch vom Backend kommen. /healthz
-        // ebenfalls ausschließen (September 2026, echter Deploy-Bug: ohne
-        // das lieferte der Service Worker dort die gecachte SPA-Shell
+        // ProductTruth muss immer frisch vom Backend kommen. /healthz und
+        // /ready ebenfalls ausschließen (September 2026, echter Deploy-Bug:
+        // ohne das lieferte der Service Worker dort die gecachte SPA-Shell
         // statt die Anfrage an den Server durchzulassen — Render selbst
         // ist davon nicht betroffen, das ist reiner Server-seitiger
         // Health-Check, aber ein Browser-Aufruf zum Debuggen lief ins Leere).
-        navigateFallbackDenylist: [/^\/api\//, /^\/healthz$/],
+        navigateFallbackDenylist: [/^\/api\//, /^\/healthz$/, /^\/ready$/],
         // Ohne diese beiden: ein neuer Service Worker wartet, bis ALLE
         // offenen Tabs der alten Version geschlossen sind, bevor er die
         // Kontrolle übernimmt — `registerType: 'autoUpdate'` allein reicht

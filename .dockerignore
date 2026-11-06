@@ -1,0 +1,45 @@
+# Version control and editor state
+.git
+.github
+.vscode
+.idea
+**/.DS_Store
+**/Thumbs.db
+
+# Installed and built inside the image. Host node_modules (possibly another
+# Node version) must not overwrite the image tree.
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+**/*.log
+**/uploads
+
+# Not needed to compile or run the server.
+**/*.spec.ts
+/backend/test
+/docs
+/tasks
+*.md
+/LICENSE
+/scripts
+/setup.ps1
+/start.ps1
+
+# Secrets and local env. Placeholders in *.env.example stay out of the image.
+**/.env
+**/.env.*
+**/.npmrc
+**/*.pem
+**/*.key
+**/id_rsa
+**/id_dsa
+**/id_ed25519
+**/id_ecdsa
+
+# Docker and other deploy metadata (the daemon reads the Dockerfile itself).
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+compose*.yaml
+/render.yaml

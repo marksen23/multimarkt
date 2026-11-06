@@ -11,6 +11,7 @@ import { DispositionEngineModule } from './application/disposition/disposition-e
 import { SaleIngestionModule } from './application/sale-conflict/sale-ingestion.module';
 import { SaleConflictWorkerModule } from './application/sale-conflict/sale-conflict-worker.module';
 import { ApiModule } from './api/api.module';
+import { HealthModule } from './health/health.module';
 
 /**
  * Free-Tier-Anpassung (render.yaml, September 2026): Render Background
@@ -29,6 +30,7 @@ import { ApiModule } from './api/api.module';
     }),
     DatabaseModule,
     QueueModule,
+    HealthModule,
     StateGuardModule,
     ProductAnalysisModule,
     CapabilityCheckModule,

@@ -1,0 +1,107 @@
+# Coolify stack for Personal Resale OS.
+# Render (render.yaml) stays as it is. This file does not replace it.
+#
+# Coolify proxies the app. Do not publish host ports: a `ports:` mapping
+# would bind 0.0.0.0 and skip the proxy. Postgres and Redis stay on the
+# Compose network only.
+#
+# Secrets are Coolify magic variables (SERVICE_*). Coolify generates them
+# when this file is loaded. Nothing secret is committed. For a local
+# `docker compose -f docker-compose.coolify.yml up`, export the same names
+# with placeholder values first (see docs/DEPLOY-COOLIFY.md).
+
+name: multimarkt-coolify
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    # Reachable on the Compose network. Coolify maps the public domain to
+    # this port; it is not published on the host.
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      # Must match the row inserted by migration SeedSingleUser.
+      APP_USER_ID: "00000000-0000-0000-0000-000000000000"
+      APP_ACCESS_TOKEN: ${SERVICE_PASSWORD_64_APPTOKEN}
+      # Present for parity with render.yaml. The running Nest process does
+      # not read JWT_SECRET; access control uses APP_ACCESS_TOKEN.
+      JWT_SECRET: ${SERVICE_REALBASE64_64_JWT}
+      INTERNAL_SERVICE_TOKEN: ${SERVICE_PASSWORD_64_INTERNAL}
+      WEBHOOK_SECRET_KLEINANZEIGEN: ${SERVICE_PASSWORD_64_WEBHOOK}
+      DATABASE_URL: postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_64_POSTGRES}@postgres:5432/${POSTGRES_DB:-resale_os}
+      REDIS_URL: redis://redis:6379
+      # Coolify fills SERVICE_URL_APP_3000 (service `app`, container port 3000).
+      # The value "/" is the path Coolify appends to the generated URL.
+      SERVICE_URL_APP_3000: /
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-${SERVICE_URL_APP_3000:-http://127.0.0.1:3000}}
+      UPLOAD_DIR: uploads
+      SALE_CONFLICT_DEBOUNCE_MS: "15000"
+      # Empty keeps the mocks. Set a real value in the Coolify UI to turn
+      # the corresponding provider on. Do not commit those values.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      EBAY_CLIENT_ID: ${EBAY_CLIENT_ID:-}
+      EBAY_CLIENT_SECRET: ${EBAY_CLIENT_SECRET:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_REGION: ${S3_REGION:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      S3_PUBLIC_URL_BASE: ${S3_PUBLIC_URL_BASE:-}
+    volumes:
+      - uploads:/app/backend/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+
+  postgres:
+    # PostgreSQL 16, same major as render.yaml.
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${SERVICE_USER_POSTGRES}
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_64_POSTGRES}
+      POSTGRES_DB: ${POSTGRES_DB:-resale_os}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    networks:
+      - internal
+
+  redis:
+    # Redis 7. noeviction matches render.yaml and is required by BullMQ.
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  db-data:
+  redis-data:
+  uploads:
