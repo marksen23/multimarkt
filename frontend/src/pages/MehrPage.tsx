@@ -16,6 +16,7 @@ export function MehrPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-4">
       <PageHeader title="Mehr" />
+      <nav aria-label="Mehr">
       <Card className="divide-y divide-line overflow-hidden">
         {LINKS.map((l) => (
           <Link key={l.to} to={l.to} className="flex items-center gap-3 p-4 hover:bg-surface-hover transition-colors">
@@ -48,6 +49,7 @@ export function MehrPage() {
           <span className="text-body font-semibold">{confirmLogout ? 'Wirklich abmelden? Nochmal tippen' : 'Abmelden'}</span>
         </button>
       </Card>
+      </nav>
       <p className="text-label font-normal text-ink-faint text-center">Resale OS · Einzelnutzer-Modus</p>
     </div>
   );

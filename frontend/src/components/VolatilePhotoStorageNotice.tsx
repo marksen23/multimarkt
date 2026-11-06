@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { storageApi } from '../api/storage';
+import { Notice } from '../ui';
 
 let statusRequest: Promise<boolean> | null = null;
 
@@ -31,15 +32,14 @@ export function VolatilePhotoStorageNotice() {
   if (!volatileStorage) return null;
 
   return (
-    <div
-      role="alert"
-      className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-100"
-    >
-      <p className="font-bold">Fotos sind nicht dauerhaft gespeichert</p>
-      <p className="mt-1 leading-relaxed">
-        Es ist kein S3-kompatibler Bucket konfiguriert. Die Fotos liegen nur auf der lokalen
-        Festplatte und verschwinden beim Neustart. Die Einträge in der Datenbank bleiben.
-      </p>
+    <div role="alert">
+      <Notice tone="warning">
+        <p>Fotos sind nicht dauerhaft gespeichert</p>
+        <p className="mt-1 font-normal leading-relaxed">
+          Es ist kein S3-kompatibler Bucket konfiguriert. Die Fotos liegen nur auf der lokalen
+          Festplatte und verschwinden beim Neustart. Die Einträge in der Datenbank bleiben.
+        </p>
+      </Notice>
     </div>
   );
 }

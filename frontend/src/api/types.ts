@@ -20,6 +20,7 @@ export type BundleLifecycleState = 'NEW' | 'READY' | 'LISTED' | 'SOLD' | 'CANCEL
 export type ProjectionLifecycleState =
   | 'DRAFT'
   | 'READY'
+  | 'COPIED'
   | 'PUBLISHING'
   | 'ONLINE'
   | 'CANCEL_PENDING'
@@ -76,6 +77,9 @@ export interface MarketplaceProjectionSummary {
   marketplaceId: string;
   status: ProjectionLifecycleState;
   externalPlatformId: string | null;
+  title?: string | null;
+  descriptionText?: string | null;
+  suggestedPrice?: number | null;
 }
 
 export interface ListingSummary {
@@ -127,6 +131,52 @@ export interface BundleDetail {
   bundle: Bundle;
   items: Item[];
   listings: ListingSummary[];
+}
+
+export type WorklistGroupId =
+  | 'AWAITING_CONFIRMATION'
+  | 'PRICE_MISSING'
+  | 'STALE_ONLINE'
+  | 'SALE_CONFLICT'
+  | 'INCOMPLETE_BUNDLE';
+
+export type WorklistReason =
+  | 'CONFIRM_CONDITION'
+  | 'CONFIRM_ONLINE'
+  | 'PUBLISH_LISTING'
+  | 'SET_PRICE'
+  | 'STALE_ONLINE'
+  | 'RESOLVE_CONFLICT'
+  | 'ADD_BUNDLE_ITEMS';
+
+export interface WorklistItemEntry {
+  kind: 'item';
+  reason: WorklistReason;
+  onlineSince: string | null;
+  staleDays: number | null;
+  item: Item;
+  listings: ListingSummary[];
+  thumbnailUrl: string | null;
+}
+
+export interface WorklistBundleEntry {
+  kind: 'bundle';
+  reason: 'ADD_BUNDLE_ITEMS';
+  itemCount: number;
+  bundle: Bundle;
+}
+
+export type WorklistEntry = WorklistItemEntry | WorklistBundleEntry;
+
+export interface WorklistGroup {
+  id: WorklistGroupId;
+  entries: WorklistEntry[];
+}
+
+export interface Worklist {
+  staleOnlineDays: number;
+  groups: WorklistGroup[];
+  otherItems: Omit<ItemListEntry, 'soldPrice'>[];
 }
 
 export type BundleMatchDimension = 'category' | 'size' | 'brand';
@@ -300,6 +350,24 @@ export interface PriceDescriptionAlignment {
 
 export type DescriptionChannel = 'KLEINANZEIGEN' | 'EBAY' | 'VINTED' | 'GENERIC';
 
+export interface ChannelCard {
+  id: string | null;
+  marketplaceId: ListingChannel;
+  title: string;
+  descriptionText: string;
+  suggestedPrice: number | null;
+  status: ProjectionLifecycleState | null;
+  gapAnalysis: TitleGapAnalysis;
+  vaguePhrases: VaguePhraseMatch[];
+}
+
+export interface ChannelPackage {
+  itemId: string;
+  listingId: string | null;
+  persisted: boolean;
+  cards: ChannelCard[];
+}
+
 export interface DescriptionSuggestion {
   descriptionText: string;
   gapAnalysis: TitleGapAnalysis;
@@ -338,12 +406,16 @@ export interface PhotoQualityReport {
 export type DealScore = 'SEHR_GUT' | 'GUT' | 'FAIR' | 'TEUER';
 export type AnkaufPlatform = 'KLEINANZEIGEN' | 'EBAY' | 'VINTED' | 'FACEBOOK' | 'SONSTIGE';
 
+export type AnkaufConditionKey = 'wie_neu' | 'gut' | 'gebraucht' | 'defekt';
+
 export interface AnkaufListing {
   title: string;
   price: number;
   platform: AnkaufPlatform;
   url: string | null;
   condition: string | null;
+  conditionKey: AnkaufConditionKey | null;
+  conditionUncertain: boolean;
   dealScore: DealScore | null;
   priceVsMarketPct: number | null;
 }
@@ -359,6 +431,22 @@ export interface AnkaufResearchResult {
   marketMedianEur: number | null;
   listings: AnkaufListing[];
   conditionPriceImpact: Record<string, ConditionPriceImpact>;
+  searchedAt: string;
+}
+
+export interface AnkaufSearchProfile {
+  postalCode: string | null;
+  radiusKm: number;
+}
+
+export interface AnkaufSearchSummary {
+  id: string;
+  keywords: string;
+  postalCode: string;
+  radiusKm: number;
+  location: string;
+  marketMedianEur: number | null;
+  listingCount: number;
   searchedAt: string;
 }
 

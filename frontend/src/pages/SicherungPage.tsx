@@ -3,6 +3,7 @@ import { ApiRequestError } from '../api/client';
 import { exportApi, type MonthlySummary } from '../api/export';
 import { ListSkeleton } from '../components/Skeleton';
 import { formatEur } from '../margin/sale-closeout';
+import { Button, Card, Icon, Notice, PageHeader, SectionLabel } from '../ui';
 
 function shiftMonth(month: string, delta: number): string {
   const [year, monthIndex] = month.split('-').map(Number);
@@ -77,52 +78,38 @@ export function SicherungPage() {
   const atCurrentMonth = summary != null && summary.month >= summary.currentMonth;
 
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-4">
-      <div>
-        <h1 className="text-xl font-extrabold text-ink tracking-tight">
-          Sicherung und Monatsauswertung
-        </h1>
-        <p className="text-xs text-ink-muted mt-1">
-          Eine Datei mit Artikeln, Einkäufen, Verkäufen und der Fotoliste, plus die
-          Zahlen des Monats. Kein Steuerprogramm.
-        </p>
-      </div>
+    <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-6">
+      <PageHeader
+        title="Sicherung und Monatsauswertung"
+        subtitle="Eine Datei mit Artikeln, Einkäufen, Verkäufen und der Fotoliste, plus die Zahlen des Monats. Kein Steuerprogramm."
+      />
 
-      {error && (
-        <div className="bg-danger-soft border border-danger/20 rounded-xl p-4 text-sm text-danger">
-          {error}
-        </div>
-      )}
+      {error && <Notice tone="danger">{error}</Notice>}
 
       {!summary && !error && <ListSkeleton />}
 
       {summary && (
         <>
-          <section className="bg-surface border border-line rounded-2xl p-4 space-y-4">
+          <section aria-label="Monatsstatistik">
+          <Card className="p-4 space-y-4">
             <div className="flex items-center justify-between gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setError(null);
-                  setSelected(shiftMonth(summary.month, -1));
-                }}
-                className="px-3 py-1.5 rounded-full text-xs font-semibold text-ink-muted hover:bg-surface-hover"
+                onClick={() => { setError(null); setSelected(shiftMonth(summary.month, -1)); }}
                 aria-label="Vorheriger Monat"
+                className="w-9 h-9 flex items-center justify-center rounded-control text-ink-muted hover:bg-surface-hover hover:text-ink transition-colors"
               >
-                Zurück
+                <Icon name="chevronLeft" size={20} />
               </button>
-              <h2 className="text-sm font-bold text-ink capitalize">{monthLabel(summary.month)}</h2>
+              <h2 className="text-title text-ink capitalize">{monthLabel(summary.month)}</h2>
               <button
                 type="button"
-                onClick={() => {
-                  setError(null);
-                  setSelected(shiftMonth(summary.month, 1));
-                }}
+                onClick={() => { setError(null); setSelected(shiftMonth(summary.month, 1)); }}
                 disabled={atCurrentMonth}
-                className="px-3 py-1.5 rounded-full text-xs font-semibold text-ink-muted hover:bg-surface-hover disabled:text-ink-faint disabled:hover:bg-transparent"
                 aria-label="Nächster Monat"
+                className="w-9 h-9 flex items-center justify-center rounded-control text-ink-muted hover:bg-surface-hover hover:text-ink transition-colors disabled:opacity-30 disabled:pointer-events-none"
               >
-                Weiter
+                <Icon name="chevronRight" size={20} />
               </button>
             </div>
 
@@ -157,33 +144,36 @@ export function SicherungPage() {
                 caption="jetzt"
               />
             </div>
-            <p className="text-[11px] text-ink-faint">
+            <p className="text-label font-normal text-ink-faint">
               Eingekauft, verkauft und Marge gelten für {monthLabel(summary.month)}. Noch
               online zählt Artikel und Pakete, die gerade mindestens eine Online-Anzeige
               haben. Einkäufe ohne Datum fehlen in der Monatszahl.
             </p>
+          </Card>
           </section>
 
-          <section className="bg-surface border border-line rounded-2xl p-4 space-y-3">
-            <h2 className="text-xs font-bold text-ink-muted uppercase tracking-wide">
-              Sicherung
-            </h2>
-            <p className="text-sm text-ink-muted">
-              Die Datei enthält Artikel, Einkäufe, Verkäufe und die Fotoliste. Die Fotos
-              selbst bleiben im Speicher; die Liste nennt Verweis und Dateiname.
-            </p>
-            {downloadError && <p className="text-xs font-bold text-danger">{downloadError}</p>}
-            {downloadedName && (
-              <p className="text-xs text-ink">{downloadedName} wird heruntergeladen.</p>
-            )}
-            <button
-              type="button"
-              onClick={download}
-              disabled={downloading}
-              className="w-full p-3 rounded-xl font-bold bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
-            >
-              {downloading ? 'Lädt…' : 'Sicherung herunterladen'}
-            </button>
+          <section aria-label="Sicherung">
+            <SectionLabel>Sicherung</SectionLabel>
+            <Card className="p-4 space-y-3">
+              <p className="text-body text-ink-muted">
+                Die Datei enthält Artikel, Einkäufe, Verkäufe und die Fotoliste. Die Fotos
+                selbst bleiben im Speicher; die Liste nennt Verweis und Dateiname.
+              </p>
+              {downloadError && <Notice tone="danger">{downloadError}</Notice>}
+              {downloadedName && (
+                <p className="text-label font-normal text-ink">{downloadedName} wurde heruntergeladen.</p>
+              )}
+              <Button
+                block
+                size="md"
+                icon="download"
+                onClick={download}
+                disabled={downloading}
+                loading={downloading}
+              >
+                Sicherung herunterladen
+              </Button>
+            </Card>
           </section>
         </>
       )}
@@ -203,12 +193,12 @@ function Figure({
   negative?: boolean;
 }) {
   return (
-    <div className="rounded-xl bg-surface-hover px-3 py-3">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-ink-faint">{label}</p>
-      <p className={`mt-1 text-lg font-extrabold tabular-nums ${negative ? 'text-danger' : 'text-ink'}`}>
+    <div className="rounded-control bg-surface-hover px-3 py-3">
+      <p className="text-micro uppercase text-ink-faint">{label}</p>
+      <p className={`mt-1 text-title tabular-nums ${negative ? 'text-danger' : 'text-ink'}`}>
         {value}
       </p>
-      <p className="text-[11px] text-ink-muted">{caption}</p>
+      <p className="text-label font-normal text-ink-muted">{caption}</p>
     </div>
   );
 }

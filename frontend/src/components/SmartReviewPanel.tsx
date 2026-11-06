@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { itemsApi } from '../api/items';
 import type { ItemDetail } from '../api/types';
 import { RESALE_CATEGORIES, attributeLabel, categoryGaps } from '../category/taxonomy';
-import { ActionBar, Button, Card, Icon, inputClass } from '../ui';
+import { ActionBar, Button, Card, Icon, Notice, inputClass } from '../ui';
 
 const CONDITION_OPTIONS = ['Neu', 'Wie neu', 'Gut', 'Gebraucht', 'Defekt'];
 
@@ -158,7 +158,7 @@ export function SmartReviewPanel({
             <h1 className="text-title text-ink">
               {isOneTap ? 'Fast fertig!' : 'Kurze Fragen'}
             </h1>
-            <p className="text-label font-normal text-ink-muted mt-0.5">
+            <p aria-live="polite" className="text-label font-normal text-ink-muted mt-0.5">
               {isOneTap
                 ? 'KI hat alles erkannt — nur Zustand bestätigen'
                 : `${missingCount + inferred.length + 1} Angabe${missingCount + inferred.length + 1 !== 1 ? 'n' : ''} nötig`}
@@ -171,10 +171,17 @@ export function SmartReviewPanel({
           )}
         </div>
         {reanalyzeError && (
-          <p className="text-label text-danger mt-1">{reanalyzeError}</p>
+          <Notice tone="danger">{reanalyzeError}</Notice>
         )}
         {/* Progress bar */}
-        <div className="mt-3 h-1.5 bg-line rounded-full overflow-hidden">
+        <div
+          role="progressbar"
+          aria-valuenow={totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Fortschritt"
+          className="mt-3 h-1.5 bg-line rounded-full overflow-hidden"
+        >
           <div
             className="h-full bg-accent rounded-full transition-all duration-300"
             style={{
@@ -217,6 +224,7 @@ export function SmartReviewPanel({
                 {key === 'category' ? (
                   <select
                     value={missingDrafts.category ?? ''}
+                    aria-label="Kategorie"
                     onChange={(e) => setMissingDrafts((prev) => ({ ...prev, category: e.target.value }))}
                     className={`${inputClass} flex-1 min-w-0`}
                   >
@@ -230,6 +238,7 @@ export function SmartReviewPanel({
                 ) : (
                   <input
                     type="text"
+                    aria-label={KEY_LABELS[key] ?? attributeLabel(key)}
                     placeholder={`${KEY_LABELS[key] ?? attributeLabel(key)} eingeben…`}
                     value={missingDrafts[key] ?? ''}
                     onChange={(e) => setMissingDrafts((prev) => ({ ...prev, [key]: e.target.value }))}
@@ -267,6 +276,7 @@ export function SmartReviewPanel({
             <div className="flex gap-2">
               <input
                 type="text"
+                aria-label={KEY_LABELS[a.attributeKey] ?? a.attributeKey}
                 placeholder={`${KEY_LABELS[a.attributeKey] ?? a.attributeKey} eingeben…`}
                 value={missingDrafts[a.attributeKey] ?? ''}
                 onChange={(e) =>
@@ -335,6 +345,7 @@ export function SmartReviewPanel({
                     <div className="flex gap-2">
                       <input
                         type="text"
+                        aria-label={KEY_LABELS[a.attributeKey] ?? a.attributeKey}
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         className={`${inputClass} flex-1 min-w-0`}
@@ -380,11 +391,13 @@ export function SmartReviewPanel({
               </span>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Zustand auswählen">
             {CONDITION_OPTIONS.map((cond) => (
               <button
                 key={cond}
                 type="button"
+                role="tab"
+                aria-selected={selectedCondition === cond}
                 onClick={() => setSelectedCondition(cond)}
                 className={`py-2.5 px-1 text-body rounded-control border font-bold transition-all ${
                   selectedCondition === cond
@@ -535,13 +548,12 @@ function PhotosAndReanalyze({
             </button>
             <Button
               size="sm"
+              loading={uploadingPhotos}
               disabled={uploadingPhotos || anyActionInProgress}
               onClick={onUpload}
             >
-              {uploadingPhotos
-                ? uploadProgress > 0
-                  ? `${Math.round(uploadProgress * 100)}%`
-                  : 'Lädt hoch…'
+              {uploadingPhotos && uploadProgress > 0
+                ? `${Math.round(uploadProgress * 100)} %`
                 : 'Hochladen & neu analysieren'}
             </Button>
           </div>
@@ -556,7 +568,7 @@ function PhotosAndReanalyze({
         disabled={reanalyzing || anyActionInProgress}
         onClick={onReanalyze}
       >
-        {reanalyzing ? 'KI analysiert neu…' : 'KI-Analyse wiederholen'}
+        KI-Analyse wiederholen
       </Button>
     </>
   );

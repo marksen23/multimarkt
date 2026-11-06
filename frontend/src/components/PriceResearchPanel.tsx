@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { itemsApi } from '../api/items';
 import type { PriceRecommendation, PriceResearchResult, PriceResearchSourceResult, SalesGoal } from '../api/types';
 import { SkeletonBlock } from './Skeleton';
-import { Button, Icon } from '../ui';
+import { Button, Icon, Spinner } from '../ui';
 import type { LogisticsProfile } from '../logistics/profile';
 import { ChannelNetComparison } from './ChannelNetComparison';
 import { ExpectedMarginFields } from './ExpectedMarginFields';
@@ -104,6 +104,7 @@ export function PriceResearchPanel({
         <div className="flex items-center gap-2">
           <select
             value={salesGoal}
+            aria-label="Verkaufsziel"
             onChange={(e) => setSalesGoal(e.target.value as SalesGoal)}
             className="text-label font-normal border border-line rounded-control px-1.5 py-1 bg-surface text-ink-muted outline-none focus:border-accent"
           >
@@ -118,14 +119,8 @@ export function PriceResearchPanel({
             disabled={refreshing}
             className="inline-flex items-center gap-1 text-label text-ink-faint hover:text-accent disabled:opacity-60 transition-colors shrink-0"
           >
-            {refreshing ? (
-              'Aktualisiert…'
-            ) : (
-              <>
-                <Icon name="refresh" size={13} />
-                Neu abrufen
-              </>
-            )}
+            {refreshing ? <Spinner /> : <Icon name="refresh" size={13} />}
+            Neu abrufen
           </button>
         </div>
       </div>
@@ -279,7 +274,7 @@ function SourceCard({
         )}
       </div>
 
-      <p className="text-[11px] text-ink-faint">
+      <p className="text-label font-normal text-ink-faint">
         {example
           ? `${source.providerLabel}: Beispiel, kein echtes Angebot (${Number(source.detail?.buybackPrice ?? 0).toFixed(2)} €). Hebt die Schmerzgrenze nicht an und lenkt nicht zum Ankauf.`
           : source.source === 'ANKAUF_PORTAL'

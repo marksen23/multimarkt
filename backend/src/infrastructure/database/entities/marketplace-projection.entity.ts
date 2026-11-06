@@ -11,6 +11,7 @@ import {
   PROJECTION_LIFECYCLE_STATES,
   ProjectionLifecycleState,
 } from '../../../domain/state-vocabulary';
+import { numericTransformer } from '../transformers/numeric.transformer';
 import { CanonicalListingEntity } from './canonical-listing.entity';
 
 // Die plattformspezifische Formatierung und Status-Verwaltung (Doc 01 §3).
@@ -42,6 +43,25 @@ export class MarketplaceProjectionEntity {
 
   @Column({ name: 'external_platform_id', type: 'text', nullable: true })
   externalPlatformId: string | null;
+
+  /** Portal-Titel dieser Karte. Unabhängig vom Artikel- und vom Kanon-Text. */
+  @Column({ type: 'text', nullable: true })
+  title: string | null;
+
+  /** Portal-Beschreibung. Nicht der eine Text des Canonical Listings. */
+  @Column({ name: 'description_text', type: 'text', nullable: true })
+  descriptionText: string | null;
+
+  /** Preisvorschlag dieser Karte, editierbar, kein Einstand und keine Marge. */
+  @Column({
+    name: 'suggested_price',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  suggestedPrice: number | null;
 
   @Column({ name: 'fallback_data', type: 'jsonb', default: {} })
   fallbackData: Record<string, unknown>;

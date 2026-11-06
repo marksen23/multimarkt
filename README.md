@@ -6,7 +6,9 @@ Der Code ist der aktuelle Stand. Die kopierten Entwürfe unter `docs/` sind nich
 
 ## Start
 
-Node.js 20. Zwei Ordner: `backend/` und `frontend/`.
+**Auf dem eigenen Windows-Rechner (mit Handy-Zugriff):** siehe [STARTANLEITUNG.md](STARTANLEITUNG.md), also `setup.ps1` einmalig, danach `start.ps1`.
+
+Für die Entwicklung: Node.js 20. Zwei Ordner: `backend/` und `frontend/`.
 
 ```bash
 cd backend

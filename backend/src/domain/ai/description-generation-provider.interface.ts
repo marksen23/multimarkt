@@ -43,7 +43,12 @@ export interface DescriptionGenerationInput {
    */
   logisticsHint?: string | null;
   /** Zielplattform für kanal-spezifische Länge/Tonality. Default: GENERIC. */
-  channel?: DescriptionChannel;
+  channel?: DescriptionChannel | null;
+  /**
+   * Fehlende Suchbegriffe aus der Titel-Lückenanalyse. Der Text darf sie
+   * nur aufnehmen, wenn sie schon in den bekannten Fakten stehen.
+   */
+  missingTokens?: string[];
 }
 
 export interface DescriptionGenerationProvider {

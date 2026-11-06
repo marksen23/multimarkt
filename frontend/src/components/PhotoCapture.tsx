@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { itemsApi } from '../api/items';
-import { Button, Icon } from '../ui';
+import { Button, Icon, Notice, Spinner } from '../ui';
 import { VolatilePhotoStorageNotice } from './VolatilePhotoStorageNotice';
 
 /**
@@ -108,13 +108,8 @@ export function PhotoCapture({
                   disabled={optimizingIndex === i}
                   className="absolute bottom-1 left-1 right-1 py-1 rounded-control bg-ink/70 text-white text-label flex items-center justify-center gap-1 disabled:opacity-60 backdrop-blur"
                 >
-                  {optimizingIndex === i ? (
-                    'Optimiert…'
-                  ) : (
-                    <>
-                      <Icon name="sparkle" size={13} /> Optimieren
-                    </>
-                  )}
+                  {optimizingIndex === i ? <Spinner /> : <Icon name="sparkle" size={13} />}
+                  {optimizingIndex === i ? 'Optimiert…' : 'Optimieren'}
                 </button>
               )}
             </div>
@@ -122,7 +117,7 @@ export function PhotoCapture({
         </div>
       )}
 
-      {optimizeError && <p className="text-label text-danger">{optimizeError}</p>}
+      {optimizeError && <Notice tone="danger">{optimizeError}</Notice>}
 
       {files.length === 0 ? (
         <button

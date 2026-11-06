@@ -34,6 +34,7 @@ export type TruthState = (typeof TRUTH_STATES)[number];
 export const PROJECTION_LIFECYCLE_STATES = [
   'DRAFT',
   'READY',
+  'COPIED',
   'PUBLISHING',
   'ONLINE',
   'CANCEL_PENDING',

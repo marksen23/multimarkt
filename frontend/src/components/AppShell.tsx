@@ -103,13 +103,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             }`}
           >
             <Icon name="logout" />
-            {confirmLogout ? 'Wirklich abmelden?' : 'Abmelden'}
+            {confirmLogout ? 'Wirklich abmelden? Nochmal tippen' : 'Abmelden'}
           </button>
         </div>
       </aside>
 
       <div className="flex-1 min-w-0">
-        <main className="pb-[calc(76px+env(safe-area-inset-bottom,0px))] sm:pb-0">{children}</main>
+        <main aria-label="Hauptinhalt" className="pb-[calc(76px+env(safe-area-inset-bottom,0px))] sm:pb-0">{children}</main>
       </div>
 
       <nav
@@ -142,6 +142,7 @@ function BottomTab({ item, pendingCount }: { item: NavItem; pendingCount: number
     <NavLink
       to={item.to}
       end={item.end}
+      aria-current={extraActive ? 'page' : undefined}
       className={({ isActive }) =>
         `flex-1 flex flex-col items-center justify-center gap-1 text-micro normal-case tracking-normal transition-colors outline-none ${
           isActive || extraActive ? 'text-accent' : 'text-ink-faint'

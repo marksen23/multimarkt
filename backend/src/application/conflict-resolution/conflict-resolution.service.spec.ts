@@ -10,6 +10,8 @@ const actor = { type: 'USER' as const };
 function makeManager(opts: {
   item: { id: string; status: string } | null;
   openEvents: Partial<SaleEventEntity>[];
+  winnerProjection?: { id: string; canonicalListingId: string; status: string } | null;
+  siblings?: { id: string; status: string }[];
 }): EntityManager {
   const qb = {
     innerJoin: jest.fn().mockReturnThis(),
@@ -18,7 +20,13 @@ function makeManager(opts: {
     getMany: jest.fn().mockResolvedValue(opts.openEvents),
   };
   return {
-    findOne: jest.fn().mockResolvedValue(opts.item),
+    findOne: jest.fn().mockImplementation((entity: { name?: string }) => {
+      if (entity?.name === 'MarketplaceProjectionEntity') {
+        return Promise.resolve(opts.winnerProjection ?? null);
+      }
+      return Promise.resolve(opts.item);
+    }),
+    find: jest.fn().mockResolvedValue(opts.siblings ?? []),
     update: jest.fn().mockResolvedValue(undefined),
     createQueryBuilder: jest.fn().mockReturnValue(qb),
   } as unknown as EntityManager;
@@ -119,5 +127,31 @@ describe('ConflictResolutionService', () => {
       expect.objectContaining({ type: 'RESOLVE_CONFLICT_SOLD', actor }),
     );
     expect(result).toEqual({ id: 'item-1', status: 'SOLD' });
+  });
+
+  it('flags a sibling card without its own sale event so it can be withdrawn', async () => {
+    const manager = makeManager({
+      item: { id: 'item-1', status: 'SALE_CONFLICT' },
+      openEvents: [
+        { id: 'event-A', projectionId: 'proj-A' },
+        { id: 'event-B', projectionId: 'proj-B' },
+      ],
+      winnerProjection: { id: 'proj-B', canonicalListingId: 'listing-1', status: 'SOLD' },
+      siblings: [
+        { id: 'proj-B', status: 'SOLD' },
+        { id: 'proj-A', status: 'CANCEL_PENDING' },
+        { id: 'proj-vinted', status: 'ONLINE' },
+      ],
+    });
+    const stateGuard = makeStateGuard();
+    const service = new ConflictResolutionService(makeDataSource(manager), stateGuard);
+
+    await service.resolve('item-1', 'event-B', actor);
+
+    expect(stateGuard.transitionProjectionWithManager).toHaveBeenCalledWith(
+      manager,
+      'proj-vinted',
+      expect.objectContaining({ type: 'CANCEL_PENDING_TRIGGERED', actor: { type: 'SYSTEM' } }),
+    );
   });
 });

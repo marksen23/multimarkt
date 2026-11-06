@@ -82,9 +82,9 @@ export function ConfidenceCenter({
           Die KI hat das Foto analysiert. <strong className="text-ink">Keine Information geht ohne deine Bestätigung online.</strong>
         </p>
 
-        <section className="space-y-3">
+        <section aria-label="Zwingend erforderlich" className="space-y-3">
           <h2 className="text-micro uppercase text-ink-muted flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-danger" />
+            <span aria-hidden="true" className="w-2 h-2 rounded-full bg-danger" />
             Zwingend erforderlich
           </h2>
 
@@ -94,7 +94,7 @@ export function ConfidenceCenter({
             }`}
           >
             <label className="block text-body font-bold text-ink mb-2">Wie ist der Zustand?</label>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2" role="tablist" aria-label="Zustand auswählen">
               {CONDITION_OPTIONS.map((cond) => {
                 const isSelected = selectedCondition === cond;
                 const isConfirmed = isSelected && cond === detail.item.condition;
@@ -102,6 +102,8 @@ export function ConfidenceCenter({
                   <button
                     key={cond}
                     type="button"
+                    role="tab"
+                    aria-selected={isSelected}
                     onClick={() => setSelectedCondition(cond)}
                     className={`py-2 px-1 text-label rounded-control border font-bold transition ${
                       isConfirmed
@@ -126,6 +128,7 @@ export function ConfidenceCenter({
               <div className="flex gap-2">
                 <input
                   type="text"
+                  aria-label={a.attributeKey}
                   placeholder={`${a.attributeKey} eingeben…`}
                   value={missingDrafts[a.attributeKey] ?? ''}
                   onChange={(e) =>
@@ -150,9 +153,9 @@ export function ConfidenceCenter({
         </section>
 
         {inferred.length > 0 && (
-          <section className="space-y-3">
+          <section aria-label="KI-Vermutungen" className="space-y-3">
             <h2 className="text-micro uppercase text-ink-muted flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-warning" />
+              <span aria-hidden="true" className="w-2 h-2 rounded-full bg-warning" />
               KI-Vermutungen (Bitte prüfen)
             </h2>
             <div className="bg-warning/5 rounded-card border border-warning/25 divide-y divide-warning/15 overflow-hidden">
@@ -191,6 +194,7 @@ export function ConfidenceCenter({
                     <div className="flex gap-2">
                       <input
                         type="text"
+                        aria-label={a.attributeKey}
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         className={`${inputClass} flex-1 min-w-0`}
@@ -201,6 +205,7 @@ export function ConfidenceCenter({
                           (anyActionInProgress && savingKey !== a.attributeKey) ||
                           savingKey === a.attributeKey
                         }
+                        loading={savingKey === a.attributeKey}
                         onClick={() => confirmAttr(a.attributeKey, editValue)}
                       >
                         Speichern
@@ -237,10 +242,11 @@ export function ConfidenceCenter({
         <ActionBar>
           <Button
             size="lg"
+            loading={saving}
             disabled={!canSave || anyActionInProgress}
             onClick={() => selectedCondition && onConfirmCondition(selectedCondition)}
           >
-            {saving ? 'Speichert…' : isConditionConfirmed ? 'Zustand aktualisieren' : 'Zustand bestätigen'}
+            {isConditionConfirmed ? 'Zustand aktualisieren' : 'Zustand bestätigen'}
           </Button>
         </ActionBar>
       </div>

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { bundlesApi } from '../api/bundles';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import type { ItemListEntry } from '../api/types';
-import { ActionBar, Button, PageHeader, SectionLabel, Spinner, inputClass } from '../ui';
+import { ActionBar, Button, Icon, Notice, PageHeader, SectionLabel, Spinner, inputClass } from '../ui';
 
 /** Nur READY-Items sind bündelbar (Doc 02 §11 Precondition, StateGuardService). */
 export function NewBundlePage() {
@@ -49,13 +49,19 @@ export function NewBundlePage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-4">
-      <Link to="/bundles" className="inline-block text-label font-normal text-ink-faint hover:text-ink-muted">
-        ← Bundles
-      </Link>
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-1 h-10 pl-1 pr-3 -ml-1 rounded-full text-body text-ink-muted hover:bg-surface-hover hover:text-ink"
+      >
+        <Icon name="chevronLeft" size={20} />
+        Bundles
+      </button>
       <PageHeader title="Neues Bundle" />
       <input
-        type="text"
-        placeholder="Titel, z.B. „Kinderkleidung Gr. 98“"
+        type=”text”
+        aria-label=”Bundle-Titel”
+        placeholder=”Titel, z.B. „Kinderkleidung Gr. 98””
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         autoFocus
@@ -124,15 +130,13 @@ export function NewBundlePage() {
         </div>
       </section>
 
-      {error && <p className="text-label text-danger">{error}</p>}
+      {error && <Notice tone="danger">{error}</Notice>}
 
       <ActionBar>
-        <Button size="lg" disabled={creating || !title} onClick={create}>
-          {creating
-            ? 'Wird erstellt…'
-            : selected.size > 0
-              ? `Bundle anlegen (${selected.size} ${selected.size === 1 ? 'Artikel' : 'Artikel'})`
-              : 'Bundle anlegen'}
+        <Button size="lg" loading={creating} disabled={creating || !title} onClick={create}>
+          {selected.size > 0
+            ? `Bundle anlegen (${selected.size} ${selected.size === 1 ? 'Artikel' : 'Artikel'})`
+            : 'Bundle anlegen'}
         </Button>
       </ActionBar>
     </div>

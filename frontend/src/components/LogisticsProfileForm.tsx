@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Item } from '../api/types';
 import { shippingCostEur, shippingPortalsAllowed, type LogisticsDraft, type LogisticsProfile } from '../logistics/profile';
+import { Button, Card, Notice, inputClass } from '../ui';
 
 function parseGrams(raw: string): number | null {
   const trimmed = raw.trim();
@@ -82,13 +83,14 @@ export function LogisticsProfileForm({
       postalCode: postalCode.trim() || null,
     });
     setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   return (
-    <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
+    <Card className="p-4 space-y-3">
       <div>
-        <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">Logistikprofil</p>
-        <p className="text-[11px] text-ink-faint mt-1">
+        <p className="text-micro uppercase text-ink-muted">Logistikprofil</p>
+        <p className="text-label font-normal text-ink-faint mt-1">
           Gewicht, Maße, Sperrig, Abholung oder Versand, PLZ. Daraus folgen Kanal und Text.
         </p>
       </div>
@@ -96,41 +98,46 @@ export function LogisticsProfileForm({
       <input
         type="text"
         inputMode="numeric"
+        aria-label="Gewicht in Gramm"
         placeholder="Gewicht in g"
         value={weight}
         onChange={(e) => setWeight(e.target.value)}
-        className="w-full p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+        className={inputClass}
       />
       <div className="grid grid-cols-3 gap-2">
         <input
           type="text"
           inputMode="decimal"
+          aria-label="Länge in cm"
           placeholder="Länge cm"
           value={length}
           onChange={(e) => setLength(e.target.value)}
-          className="p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+          className={inputClass}
         />
         <input
           type="text"
           inputMode="decimal"
+          aria-label="Breite in cm"
           placeholder="Breite cm"
           value={width}
           onChange={(e) => setWidth(e.target.value)}
-          className="p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+          className={inputClass}
         />
         <input
           type="text"
           inputMode="decimal"
+          aria-label="Höhe in cm"
           placeholder="Höhe cm"
           value={height}
           onChange={(e) => setHeight(e.target.value)}
-          className="p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+          className={inputClass}
         />
       </div>
 
-      <label className="flex items-center gap-2 text-xs text-ink-muted">
+      <label className="flex items-center gap-2 text-body text-ink-muted">
         <input
           type="checkbox"
+          className="accent-accent"
           checked={bulky}
           onChange={(e) => {
             const checked = e.target.checked;
@@ -143,9 +150,10 @@ export function LogisticsProfileForm({
         />
         Sperrig
       </label>
-      <label className="flex items-center gap-2 text-xs text-ink-muted">
+      <label className="flex items-center gap-2 text-body text-ink-muted">
         <input
           type="checkbox"
+          className="accent-accent"
           checked={pickupOnly}
           onChange={(e) => {
             const checked = e.target.checked;
@@ -155,9 +163,10 @@ export function LogisticsProfileForm({
         />
         Nur Abholung
       </label>
-      <label className="flex items-center gap-2 text-xs text-ink-muted">
+      <label className="flex items-center gap-2 text-body text-ink-muted">
         <input
           type="checkbox"
+          className="accent-accent"
           checked={shippingPossible}
           onChange={(e) => {
             const checked = e.target.checked;
@@ -173,34 +182,31 @@ export function LogisticsProfileForm({
       <input
         type="text"
         inputMode="numeric"
+        autoComplete="postal-code"
+        aria-label="Postleitzahl"
         placeholder="PLZ"
         maxLength={5}
         value={postalCode}
         onChange={(e) => setPostalCode(e.target.value)}
-        className="w-full p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+        className={inputClass}
       />
 
-      {!weightOk && <p className="text-xs text-danger">Gewicht als ganze Grammzahl angeben.</p>}
-      {!dimensionsOk && <p className="text-xs text-danger">Maße vollständig angeben oder leer lassen.</p>}
-      {!postalOk && <p className="text-xs text-danger">PLZ mit fünf Ziffern.</p>}
-      {!choice && <p className="text-xs text-ink-faint">Wähle Abholung oder Versand.</p>}
+      {!weightOk && <Notice tone="danger">Gewicht als ganze Grammzahl angeben.</Notice>}
+      {!dimensionsOk && <Notice tone="danger">Maße vollständig angeben oder leer lassen.</Notice>}
+      {!postalOk && <Notice tone="danger">PLZ mit fünf Ziffern.</Notice>}
+      {!choice && <p className="text-label font-normal text-ink-faint">Wähle Abholung oder Versand.</p>}
       {choice && ship && (
-        <p className="text-xs text-ink-muted">
+        <p className="text-label font-normal text-ink-muted">
           Versandportale möglich. Paketkosten {shippingCostEur(preview).toFixed(2)} € aus Gewicht und Maßen.
         </p>
       )}
       {choice && !ship && (
-        <p className="text-xs text-ink-muted">Keine Versandportale. Text wird Nur Abholung.</p>
+        <p className="text-label font-normal text-ink-muted">Keine Versandportale. Text wird Nur Abholung.</p>
       )}
 
-      <button
-        type="button"
-        disabled={!canSave}
-        onClick={() => void save()}
-        className="w-full p-2 rounded-lg bg-accent text-accent-ink text-sm font-bold hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
-      >
+      <Button block size="md" loading={busy} disabled={!canSave} icon={saved ? 'check' : undefined} onClick={() => void save()}>
         {saved ? 'Logistik gespeichert' : 'Logistik speichern'}
-      </button>
-    </div>
+      </Button>
+    </Card>
   );
 }

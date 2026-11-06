@@ -11,6 +11,9 @@ import {
   type SellingChannelKey,
 } from '../margin/channel-fees';
 import { persistMarginAssumptions, useMarginAssumptions } from '../margin/use-margin-assumptions';
+import { inputClass } from '../ui';
+
+const amountInputClass = `${inputClass} tabular-nums`;
 
 function parseAmount(raw: string): number | null {
   const normalized = raw.trim().replace(',', '.');
@@ -45,7 +48,7 @@ export function ChannelNetComparison({
   const [overrides, setOverrides] = useState<Record<string, string>>({});
 
   if (!assumptions) {
-    return <p className="text-xs text-ink-faint">Gebührenannahmen laden…</p>;
+    return <p className="text-label font-normal text-ink-faint">Gebührenannahmen laden…</p>;
   }
 
   const channels = assumptions.channels;
@@ -82,14 +85,14 @@ export function ChannelNetComparison({
   };
 
   return (
-    <div className="bg-surface border border-line rounded-xl p-3 space-y-2">
-      <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">Gebührenvergleich</p>
-      <p className="text-[11px] text-ink-faint">
+    <div className="bg-surface border border-line rounded-control p-3 space-y-2">
+      <p className="text-micro uppercase text-ink-muted">Gebührenvergleich</p>
+      <p className="text-label font-normal text-ink-faint">
         Annahmen, keine aktuellen Tarife. Gebühren ändern sich.
         {salePriceEur != null ? ` Bezogen auf den ${salePriceLabel} ${salePriceEur.toFixed(2)} €.` : ''}
       </p>
 
-      <div className="grid grid-cols-[1.4fr_0.8fr_0.8fr] gap-2 text-[10px] font-bold text-ink-faint uppercase">
+      <div className="grid grid-cols-[1.4fr_0.8fr_0.8fr] gap-2 text-micro uppercase text-ink-faint">
         <span>Kanal</span>
         <span>Prozent</span>
         <span>Fixkosten €</span>
@@ -107,26 +110,26 @@ export function ChannelNetComparison({
       ))}
 
       <label className="grid grid-cols-[1.4fr_0.8fr_0.8fr] gap-2 items-center">
-        <span className="text-xs text-ink">Versandpauschale</span>
-        <span className="text-[10px] text-ink-faint">—</span>
+        <span className="text-label font-normal text-ink">Versandpauschale</span>
+        <span className="text-label font-normal text-ink-faint">—</span>
         <input
           aria-label="Versandpauschale"
           type="text"
           inputMode="decimal"
           value={shippingRaw}
           onChange={(e) => edit('shipping', e.target.value)}
-          className="w-full p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+          className={amountInputClass}
         />
       </label>
 
       {lines && (
         <div className="space-y-1 pt-1 border-t border-line">
           {lines.map((line) => (
-            <p key={line.key} className="text-xs text-ink">
+            <p key={line.key} className="text-label font-normal text-ink">
               <span className="font-bold">{CHANNEL_NET_LABELS[line.key]}:</span> {line.line}
             </p>
           ))}
-          <p className="text-[10px] text-ink-faint">
+          <p className="text-label font-normal text-ink-faint">
             Sortiert nach diesem Netto, nicht nach dem Angebotsmedian.{' '}
             {shippingNote(shippingAllowed, draft?.shippingEur ?? 0, parcelEur, netShippingEur)}
           </p>
@@ -152,14 +155,14 @@ function ChannelFeeRow({
   const label = CHANNEL_FEE_LABELS[channel];
   return (
     <div className="grid grid-cols-[1.4fr_0.8fr_0.8fr] gap-2 items-center">
-      <span className="text-xs text-ink">{label}</span>
+      <span className="text-label font-normal text-ink">{label}</span>
       <input
         aria-label={`${label} Prozent`}
         type="text"
         inputMode="decimal"
         value={percent}
         onChange={(e) => onPercent(e.target.value)}
-        className="w-full p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+        className={amountInputClass}
       />
       <input
         aria-label={`${label} Fixkosten`}
@@ -167,7 +170,7 @@ function ChannelFeeRow({
         inputMode="decimal"
         value={fixed}
         onChange={(e) => onFixed(e.target.value)}
-        className="w-full p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+        className={amountInputClass}
       />
     </div>
   );

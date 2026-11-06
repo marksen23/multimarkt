@@ -41,11 +41,32 @@ export class MockAnkaufSearchProvider implements AnkaufSearchProvider {
           condition: 'Gebraucht — kleine Kratzer an der Sohle',
         },
         {
-          title: `${kw} Gr. 42 Berlin Mitte`,
+          title: `${kw} Gr. 42`,
           price: 60,
           platform: 'FACEBOOK',
           url: null,
           condition: 'Guter Zustand',
+        },
+        {
+          title: `${kw} defekt, wie neu, OVP`,
+          price: 51,
+          platform: 'EBAY',
+          url: 'https://www.ebay.de/itm/555555555555',
+          condition: 'Gut',
+        },
+        {
+          title: `${kw} — wie neu laut Überschrift`,
+          price: 44,
+          platform: 'FACEBOOK',
+          url: null,
+          condition: null,
+        },
+        {
+          title: `${kw} Beschreibung im Fließtext`,
+          price: 39,
+          platform: 'KLEINANZEIGEN',
+          url: 'https://www.kleinanzeigen.de/s-anzeige/example/2222222222',
+          condition: 'siehe Beschreibung',
         },
         {
           title: `${kw} original, Rechnung vorhanden`,

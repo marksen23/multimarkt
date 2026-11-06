@@ -36,7 +36,19 @@ describe('RealGeminiVisionProvider', () => {
     const result = await provider.analyzeItem({ imageUrls: [] });
 
     expect(generateContentMock).not.toHaveBeenCalled();
-    expect(result.attributes).toHaveLength(11);
+    expect(result.attributes.map((a) => a.key)).toEqual([
+      'category',
+      'categoryDetail',
+      'color',
+      'brand',
+      'material',
+      'condition',
+      'size',
+      'measurements',
+      'functionChecked',
+      'notable_features',
+      'visible_defects',
+    ]);
     expect(result.attributes.every((a) => a.value === null)).toBe(true);
   });
 

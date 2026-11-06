@@ -46,6 +46,8 @@ const ITEM_HUMAN_GATED_EVENTS = new Set<ItemMachineEvent['type']>([
 
 const LISTING_HUMAN_GATED_EVENTS = new Set<ListingMachineEvent['type']>([
   'PUBLISH',
+  'MARK_COPIED',
+  'CONFIRM_ONLINE',
 ]);
 
 const BUNDLE_HUMAN_GATED_EVENTS = new Set<BundleMachineEvent['type']>([

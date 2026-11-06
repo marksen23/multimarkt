@@ -20,11 +20,19 @@ const GOAL_INSTRUCTIONS: Record<SalesGoal, string> = {
   BALANCED: 'Verkaufsziel: ausgewogen. Neutraler, sachlich-freundlicher Standardton.',
 };
 
+/** Plattformname im Prompt-Kopf. GENERIC bleibt beim bisherigen Kleinanzeigen-Inserat. */
+const CHANNEL_LISTING_LABEL: Record<DescriptionChannel, string> = {
+  KLEINANZEIGEN: 'Kleinanzeigen-Inserat',
+  EBAY: 'eBay-Angebot',
+  VINTED: 'Vinted-Angebot',
+  GENERIC: 'Kleinanzeigen-Inserat',
+};
+
 const CHANNEL_INSTRUCTIONS: Record<DescriptionChannel, string> = {
   KLEINANZEIGEN:
     'Plattform: Kleinanzeigen.de. Persönlicher, regional-freundlicher Ton. 3–5 Sätze. Keine Kontaktdaten (Telefon/E-Mail/WhatsApp) im Text — die gehören nur ins Profilfeld. Kein "VB" (gehört ins Preisfeld). Zielgruppe: lokale Privatkäufer.',
   EBAY:
-    'Plattform: eBay.de. Sachlich, strukturiert, Zustand klar benennen (wichtig für eBay-Käuferschutz). Relevante Spezifikationen (Maße, Kompatibilität, Modellnummer) direkt nennen. 5–8 Sätze erlaubt. Zielgruppe: deutschlandweite Käufer inkl. Händler.',
+    'Plattform: eBay.de. Sachlich, strukturiert. Ganz vorne suchbare Merkmale (Marke, Kategorie, Farbe, Größe, Material — nur was bekannt ist). Zustand klar benennen (wichtig für eBay-Käuferschutz) und Lieferumfang in einem eigenen Satz. Relevante Spezifikationen (Maße, Kompatibilität, Modellnummer) direkt nennen. 5–8 Sätze erlaubt. Zielgruppe: deutschlandweite Käufer inkl. Händler.',
   VINTED:
     'Plattform: Vinted.de. Kurz & prägnant, 2–4 Sätze. Größe/Maße prominent im ersten Satz. Modezentrierter, freundlicher Stil. Versandhinweis optional am Ende.',
   GENERIC:
@@ -86,9 +94,14 @@ export class RealGeminiDescriptionProvider implements DescriptionGenerationProvi
     const logisticsBlock = input.logisticsHint
       ? `\nLogistik (verbindlich, nicht widersprechen und nicht in die andere Richtung umschreiben): ${input.logisticsHint}`
       : '';
+    const gapBlock =
+      input.missingTokens && input.missingTokens.length > 0
+        ? `
+Suchbegriffe, die in Vergleichstiteln vorkommen und im eigenen Text fehlen: ${input.missingTokens.join(', ')}. Baue nur diejenigen ein, die zu den bekannten Fakten dieses Produkts passen. Erfinde keinen davon.`
+        : '';
     const channelInstruction = CHANNEL_INSTRUCTIONS[channel];
 
-    const prompt = `Schreibe einen Verkaufstext (Deutsch) für ein Kleinanzeigen-Inserat.
+    const prompt = `Schreibe einen Verkaufstext (Deutsch) für ein ${CHANNEL_LISTING_LABEL[channel]}.
 
 ${channelInstruction}
 ${goalInstruction}
@@ -97,7 +110,7 @@ Artikel:
 Titel: ${input.title ?? 'unbekannt'}
 Zustand: ${input.condition ?? 'unbekannt'}
 Bekannte Merkmale: ${knownFacts || 'keine weiteren Angaben'}${valueFactsBlock}
-${comparablesBlock}${logisticsBlock}
+${comparablesBlock}${logisticsBlock}${gapBlock}
 
 WICHTIG: Verwende für die FAKTEN AUSSCHLIESSLICH die oben genannten Angaben zu diesem Produkt. Erfinde KEINE zusätzlichen Details (keine Marke, kein Material, keine Maße), die dort nicht stehen — auch nicht aus den Vergleichsangeboten übernommen, die sind nur Stil-Vorbild, nicht Faktenquelle. Wenn wenig bekannt ist, bleib entsprechend allgemein, statt Lücken mit Vermutungen zu füllen. Antworte NUR mit dem Beschreibungstext, ohne Anrede, ohne Überschrift, ohne Anführungszeichen.`;
 

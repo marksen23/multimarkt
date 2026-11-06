@@ -1,7 +1,11 @@
 import { api } from './client';
-import type { AnkaufResearchResult } from './types';
+import type { AnkaufResearchResult, AnkaufSearchProfile, AnkaufSearchSummary } from './types';
 
 export const ankaufApi = {
-  search: (keywords: string) =>
-    api.post<AnkaufResearchResult>('/ankauf/search', { keywords }),
+  profile: () => api.get<AnkaufSearchProfile>('/ankauf/profile'),
+  updateProfile: (body: { postalCode: string; radiusKm: number }) =>
+    api.patch<AnkaufSearchProfile>('/ankauf/profile', body),
+  search: (keywords: string) => api.post<AnkaufResearchResult>('/ankauf/search', { keywords }),
+  searches: () => api.get<AnkaufSearchSummary[]>('/ankauf/searches'),
+  openSearch: (id: string) => api.get<AnkaufResearchResult>(`/ankauf/searches/${id}`),
 };

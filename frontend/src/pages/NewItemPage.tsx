@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import { PhotoCapture } from '../components/PhotoCapture';
-import { ActionBar, Button, Card, PageHeader, Spinner, inputClass } from '../ui';
+import { ActionBar, Button, Card, Icon, Notice, PageHeader, inputClass } from '../ui';
 
 /**
  * README §3 Schritt 1: "Fotografieren statt Formulare ausfüllen." Der
@@ -59,9 +59,15 @@ export function NewItemPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-4">
-      <Link to="/" className="inline-block text-label font-normal text-ink-faint hover:text-ink-muted">
-        ← Heute
-      </Link>
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        aria-label="Zurück zu Heute"
+        className="inline-flex items-center gap-1 h-10 pl-1 pr-3 -ml-1 rounded-full text-body text-ink-muted hover:bg-surface-hover hover:text-ink"
+      >
+        <Icon name="chevronLeft" size={20} />
+        Heute
+      </button>
       <PageHeader
         title="Neuer Artikel"
         subtitle="Fotografiere den Gegenstand, ein Etikett oder Typenschild. Die KI trägt nur ein, was sie sieht. Fehlende Pflichtangaben der Kategorie fragst du danach."
@@ -80,6 +86,8 @@ export function NewItemPage() {
           </summary>
           <input
             type="text"
+            enterKeyHint="done"
+            aria-label="Artikeltitel (optional)"
             placeholder="z.B. Herrenjacke schwarz"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -87,10 +95,17 @@ export function NewItemPage() {
           />
         </details>
 
-        {error && <p className="text-label text-danger">{error}</p>}
+        {error && <Notice tone="danger">{error}</Notice>}
 
         {stage === 'uploading' && (
-          <div className="w-full h-1.5 rounded-full bg-line overflow-hidden">
+          <div
+            role="progressbar"
+            aria-valuenow={Math.round(uploadProgress * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Upload-Fortschritt"
+            className="w-full h-1.5 rounded-full bg-line overflow-hidden"
+          >
             <div
               className="h-full bg-accent transition-all duration-150"
               style={{ width: `${Math.round(uploadProgress * 100)}%` }}
@@ -100,15 +115,10 @@ export function NewItemPage() {
       </Card>
 
       <ActionBar>
-        <Button size="lg" disabled={creating || photos.length === 0} onClick={start}>
+        <Button size="lg" loading={creating} disabled={creating || photos.length === 0} onClick={start}>
           {stage === 'creating' && 'Artikel wird angelegt…'}
           {stage === 'uploading' && `Fotos werden hochgeladen… ${Math.round(uploadProgress * 100)}%`}
-          {stage === 'analyzing' && (
-            <span className="inline-flex items-center gap-2">
-              <Spinner />
-              KI analysiert die Fotos…
-            </span>
-          )}
+          {stage === 'analyzing' && 'KI analysiert die Fotos…'}
           {stage === 'idle' && 'Analysieren'}
         </Button>
       </ActionBar>

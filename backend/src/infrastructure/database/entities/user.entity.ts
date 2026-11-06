@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { DEFAULT_ANKAUF_RADIUS_KM } from '../../../domain/ankauf/search-place';
 import { numericTransformer } from '../transformers/numeric.transformer';
 
 // Single-User-Architektur (kein Multi-Tenant/Workspace-Modell) — diese
@@ -106,6 +107,13 @@ export class UserEntity {
     transformer: numericTransformer,
   })
   vintedFeeFixedEur: number;
+
+  // Suchprofil der Ankauf-Recherche (Feature-Plan 2.6).
+  @Column({ name: 'postal_code', type: 'varchar', length: 5, nullable: true })
+  postalCode: string | null;
+
+  @Column({ name: 'search_radius_km', type: 'int', default: DEFAULT_ANKAUF_RADIUS_KM })
+  searchRadiusKm: number;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

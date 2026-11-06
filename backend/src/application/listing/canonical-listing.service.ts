@@ -21,6 +21,7 @@ import { StateGuardService } from '../state-guard/state-guard.service';
 import { TitleGapAnalysis, TitleTokenAnalysisService } from '../title-generation/title-token-analysis.service';
 import { applyLogisticsListingText, fulfillmentClause } from '../../domain/logistics/listing-text';
 import { toLogisticsProfile } from '../../domain/logistics/logistics-profile';
+import { finalizeChannelDescription } from '../../domain/listing/channel-description';
 import { VaguePhraseDetectorService, VaguePhraseMatch } from './vague-phrase-detector.service';
 import {
   DescriptionQualityResult,
@@ -95,6 +96,7 @@ export class CanonicalListingService {
     });
 
     const { comparableListings, priceResearchResult } = await this.fetchPriceResearchData(itemId);
+    const missingTokens = this.tokenAnalysis.analyze(item.title ?? '', comparableListings).missingTokens;
 
     const descriptionText = await this.suggestDescription(
       item,
@@ -102,6 +104,7 @@ export class CanonicalListingService {
       comparableListings,
       salesGoal,
       channel,
+      missingTokens,
     );
 
     const quality = this.descriptionQuality.evaluate(descriptionText, item.condition, attributes);
@@ -221,20 +224,34 @@ export class CanonicalListingService {
     comparableListings: ComparableListingRef[],
     salesGoal: SalesGoal | null,
     channel: DescriptionChannel | null,
+    missingTokens: string[] = [],
   ): Promise<string> {
     const profile = toLogisticsProfile(item);
+    const mappedAttributes = attributes.map((a) => ({ key: a.attributeKey, value: a.attributeValue }));
     const suggestion = await this.descriptionProvider.generate({
       title: item.title,
       condition: item.condition,
-      attributes: attributes.map((a) => ({ key: a.attributeKey, value: a.attributeValue })),
+      attributes: mappedAttributes,
       comparableListings,
       salesGoal,
       logisticsHint: profile.captured ? fulfillmentClause(profile) : null,
-      channel: channel ?? undefined,
+      channel,
+      missingTokens,
     });
-    // Provider liefert `null`, wenn keine Generierung möglich war (z.B.
-    // Gemini-Antwort leer) — nie einen kaputten/leeren Text durchreichen.
-    const base = suggestion ?? `${item.title ?? 'Artikel'} — Zustand: ${item.condition ?? 'unbekannt'}`;
+    // Mit Portal-Kanal hängt finalizeChannelDescription die Pflichtzeilen der
+    // Kanal-Karte an; Abholung/Versand setzt danach das Logistikprofil, sobald
+    // es erfasst ist. Ohne Kanal: Provider liefert `null`, wenn keine Generierung
+    // möglich war (z.B. Gemini-Antwort leer) — nie einen leeren Text durchreichen.
+    const base =
+      channel && channel !== 'GENERIC'
+        ? finalizeChannelDescription(channel, suggestion, {
+            title: item.title,
+            condition: item.condition,
+            attributes: mappedAttributes,
+            missingTokens,
+            logisticsCaptured: profile.captured,
+          })
+        : suggestion ?? `${item.title ?? 'Artikel'} — Zustand: ${item.condition ?? 'unbekannt'}`;
     return applyLogisticsListingText({
       body: base,
       title: item.title,

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Item } from '../api/types';
+import { Button, Card, Icon, inputClass } from '../ui';
 
 export interface PurchaseDraft {
   price: number | null;
@@ -45,20 +46,21 @@ export function PurchasePanel({
       url: url.trim() || null,
     });
     setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   return (
-    <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
+    <Card className="p-4 space-y-3">
       <div>
-        <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">Einstand</p>
-        <p className="text-[11px] text-ink-faint mt-1">
+        <p className="text-micro uppercase text-ink-muted">Einstand</p>
+        <p className="text-label font-normal text-ink-faint mt-1">
           Einkauf von Hand: Preis, Portal, Datum, Zustand, Link.
         </p>
       </div>
 
       {item.purchasePriceEur != null && (
-        <p className="text-sm text-ink">
-          <span className="font-bold">{item.purchasePriceEur.toFixed(2)} €</span>
+        <p className="text-body text-ink">
+          <span className="font-bold tabular-nums">{item.purchasePriceEur.toFixed(2)} €</span>
           {item.purchasePortal ? ` · ${item.purchasePortal}` : ''}
           {item.purchaseDate ? ` · ${formatDate(item.purchaseDate)}` : ''}
           {item.purchaseCondition ? ` · ${item.purchaseCondition}` : ''}
@@ -69,57 +71,59 @@ export function PurchasePanel({
         <input
           type="text"
           inputMode="decimal"
+          aria-label="Einkaufspreis in Euro"
           placeholder="Preis in €"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
-          className="p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+          className={inputClass}
         />
         <input
           type="text"
+          aria-label="Einkaufsportal"
           placeholder="Portal"
           value={portal}
           onChange={(e) => setPortal(e.target.value)}
-          className="p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+          className={inputClass}
         />
         <input
           type="date"
+          aria-label="Einkaufsdatum"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="p-2 border border-line rounded-lg text-xs outline-none focus:border-accent bg-surface text-ink"
+          className={inputClass}
         />
         <input
           type="text"
+          aria-label="Zustand beim Einkauf"
           placeholder="Zustand"
           value={condition}
           onChange={(e) => setCondition(e.target.value)}
-          className="p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+          className={inputClass}
         />
       </div>
       <input
         type="url"
+        enterKeyHint="go"
+        aria-label="Link zur Kaufanzeige"
         placeholder="Link zur Anzeige"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
-        className="w-full p-2 border border-line rounded-lg text-xs outline-none focus:border-accent"
+        className={inputClass}
       />
       {item.purchaseUrl && (
         <a
           href={item.purchaseUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-block text-xs font-bold text-accent hover:text-accent-hover"
+          className="inline-flex items-center gap-1 text-label text-accent hover:text-accent-hover"
         >
-          Anzeige öffnen ↗
+          Anzeige öffnen
+          <Icon name="external" size={14} />
         </a>
       )}
-      <button
-        type="button"
-        disabled={busy || !priceValid}
-        onClick={() => void save()}
-        className="w-full p-2 rounded-lg bg-accent text-accent-ink text-sm font-bold hover:bg-accent-hover disabled:bg-line disabled:text-ink-faint transition-colors"
-      >
+      <Button block size="md" loading={busy} disabled={busy || !priceValid} icon={saved ? 'check' : undefined} onClick={() => void save()}>
         {saved ? 'Einkauf gespeichert' : 'Einkauf speichern'}
-      </button>
-    </div>
+      </Button>
+    </Card>
   );
 }

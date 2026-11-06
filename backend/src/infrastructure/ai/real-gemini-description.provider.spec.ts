@@ -72,6 +72,43 @@ describe('RealGeminiDescriptionProvider', () => {
     expect(prompt).toContain('NICHT als Faktenquelle');
   });
 
+  it('asks eBay for searchable attributes, condition and included items', async () => {
+    generateContentMock.mockResolvedValue({ text: 'Text' });
+
+    const provider = new RealGeminiDescriptionProvider(makeConfig({ GEMINI_API_KEY: 'real-key' }));
+    await provider.generate({
+      title: 'Herrenjacke',
+      condition: 'good',
+      attributes: [],
+      comparableListings: [],
+      salesGoal: null,
+      channel: 'EBAY',
+      missingTokens: ['leder'],
+    });
+
+    const prompt = generateContentMock.mock.calls[0][0].contents as string;
+    expect(prompt).toContain('suchbare Merkmale');
+    expect(prompt).toContain('Lieferumfang');
+    expect(prompt).toContain('leder');
+    expect(prompt).not.toContain('Kleinanzeigen-Inserat');
+  });
+
+  it('keeps the previous Kleinanzeigen prompt when no channel is set', async () => {
+    generateContentMock.mockResolvedValue({ text: 'Text' });
+
+    const provider = new RealGeminiDescriptionProvider(makeConfig({ GEMINI_API_KEY: 'real-key' }));
+    await provider.generate({
+      title: 'Herrenjacke',
+      condition: 'good',
+      attributes: [],
+      comparableListings: [],
+      salesGoal: null,
+    });
+
+    const prompt = generateContentMock.mock.calls[0][0].contents as string;
+    expect(prompt).toContain('Kleinanzeigen-Inserat');
+  });
+
   it('adds the matching tone instruction for the given sales goal', async () => {
     generateContentMock.mockResolvedValue({ text: 'Text' });
 

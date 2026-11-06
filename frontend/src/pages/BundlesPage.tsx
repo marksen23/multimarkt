@@ -63,6 +63,7 @@ export function BundlesPage() {
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-4">
       <PageHeader
         title="Bundles"
+        subtitle={entries ? `${entries.length} ${entries.length === 1 ? 'Bundle' : 'Bundles'}` : undefined}
         action={
           <ButtonLink to="/bundles/new" size="sm" icon="plus">
             Neues Bundle
@@ -74,10 +75,9 @@ export function BundlesPage() {
 
       {error && <Notice tone="danger">{error}</Notice>}
 
-      {/* Filter + Sort */}
       {entries && entries.length > 0 && (
         <div className="flex items-center justify-between gap-2">
-          <div className="flex gap-1.5 overflow-x-auto">
+          <div className="flex gap-1.5 overflow-x-auto" role="tablist" aria-label="Bundles filtern">
             {(Object.keys(FILTER_LABELS) as FilterKey[]).map((key) => {
               const count =
                 key === 'alle'
@@ -89,6 +89,8 @@ export function BundlesPage() {
                 <button
                   key={key}
                   type="button"
+                  role="tab"
+                  aria-selected={filter === key}
                   onClick={() => setFilterPersist(key)}
                   className={`shrink-0 h-8 px-3 rounded-full text-label border transition-colors ${
                     filter === key
@@ -97,13 +99,14 @@ export function BundlesPage() {
                   }`}
                 >
                   {FILTER_LABELS[key]}
-                  {count > 0 && <span className="ml-1 tabular-nums opacity-70">({count})</span>}
+                  {count > 0 && <span className="ml-1 tabular-nums opacity-70">{count}</span>}
                 </button>
               );
             })}
           </div>
           <select
             value={sort}
+            aria-label="Sortierung"
             onChange={(e) => setSortPersist(e.target.value as SortKey)}
             className="shrink-0 h-8 text-label text-ink-muted bg-surface border border-line rounded-control px-2.5 outline-none focus:border-accent"
           >
@@ -151,7 +154,7 @@ export function BundlesPage() {
       {sorted.length === 0 && entries && entries.length > 0 && (
         <EmptyState
           icon="search"
-          title="Keine Bundles für diesen Filter."
+          title="Keine Bundles in dieser Kategorie"
           action={
             <Button variant="secondary" size="sm" onClick={() => setFilterPersist('alle')}>
               Filter zurücksetzen
@@ -160,7 +163,7 @@ export function BundlesPage() {
         />
       )}
 
-      <div className="space-y-2">
+      <div aria-live="polite" className="space-y-2">
         {sorted.map(({ bundle, listings, itemCount }) => {
           const activeListing = listings.find((l) =>
             l.projections.some((p) => p.status === 'ONLINE' || p.status === 'PUBLISHING'),

@@ -32,7 +32,7 @@ export function PageHeader({
     <header className="flex items-start justify-between gap-3">
       <div className="min-w-0">
         <h1 className="text-display text-ink">{title}</h1>
-        {subtitle && <p className="text-body text-ink-muted mt-1">{subtitle}</p>}
+        {subtitle && <p aria-live="polite" className="text-body text-ink-muted mt-1">{subtitle}</p>}
       </div>
       {action}
     </header>
@@ -79,7 +79,7 @@ export function Notice({
         : 'bg-phase-capture-soft text-phase-capture border-phase-capture/20';
   const icon: IconName = tone === 'info' ? 'sparkle' : 'alert';
   return (
-    <div role={tone === 'danger' ? 'alert' : undefined} className={`flex gap-2 items-start border rounded-control px-3 py-2.5 text-label ${cls}`}>
+    <div role={tone === 'danger' ? 'alert' : 'status'} className={`flex gap-2 items-start border rounded-control px-3 py-2.5 text-label ${cls}`}>
       <Icon name={icon} size={15} className="mt-px" />
       <div className="min-w-0 flex-1">{children}</div>
     </div>

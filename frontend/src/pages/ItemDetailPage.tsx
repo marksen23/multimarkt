@@ -272,7 +272,7 @@ export function ItemDetailPage() {
         <div className="space-y-5">
           <NegotiationEntry itemId={id} />
           {followUp && <FollowUpPanel itemId={id} followUp={followUp} busy={busy} onRecord={run} />}
-          <section>
+          <section aria-label="Online auf">
             <SectionLabel>Online auf</SectionLabel>
             <ListingsManager
               listings={detail.listings}
@@ -285,7 +285,7 @@ export function ItemDetailPage() {
           </section>
           {detail.listings[0]?.descriptionText && <CopyDescriptionButton text={detail.listings[0].descriptionText} />}
           {showTexts ? (
-            <section>
+            <section aria-label="Texte für weitere Portale">
               <SectionLabel>Texte für weitere Portale</SectionLabel>
               <Angebotspaket itemId={id} />
             </section>
@@ -356,12 +356,16 @@ function NegotiationEntry({ itemId }: { itemId: string }) {
   return (
     <Link
       to={`/items/${itemId}/verhandlung`}
-      className="block bg-surface border border-line rounded-card p-4 hover:bg-surface-hover transition-colors"
+      aria-label="Verhandlung — Käufernachricht einfügen und Antworten kopieren"
+      className="flex items-center gap-3 bg-surface border border-line rounded-card p-4 hover:bg-surface-hover transition-colors"
     >
-      <span className="text-micro uppercase text-ink-muted">Verhandlung</span>
-      <p className="text-body text-ink mt-1">
-        Käufernachricht einfügen. Drei Antworten zum Kopieren, nichts wird gesendet.
-      </p>
+      <div className="flex-1 min-w-0">
+        <span className="text-micro uppercase text-ink-muted">Verhandlung</span>
+        <p className="text-body text-ink mt-1">
+          Käufernachricht einfügen. Drei Antworten zum Kopieren, nichts wird gesendet.
+        </p>
+      </div>
+      <Icon name="chevronRight" className="shrink-0 text-ink-faint" size={18} />
     </Link>
   );
 }
@@ -396,6 +400,11 @@ function SoldSheet({
       <div className="space-y-4">
         {online.length > 0 && selected ? (
           <>
+            {online.length === 1 && (
+              <p className="text-label font-normal text-ink-muted">
+                Verkauft über <span className="font-semibold text-ink">{portalLabel(selected.p.marketplaceId)}</span>
+              </p>
+            )}
             {online.length > 1 && (
               <Field label="Verkauft über">
                 <select value={projectionId ?? ''} onChange={(e) => setProjectionId(e.target.value)} className={inputClass}>
@@ -492,14 +501,14 @@ function AnalyzeStep({
 
   if (analyzing) {
     return (
-      <Card className="p-5 flex items-center gap-3">
+      <Card role="status" aria-label="KI analysiert die Fotos" className="p-5 flex items-center gap-3">
         <span className="w-10 h-10 rounded-full bg-phase-capture-soft text-phase-capture flex items-center justify-center">
           <Spinner />
         </span>
         <div>
           <p className="text-body font-semibold text-ink">KI analysiert die Fotos</p>
           <p className="text-label font-normal text-ink-faint">
-            {elapsed > 0 ? `${elapsed} s` : 'Dauert meist 15–30 Sekunden.'} Du kannst die Seite verlassen.
+            {elapsed > 0 ? `${elapsed} s · ` : 'Dauert meist 15–30 Sekunden. '}Du kannst die Seite verlassen.
           </p>
         </div>
       </Card>
@@ -507,11 +516,11 @@ function AnalyzeStep({
   }
 
   return (
-    <section className="space-y-3">
+    <section aria-label="Fotos hinzufügen" className="space-y-3">
       <SectionLabel>Fotos hinzufügen</SectionLabel>
       <PhotoCapture files={photos} onChange={setPhotos} itemId={itemId} />
       {busy && uploadProgress > 0 && !uploaded && (
-        <div className="h-1.5 rounded-full bg-line overflow-hidden" role="progressbar" aria-valuenow={Math.round(uploadProgress * 100)}>
+        <div className="h-1.5 rounded-full bg-line overflow-hidden" role="progressbar" aria-valuenow={Math.round(uploadProgress * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Upload-Fortschritt">
           <div className="h-full bg-accent transition-all duration-150" style={{ width: `${Math.round(uploadProgress * 100)}%` }} />
         </div>
       )}
@@ -593,7 +602,7 @@ function PrepareListingStep({
   const anyGenerating = generating || autoFilling;
 
   return (
-    <section className="space-y-4">
+    <section aria-label="Manuell inserieren" className="space-y-4">
       <SectionLabel
         action={
           <Button variant="ghost" size="sm" icon="sparkle" loading={autoFilling} disabled={anyGenerating || busy} onClick={() => void autoFill()}>
@@ -747,7 +756,7 @@ function TitleEditor({
           </div>
         }
       >
-        <input type="text" placeholder="Titel" value={title} onChange={(e) => onTitleChange(e.target.value)} className={inputClass} />
+        <input type="text" aria-label="Artikeltitel" placeholder="Titel" value={title} onChange={(e) => onTitleChange(e.target.value)} className={inputClass} />
       </Field>
       <div className="flex items-center justify-between gap-2">
         {missingTokens.length > 0 ? (
@@ -755,7 +764,7 @@ function TitleEditor({
         ) : (
           <span />
         )}
-        <Button variant="secondary" size="sm" icon={saved ? 'check' : undefined} disabled={busy || !title || title === savedTitle} onClick={() => void saveTitle()}>
+        <Button variant="secondary" size="sm" icon={saved ? 'check' : undefined} loading={busy} disabled={busy || !title || title === savedTitle} onClick={() => void saveTitle()}>
           {saved ? 'Gespeichert' : 'Titel speichern'}
         </Button>
       </div>
@@ -803,7 +812,7 @@ function ConflictResolutionPanel({
               Meldung {event.externalEventId} · {new Date(event.reportedAt).toLocaleString('de-DE')}
             </p>
           </div>
-          <Button size="sm" disabled={busy} onClick={() => void run(() => itemsApi.resolveConflict(itemId, event.id))}>
+          <Button size="sm" loading={busy} disabled={busy} onClick={() => void run(() => itemsApi.resolveConflict(itemId, event.id))}>
             Auswählen
           </Button>
         </Card>

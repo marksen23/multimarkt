@@ -1,11 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { itemsApi } from '../api/items';
+import { worklistApi } from '../api/worklist';
 import { ApiRequestError } from '../api/client';
-import type { ItemListEntry } from '../api/types';
-import { isTodo } from '../lib/todo';
+import type { ItemListEntry, Worklist } from '../api/types';
+import { countTodo } from '../lib/todo';
 
 interface ItemsContextValue {
   entries: ItemListEntry[] | null;
+  /** Server-Arbeitsliste (`GET /worklist`) für „Heute“. */
+  worklist: Worklist | null;
   error: string | null;
   refresh: () => void;
   /** Artikel, bei denen der Nutzer selbst handeln muss (Badge an „Heute“). */
@@ -17,13 +20,14 @@ const ItemsContext = createContext<ItemsContextValue | null>(null);
 
 export function ItemsProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<ItemListEntry[] | null>(null);
+  const [worklist, setWorklist] = useState<Worklist | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
-    itemsApi
-      .list()
-      .then((list) => {
+    Promise.all([itemsApi.list(), worklistApi.get()])
+      .then(([list, work]) => {
         setEntries(list);
+        setWorklist(work);
         setError(null);
       })
       .catch((e) => setError(e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler'));
@@ -39,11 +43,12 @@ export function ItemsProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       entries,
+      worklist,
       error,
       refresh,
-      pendingCount: entries?.filter(isTodo).length ?? 0,
+      pendingCount: countTodo(worklist, entries),
     }),
-    [entries, error, refresh],
+    [entries, worklist, error, refresh],
   );
 
   return <ItemsContext.Provider value={value}>{children}</ItemsContext.Provider>;

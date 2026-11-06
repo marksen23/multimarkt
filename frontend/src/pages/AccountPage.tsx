@@ -5,7 +5,7 @@ import { ApiRequestError } from '../api/client';
 import { clearAccessToken } from '../components/TokenGate';
 import { useTheme } from '../hooks/useTheme';
 import type { DeletionAuditLog, ItemListEntry } from '../api/types';
-import { Button, Card, Icon, PageHeader } from '../ui';
+import { Button, Card, Icon, Notice, PageHeader, SectionLabel } from '../ui';
 import { formatEuro, realizedPrice } from '../lib/format';
 
 /** Doc 04 §16 / Doc 01 §15 — Hard-Delete-Lifecycle (T08-1). */
@@ -70,6 +70,8 @@ export function AccountPage() {
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-5">
       <PageHeader title="Konto" />
 
+      <SectionLabel>Statistik</SectionLabel>
+
       {entries === null ? (
         <div className="grid grid-cols-2 gap-2">
           {[1, 2, 3, 4].map((i) => (
@@ -87,6 +89,7 @@ export function AccountPage() {
               label="Erlös"
               value={revenue > 0 ? formatEuro(revenue, 0) : '—'}
               highlight={revenue > 0}
+              wide
             />
           </div>
           {lagerwert > 0 && (
@@ -98,14 +101,15 @@ export function AccountPage() {
         </div>
       )}
 
-      {/* Darstellung */}
+      <SectionLabel>Darstellung</SectionLabel>
       <Card className="p-4 space-y-3">
-        <p className="text-body font-semibold text-ink">Darstellung</p>
-        <div className="flex gap-2">
+        <div className="flex gap-2" role="tablist" aria-label="Farbschema">
           {(['auto', 'light', 'dark'] as const).map((t) => (
             <button
               key={t}
               type="button"
+              role="tab"
+              aria-selected={themePref === t}
               onClick={() => setThemePref(t)}
               className={`flex-1 h-9 inline-flex items-center justify-center gap-1.5 rounded-control text-label border transition-colors ${
                 themePref === t
@@ -127,11 +131,10 @@ export function AccountPage() {
         </p>
       </Card>
 
-      {/* Abmelden */}
+      <SectionLabel>Sitzung</SectionLabel>
       <Card className="p-4 space-y-2">
-        <p className="text-body font-semibold text-ink">Sitzung</p>
         <p className="text-label font-normal text-ink-faint">
-          Personal Resale OS — Einzelnutzer-Modus. Kein Passwort, nur ein Zugriffstoken.
+          Einzelnutzer-Modus. Kein Passwort, nur ein Zugriffstoken.
         </p>
         <button
           type="button"
@@ -143,18 +146,17 @@ export function AccountPage() {
           }`}
         >
           <Icon name="logout" size={17} />
-          {confirmLogout ? 'Wirklich abmelden?' : 'Abmelden (Token entfernen)'}
+          {confirmLogout ? 'Wirklich abmelden? Nochmal tippen' : 'Abmelden (Token entfernen)'}
         </button>
       </Card>
 
-      {/* Danger zone */}
-      <div className="bg-danger-soft/40 border border-danger/20 rounded-card p-4 space-y-3">
+      <div role="region" aria-label="Konto löschen" className="bg-danger-soft/40 border border-danger/20 rounded-card p-4 space-y-3">
         <h2 className="text-title text-danger">Account löschen</h2>
         <p className="text-label font-normal text-danger/90">
           Löscht unwiderruflich alle Items, Listings, Bundles und Verkaufsdaten (DB-Kaskade). Diese
           Aktion kann nicht rückgängig gemacht werden.
         </p>
-        {error && <p className="text-label text-danger">{error}</p>}
+        {error && <Notice tone="danger">{error}</Notice>}
         {!confirming ? (
           <button
             type="button"
@@ -165,15 +167,16 @@ export function AccountPage() {
           </button>
         ) : (
           <div className="space-y-2">
-            <p className="text-label text-danger">Bist du sicher?</p>
+            <Notice tone="danger">Bist du sicher?</Notice>
             <div className="flex gap-2">
               <Button
                 variant="danger"
+                loading={busy}
                 disabled={busy}
                 onClick={requestDeletion}
                 className="flex-1"
               >
-                {busy ? 'Löscht…' : 'Ja, endgültig löschen'}
+                Ja, endgültig löschen
               </Button>
               <Button
                 variant="secondary"
@@ -221,9 +224,9 @@ function DeletionSuccessScreen({ mediaDeleted }: { mediaDeleted: boolean }) {
           </p>
         </div>
         {!mediaDeleted && (
-          <p className="text-label font-normal text-warning">
+          <Notice tone="warning">
             Hochgeladene Fotos werden separat verwaltet und können noch einen Moment verfügbar sein.
-          </p>
+          </Notice>
         )}
         <p className="text-label font-normal text-ink-faint">
           Abmeldung in {countdown} Sekunde{countdown !== 1 ? 'n' : ''}…
@@ -237,13 +240,15 @@ function StatCard({
   label,
   value,
   highlight,
+  wide,
 }: {
   label: string;
   value: string;
   highlight?: boolean;
+  wide?: boolean;
 }) {
   return (
-    <Card className="p-4 space-y-1">
+    <Card className={`p-4 space-y-1${wide ? ' col-span-2' : ''}`}>
       <p className={`text-display tabular-nums ${highlight ? 'text-accent' : 'text-ink'}`}>{value}</p>
       <p className="text-micro uppercase text-ink-muted">{label}</p>
     </Card>

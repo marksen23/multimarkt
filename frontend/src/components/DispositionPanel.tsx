@@ -6,7 +6,7 @@ import { itemsApi } from '../api/items';
 import { RESALE_CATEGORIES, resolveCategory, type ResaleCategory } from '../category/taxonomy';
 import { shippingCostEur, shippingPortalsAllowed, type LogisticsProfile } from '../logistics/profile';
 import { flushMarginAssumptions } from '../margin/use-margin-assumptions';
-import { Button, Card, inputClass } from '../ui';
+import { Button, Card, Notice, inputClass } from '../ui';
 import { ChannelNetComparison } from './ChannelNetComparison';
 
 const USER_GOALS: { value: DispositionUserGoal; label: string }[] = [
@@ -147,6 +147,7 @@ export function DispositionPanel({
     return (
       <button
         type="button"
+        aria-expanded={false}
         onClick={() => void openPanel()}
         className="w-full p-3 rounded-control border border-line text-body font-bold text-ink-muted hover:bg-surface-hover transition-colors flex items-center justify-between gap-2"
       >
@@ -172,6 +173,7 @@ export function DispositionPanel({
       <div className="grid grid-cols-2 gap-2">
         <select
           value={category}
+          aria-label="Kategorie"
           onChange={(e) => setCategory(e.target.value as ResaleCategory)}
           className={inputClass}
         >
@@ -183,6 +185,7 @@ export function DispositionPanel({
         </select>
         <select
           value={userGoal}
+          aria-label="Verkaufsziel"
           onChange={(e) => setUserGoal(e.target.value as DispositionUserGoal)}
           className={inputClass}
         >
@@ -196,8 +199,10 @@ export function DispositionPanel({
       <input
         type="number"
         inputMode="decimal"
+        enterKeyHint="done"
         min="0"
         step="0.01"
+        aria-label="Geschätzter Marktpreis in Euro"
         placeholder="Geschätzter Marktpreis (€)"
         value={marketMedianPrice}
         onChange={(e) => setMarketMedianPrice(e.target.value)}
@@ -206,12 +211,13 @@ export function DispositionPanel({
       <p className="text-label font-normal text-ink-muted">{logisticsSummary(logistics)}</p>
       <ChannelNetComparison salePriceEur={null} salePriceLabel="Marktpreis" logistics={logistics} />
 
-      {error && <p className="text-label text-danger">{error}</p>}
+      {error && <Notice tone="danger">{error}</Notice>}
 
       <Button block loading={busy} disabled={busy || !marketMedianPrice} onClick={evaluate}>
-        {busy ? 'Berechnet…' : 'Berechnen'}
+        Berechnen
       </Button>
 
+      <div aria-live="polite">
       {result && (
         <div className="space-y-2 pt-2 border-t border-line">
           <span
@@ -276,6 +282,7 @@ export function DispositionPanel({
           </p>
         </div>
       )}
+      </div>
     </Card>
   );
 }
