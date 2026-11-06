@@ -20,6 +20,7 @@ const STATUS: Record<string, { phase: Phase; label: string; busy?: boolean }> = 
   CANCELLED: { phase: 'archive', label: 'Storniert' },
   ARCHIVED: { phase: 'archive', label: 'Archiviert' },
   DRAFT: { phase: 'capture', label: 'Entwurf' },
+  COPIED: { phase: 'ready', label: 'Kopiert' },
   PUBLISHING: { phase: 'capture', label: 'Wird veröffentlicht', busy: true },
   ONLINE: { phase: 'live', label: 'Online' },
   CANCEL_PENDING: { phase: 'review', label: 'Storno läuft', busy: true },
