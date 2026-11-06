@@ -156,7 +156,7 @@ describe('PriceTriangulationService', () => {
     expect(groundingProvider.search).toHaveBeenCalledWith({ keywords: 'Nike Sneaker', condition: 'good' });
   });
 
-  it('excludes the market source when the sample size is below the minimum', async () => {
+  it('keeps a thin market source and withholds the start price, leaving the span', async () => {
     const { dataSource } = makeDataSource({
       item: { id: 'i1', condition: 'good' },
       attributes: [attr('brand', 'Nike'), attr('category', 'Sneaker')],
@@ -165,7 +165,7 @@ describe('PriceTriangulationService', () => {
       median: 34,
       p25: 28,
       p75: 41,
-      sampleSize: 2, // unter MIN_MARKET_SAMPLE_SIZE (5)
+      sampleSize: 2, // unter fünf Vergleichen
       currency: 'EUR',
       providerLabel: 'eBay Browse API (Mock)',
       comparableListings: [],
@@ -175,7 +175,15 @@ describe('PriceTriangulationService', () => {
     const service = makeService(dataSource);
     const result = await service.research('i1');
 
-    expect(result.sources).toHaveLength(0);
+    expect(result.sources).toHaveLength(1);
+    expect(result.sources[0].sampleSize).toBe(2);
+    expect(result.recommendation?.startPriceRecommended).toBe(false);
+    expect(result.recommendation?.sampleSize).toBe(2);
+    expect(result.recommendation?.rangeLow).toBe(28);
+    expect(result.recommendation?.rangeHigh).toBe(41);
+    expect(result.recommendation?.priceBasisNote).toBe(
+      'Angebotspreise, nicht erzielte Verkäufe, Faktor 0,87',
+    );
   });
 
   it('skips the market lookup entirely when no brand/category attribute is known', async () => {

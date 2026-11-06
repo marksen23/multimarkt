@@ -10,7 +10,6 @@ import {
   GEMINI_GROUNDING_PROVIDER,
   MARKET_DISTRIBUTION_PROVIDER,
   MarketDistributionProvider,
-  MIN_MARKET_SAMPLE_SIZE,
 } from '../../domain/pricing/market-distribution-provider.interface';
 import { PriceResearchSource } from '../../domain/pricing/price-research-vocabulary';
 import { PriceRecommendation } from '../../domain/pricing/price-recommendation';
@@ -119,7 +118,8 @@ export class PriceTriangulationService {
     if (marketResult) sources.push(marketResult);
 
     // §9e: zusätzliche, getrennt ausgewiesene Quelle — nie mit der
-    // eBay-Verteilung vermischt, dieselbe Mindest-Stichprobengröße gilt.
+    // eBay-Verteilung vermischt. Dünne Stichproben bleiben erhalten;
+    // ein konkreter Startpreis entsteht erst in PriceRecommendationService.
     const groundingResult = await this.researchMarketDistribution(
       this.groundingProvider,
       'GEMINI_GROUNDING',
@@ -151,9 +151,10 @@ export class PriceTriangulationService {
     if (!keywords.trim()) return null;
 
     const result = await provider.search({ keywords, condition });
-    // §9d Punkt 4: Mindest-Stichprobengröße wird hier, zentral, durchgesetzt —
-    // nicht vom Provider, damit die Regel für jede Quelle gleich gilt.
-    if (!result || result.sampleSize < MIN_MARKET_SAMPLE_SIZE) return null;
+    // Feature 2.7: auch unter fünf Vergleichen bleibt die Quelle sichtbar,
+    // damit die Spanne gezeigt werden kann. Der konkrete Startpreis wird
+    // erst in PriceRecommendationService zurückgehalten.
+    if (!result || result.sampleSize < 1) return null;
 
     return {
       source,

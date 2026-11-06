@@ -589,7 +589,9 @@ function PrepareListingStep({
       setDescription(descResult.descriptionText);
       setDescriptionMissingTokens(descResult.gapAnalysis.missingTokens);
       setVaguePhrases(descResult.vaguePhrases);
-      if (priceResult.recommendation?.listPrice) setPrice(String(priceResult.recommendation.listPrice));
+      if (priceResult.recommendation?.startPriceRecommended) {
+        setPrice(String(priceResult.recommendation.listPrice));
+      }
     } catch {
       setGenerateError('Automatisches Ausfüllen fehlgeschlagen — bitte einzeln versuchen.');
     } finally {

@@ -129,12 +129,14 @@ export function DispositionPanel({
     if (marketMedianPrice !== '') return;
     try {
       const research = await itemsApi.priceResearch(itemId);
-      const suggested =
-        research.recommendation?.listPrice ??
-        (() => {
-          const medians = research.sources.map((s) => s.median).filter((m): m is number => m !== null);
-          return medians.length ? Math.round(medians.reduce((a, b) => a + b, 0) / medians.length) : null;
-        })();
+      const suggested = research.recommendation
+        ? research.recommendation.startPriceRecommended
+          ? research.recommendation.listPrice
+          : null
+        : (() => {
+            const medians = research.sources.map((s) => s.median).filter((m): m is number => m !== null);
+            return medians.length ? Math.round(medians.reduce((a, b) => a + b, 0) / medians.length) : null;
+          })();
       if (suggested !== null) setMarketMedianPrice(String(suggested));
     } catch {
       // silently ignore — user can type manually

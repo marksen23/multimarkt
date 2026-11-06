@@ -70,7 +70,7 @@ export function NegotiationPage() {
   return (
     <div className="max-w-md mx-auto p-4 space-y-4">
       {backButton}
-      {recommendation ? (
+      {recommendation?.startPriceRecommended ? (
         <NegotiationAssistant
           itemId={id}
           title={title}
@@ -80,13 +80,21 @@ export function NegotiationPage() {
       ) : (
         <Card className="p-4 space-y-2">
           <div className="flex items-center gap-2">
-            <Icon name="alert" size={18} className="text-warning shrink-0" />
+            {!recommendation && <Icon name="alert" size={18} className="text-warning shrink-0" />}
             <h1 className="text-title text-ink">Verhandlung</h1>
           </div>
-          <p className="text-body text-ink-muted">
-            Für {title?.trim() || 'diesen Artikel'} fehlen Zielpreis und Schmerzgrenze. Zuerst die
-            Preisrecherche auf der Artikelseite ausführen.
-          </p>
+          {recommendation ? (
+            <p className="text-body text-ink-muted">
+              Stichprobengröße: {recommendation.sampleSize}. Spanne {recommendation.rangeLow.toFixed(2)}–
+              {recommendation.rangeHigh.toFixed(2)} €. {recommendation.priceBasisNote}. Unter fünf
+              Vergleichen kein konkreter Startpreis.
+            </p>
+          ) : (
+            <p className="text-body text-ink-muted">
+              Für {title?.trim() || 'diesen Artikel'} fehlen Zielpreis und Schmerzgrenze. Zuerst die
+              Preisrecherche auf der Artikelseite ausführen.
+            </p>
+          )}
         </Card>
       )}
     </div>

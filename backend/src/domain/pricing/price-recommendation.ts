@@ -24,4 +24,17 @@ export interface PriceRecommendation {
   buybackRecommended: boolean;
   /** Menschenlesbare Begründungskette — jeder Schritt nachvollziehbar, keine Blackbox. */
   reasoning: string[];
+  /** Vergleichsangebote über alle Marktquellen, ohne den Ankaufsanker. */
+  sampleSize: number;
+  /** Untere Grenze der Spanne (niedrigstes p25 der Marktquellen). */
+  rangeLow: number;
+  /** Obere Grenze der Spanne (höchstes p75 der Marktquellen). */
+  rangeHigh: number;
+  /**
+   * Unter fünf Vergleichen false: `listPrice` ist dann keine Empfehlung.
+   * Sichtbar bleiben Stichprobengröße, Spanne und `priceBasisNote`.
+   */
+  startPriceRecommended: boolean;
+  /** Fester Hinweis: Angebotspreise, nicht erzielte Verkäufe, Faktor 0,87. */
+  priceBasisNote: string;
 }
