@@ -46,9 +46,10 @@ export const itemsApi = {
     },
   ) => api.patch<Item>(`/items/${id}/purchase`, body),
   get: (id: string) => api.get<ItemDetail>(`/items/${id}`),
-  analyze: (id: string, files: File[], onProgress?: (fraction: number) => void) => {
+  analyze: (id: string, files: File[], onProgress?: (fraction: number) => void, hint?: string) => {
     const form = new FormData();
     files.forEach((file) => form.append('files', file));
+    if (hint?.trim()) form.append('hint', hint.trim());
     return api.postForm<Item>(`/items/${id}/analyze`, form, onProgress);
   },
   priceResearch: (id: string, forceRefresh?: boolean, salesGoal?: SalesGoal) => {
@@ -97,10 +98,12 @@ export const itemsApi = {
   },
   confirmTruth: (id: string, condition: string) =>
     api.post<Item>(`/items/${id}/confirm-truth`, { condition }),
-  reanalyze: (id: string) => api.post<Item>(`/items/${id}/reanalyze`),
-  uploadMorePhotos: (id: string, files: File[], onProgress?: (fraction: number) => void) => {
+  reanalyze: (id: string, hint?: string) =>
+    api.post<Item>(`/items/${id}/reanalyze`, hint?.trim() ? { hint: hint.trim() } : {}),
+  uploadMorePhotos: (id: string, files: File[], onProgress?: (fraction: number) => void, hint?: string) => {
     const form = new FormData();
     files.forEach((file) => form.append('files', file));
+    if (hint?.trim()) form.append('hint', hint.trim());
     return api.postForm<Item>(`/items/${id}/upload-more-photos`, form, onProgress);
   },
   discard: (id: string) => api.post<Item>(`/items/${id}/discard`),

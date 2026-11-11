@@ -67,11 +67,36 @@ export function knownGapTokens(facts: ChannelDescriptionFacts): string[] {
   return tokens;
 }
 
+function namedAttribute(facts: ChannelDescriptionFacts, keys: string[]): string | null {
+  const wanted = new Set(keys.map((key) => key.toLowerCase()));
+  const found = facts.attributes.find(
+    (entry) => entry.value?.trim() && wanted.has(entry.key.trim().toLowerCase()),
+  );
+  return found?.value?.trim() ?? null;
+}
+
+function articleName(facts: ChannelDescriptionFacts): string | null {
+  return namedAttribute(facts, ['categoryDetail', 'artikelart']) ?? attribute(facts, 'category');
+}
+
+function modelName(facts: ChannelDescriptionFacts): string | null {
+  return namedAttribute(facts, ['model', 'modell']);
+}
+
+function specLine(facts: ChannelDescriptionFacts): string | null {
+  const parts = facts.attributes
+    .filter((entry) => entry.key.startsWith('spec:') && entry.value?.trim())
+    .slice(0, 4)
+    .map((entry) => `${entry.key.slice('spec:'.length)} ${entry.value!.trim()}`);
+  return parts.length ? parts.join(', ') : null;
+}
+
 function searchableLead(facts: ChannelDescriptionFacts): string {
   const gaps = knownGapTokens(facts);
   const parts = [
     attribute(facts, 'brand'),
-    attribute(facts, 'category') ?? facts.title,
+    modelName(facts),
+    articleName(facts) ?? facts.title,
     attribute(facts, 'color'),
     attribute(facts, 'size') ? `Größe ${attribute(facts, 'size')}` : null,
     attribute(facts, 'material'),
@@ -110,13 +135,17 @@ export function buildChannelDescription(
   const measurements = attribute(facts, 'measurements');
   const lead = searchableLead(facts);
   const title = facts.title?.trim() || 'Artikel';
+  const model = modelName(facts);
+  const article = articleName(facts);
+  const specs = specLine(facts);
 
   if (channel === 'KLEINANZEIGEN') {
-    const factsLine = [brand, category, color, material, size ? `Größe ${size}` : null]
+    const factsLine = [brand, model, article ?? category, color, material, size ? `Größe ${size}` : null]
       .filter((part): part is string => Boolean(part))
       .join(', ');
     const lines = [title];
     if (factsLine) lines.push('', `${factsLine}.`);
+    if (specs) lines.push(`Angaben: ${specs}.`);
     const gaps = knownGapTokens(facts).filter((token) => !lines.join('\n').toLowerCase().includes(token));
     if (gaps.length > 0) lines.push(gaps.join(', ') + '.');
     lines.push('', `Zustand: ${condition}.`);
@@ -125,7 +154,9 @@ export function buildChannelDescription(
   }
 
   if (channel === 'EBAY') {
-    const lines = [lead || title, '', `Zustand: ${condition}.`, `Lieferumfang: ${includedLabel(facts)}.`];
+    const lines = [lead || title, ''];
+    if (specs) lines.push(`Angaben: ${specs}.`, '');
+    lines.push(`Zustand: ${condition}.`, `Lieferumfang: ${includedLabel(facts)}.`);
     return lines.join('\n');
   }
 

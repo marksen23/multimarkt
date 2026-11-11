@@ -40,6 +40,7 @@ describe('resale category taxonomy', () => {
     expect(resolveCategory('Handschuhe')).toBe('Kleidung');
     expect(canonicalCategory('kleidung')).toBe('Kleidung');
     expect(resolveCategory('keine Ahnung')).toBeNull();
+    expect(resolveCategory('Schlagbohrmaschine')).toBe('Elektronik');
   });
 
   it('treats Elektronik and Medien as buyback categories, including the old keys', () => {

@@ -39,6 +39,28 @@ describe('buildMarketKeywords', () => {
     expect(buildMarketKeywords({})).toBe('');
   });
 
+  it('prefers the vision search phrase and still adds a missing color', () => {
+    expect(
+      buildMarketKeywords({
+        searchTerms: 'Bosch GBH 2-28 F Schlagbohrmaschine',
+        title: 'zu langer Titel mit Zustand gebraucht VB',
+        brand: 'Bosch',
+        color: 'Blau',
+      }),
+    ).toBe('Bosch GBH 2-28 F Schlagbohrmaschine Blau');
+  });
+
+  it('puts the readable model ahead of the coarse category', () => {
+    expect(
+      buildMarketKeywords({
+        brand: 'Bosch',
+        model: 'GBH 2-28 F',
+        category: 'Elektronik',
+        categoryDetail: 'Schlagbohrmaschine',
+      }),
+    ).toBe('Bosch GBH 2-28 F Schlagbohrmaschine');
+  });
+
   it('does not repeat a color that is already in the product name', () => {
     expect(buildMarketKeywords({ brand: 'Apple', categoryDetail: 'iPhone schwarz', color: 'schwarz' })).toBe(
       'Apple iPhone schwarz',

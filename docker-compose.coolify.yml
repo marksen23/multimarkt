@@ -44,6 +44,8 @@ services:
       # Empty keeps the mocks. Set a real value in the Coolify UI to turn
       # the corresponding provider on. Do not commit those values.
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      # Optional. Leer lässt gemini-flash-latest die Fotos lesen.
+      GEMINI_VISION_MODEL: ${GEMINI_VISION_MODEL:-}
       EBAY_CLIENT_ID: ${EBAY_CLIENT_ID:-}
       EBAY_CLIENT_SECRET: ${EBAY_CLIENT_SECRET:-}
       S3_BUCKET: ${S3_BUCKET:-}

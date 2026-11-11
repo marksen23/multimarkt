@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
 import { PhotoCapture } from '../components/PhotoCapture';
-import { ActionBar, Button, Card, Icon, Notice, PageHeader, inputClass } from '../ui';
+import { ActionBar, Button, Card, Field, Icon, Notice, PageHeader, inputClass } from '../ui';
 
 /**
  * README §3 Schritt 1: "Fotografieren statt Formulare ausfüllen." Der
@@ -15,6 +15,7 @@ export function NewItemPage() {
   const location = useLocation();
   const prefillTitle = (location.state as { title?: string } | null)?.title ?? '';
   const [photos, setPhotos] = useState<File[]>([]);
+  const [hint, setHint] = useState('');
   const [title, setTitle] = useState(prefillTitle);
   const [titleExpanded, setTitleExpanded] = useState(!!prefillTitle);
   const [stage, setStage] = useState<'idle' | 'creating' | 'uploading' | 'analyzing'>('idle');
@@ -38,7 +39,7 @@ export function NewItemPage() {
         // für die KI-Analyse (dafür gibt es keinen Fortschritt zu melden) —
         // sonst bliebe die Anzeige bei "100%" stehen und wirkt wie hängend.
         if (fraction >= 0.999) setStage('analyzing');
-      });
+      }, hint);
       navigate(`/items/${item.id}`);
     } catch (e) {
       if (createdItemId) {
@@ -71,11 +72,27 @@ export function NewItemPage() {
       </button>
       <PageHeader
         title="Neuer Artikel"
-        subtitle="Fotografiere den Gegenstand, ein Etikett oder Typenschild. Die KI trägt nur ein, was sie sieht. Fehlende Pflichtangaben der Kategorie fragst du danach."
+        subtitle="Fotografiere den Gegenstand. Ein zweites Foto vom Etikett oder Typenschild hilft bei Marke und Modell. Die KI trägt nur ein, was sie sieht, und markiert Unsicheres."
       />
 
       <Card className="p-4 space-y-4">
         <PhotoCapture files={photos} onChange={setPhotos} />
+
+        <Field
+          label="Hinweis für die KI (optional)"
+          hint="Hilft bei Marke und Modell. Was nur im Hinweis steht und nicht auf dem Foto zu sehen ist, wird als unsicher markiert."
+        >
+          <input
+            type="text"
+            enterKeyHint="done"
+            aria-label="Hinweis für die KI"
+            placeholder="z.B. Bosch Bohrmaschine"
+            maxLength={200}
+            value={hint}
+            onChange={(event) => setHint(event.target.value)}
+            className={inputClass}
+          />
+        </Field>
 
         <details
           className="text-body"

@@ -7,19 +7,9 @@ import {
   TitleGenerationInput,
   TitleGenerationProvider,
 } from '../../domain/ai/title-generation-provider.interface';
+import { factLabel } from '../../domain/category/taxonomy';
 
 const MODEL_ID = 'gemini-flash-latest';
-
-const FACT_LABELS: Record<string, string> = {
-  category: 'Kategorie',
-  categoryDetail: 'Artikelart',
-  size: 'Größe',
-  measurements: 'Maße',
-  brand: 'Marke',
-  functionChecked: 'Funktion geprüft',
-  color: 'Farbe',
-  material: 'Material',
-};
 
 const CHANNEL_SCHEME: Record<ListingChannel, string> = {
   KLEINANZEIGEN:
@@ -63,18 +53,18 @@ export class RealTitleGenerationProvider implements TitleGenerationProvider {
     const limit = CHANNEL_TITLE_LIMITS[input.channel];
 
     // Priorisiere preisrelevante Attribute für den Titel
-    const priorityKeys = ['brand', 'size', 'color', 'material'];
+    const priorityKeys = ['brand', 'model', 'size', 'color', 'material'];
     const valueKeys = ['notable_features'];
-    const skipKeys = ['visible_defects', 'condition']; // condition kommt als eigenes Feld
+    const skipKeys = ['visible_defects', 'condition', 'description', 'searchTerms', 'title'];
 
     const priorityFacts = input.attributes
       .filter((a) => a.value && priorityKeys.includes(a.key))
-      .map((a) => `${FACT_LABELS[a.key] ?? a.key}: ${a.value}`)
+      .map((a) => `${factLabel(a.key)}: ${a.value}`)
       .join(', ');
 
     const otherFacts = input.attributes
       .filter((a) => a.value && !priorityKeys.includes(a.key) && !skipKeys.includes(a.key) && !valueKeys.includes(a.key))
-      .map((a) => `${FACT_LABELS[a.key] ?? a.key}: ${a.value}`)
+      .map((a) => `${factLabel(a.key)}: ${a.value}`)
       .join(', ');
 
     const valueFacts = input.attributes
@@ -93,7 +83,7 @@ export class RealTitleGenerationProvider implements TitleGenerationProvider {
 
 Artikel: ${input.title ?? 'unbekannt'}
 Zustand: ${input.condition ?? 'unbekannt'}
-Priorität-Merkmale (Marke, Größe, Farbe, Material): ${priorityFacts || 'keine'}
+Priorität-Merkmale (Marke, Modell, Größe, Farbe, Material): ${priorityFacts || 'keine'}
 Weitere Merkmale: ${otherFacts || 'keine'}
 ${valueFacts ? `Wertsteigernde Besonderheiten (falls Zeichenzahl erlaubt): ${valueFacts}` : ''}
 

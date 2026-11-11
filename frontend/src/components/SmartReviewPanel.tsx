@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
+import { ApiRequestError } from '../api/client';
 import { itemsApi } from '../api/items';
 import type { ItemDetail } from '../api/types';
-import { RESALE_CATEGORIES, attributeLabel, categoryGaps } from '../category/taxonomy';
-import { ActionBar, Button, Card, Icon, Notice, inputClass } from '../ui';
+import { RESALE_CATEGORIES, categoryGaps, factLabel } from '../category/taxonomy';
+import { ActionBar, Button, Card, Field, Icon, Notice, inputClass } from '../ui';
 
 const CONDITION_OPTIONS = ['Neu', 'Wie neu', 'Gut', 'Gebraucht', 'Defekt'];
 
@@ -15,21 +16,20 @@ const CONDITION_MAP: Record<string, string> = {
   defective: 'Defekt',
 };
 
-const KEY_LABELS: Record<string, string> = {
-  category: 'Kategorie',
-  color: 'Farbe',
-  brand: 'Marke',
-  material: 'Material',
-  condition: 'Zustand',
-  size: 'Größe',
-  measurements: 'Maße',
-  functionChecked: 'Funktion geprüft',
-  categoryDetail: 'Artikelart',
-  notable_features: 'Besonderheiten',
-  visible_defects: 'Sichtbare Mängel',
-};
+/** Spiegelt UNCERTAIN_CONFIDENCE in backend/src/domain/ai/vision-listing.ts */
+const UNCERTAIN_BELOW = 0.65;
+
+const HIDDEN_REVIEW_KEYS = new Set(['condition', 'title', 'description', 'searchTerms', 'model']);
 
 const TAXONOMY_KEYS = new Set(['category', 'size', 'measurements', 'brand', 'functionChecked']);
+
+function isUncertain(confidence: number | null | undefined): boolean {
+  return typeof confidence === 'number' && confidence < UNCERTAIN_BELOW;
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof ApiRequestError ? error.body.message : fallback;
+}
 
 interface Props {
   detail: ItemDetail;
@@ -61,15 +61,38 @@ export function SmartReviewPanel({
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [newPhotos, setNewPhotos] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [hint, setHint] = useState('');
+  const titleSource =
+    detail.item.title ??
+    detail.attributes.find((attribute) => attribute.attributeKey === 'title')?.attributeValue ??
+    '';
+  const modelSource =
+    detail.attributes.find((attribute) => attribute.attributeKey === 'model')?.attributeValue ?? '';
+  const descriptionSource =
+    detail.attributes.find((attribute) => attribute.attributeKey === 'description')?.attributeValue ?? '';
+  const draftSource = `${detail.item.updatedAt}|${titleSource}|${modelSource}|${descriptionSource}`;
+  const [seenDraftSource, setSeenDraftSource] = useState(draftSource);
+  const [titleOverride, setTitleOverride] = useState<string | null>(null);
+  const [modelOverride, setModelOverride] = useState<string | null>(null);
+  const [descriptionOverride, setDescriptionOverride] = useState<string | null>(null);
+  if (seenDraftSource !== draftSource) {
+    setSeenDraftSource(draftSource);
+    setTitleOverride(null);
+    setModelOverride(null);
+    setDescriptionOverride(null);
+  }
+  const titleDraft = titleOverride ?? titleSource;
+  const modelDraft = modelOverride ?? modelSource;
+  const descriptionDraft = descriptionOverride ?? descriptionSource;
 
   const reanalyze = async () => {
     setReanalyzing(true);
     setReanalyzeError(null);
     try {
-      await itemsApi.reanalyze(detail.item.id);
+      await itemsApi.reanalyze(detail.item.id, hint);
       onReload();
-    } catch {
-      setReanalyzeError('Re-Analyse fehlgeschlagen — bitte erneut versuchen');
+    } catch (error) {
+      setReanalyzeError(errorMessage(error, 'Re-Analyse fehlgeschlagen — bitte erneut versuchen'));
     } finally {
       setReanalyzing(false);
     }
@@ -81,11 +104,11 @@ export function SmartReviewPanel({
     setUploadProgress(0);
     setReanalyzeError(null);
     try {
-      await itemsApi.uploadMorePhotos(detail.item.id, newPhotos, (f) => setUploadProgress(f));
+      await itemsApi.uploadMorePhotos(detail.item.id, newPhotos, (f) => setUploadProgress(f), hint);
       setNewPhotos([]);
       onReload();
-    } catch {
-      setReanalyzeError('Foto-Upload fehlgeschlagen — bitte erneut versuchen');
+    } catch (error) {
+      setReanalyzeError(errorMessage(error, 'Foto-Upload fehlgeschlagen — bitte erneut versuchen'));
     } finally {
       setUploadingPhotos(false);
       setUploadProgress(0);
@@ -114,19 +137,38 @@ export function SmartReviewPanel({
   const extraMissing = useMemo(
     () =>
       nonConditionAttrs.filter(
-        (a) => a.truthState === 'UNKNOWN' && !TAXONOMY_KEYS.has(a.attributeKey) && !gapKeys.includes(a.attributeKey),
+        (a) =>
+          a.truthState === 'UNKNOWN' &&
+          !TAXONOMY_KEYS.has(a.attributeKey) &&
+          !HIDDEN_REVIEW_KEYS.has(a.attributeKey) &&
+          !gapKeys.includes(a.attributeKey),
       ),
     [nonConditionAttrs, gapKeys],
   );
   const missingCount = gapKeys.length + extraMissing.length;
   const inferred = useMemo(
-    () => nonConditionAttrs.filter((a) => a.truthState === 'INFERRED'),
+    () =>
+      nonConditionAttrs
+        .filter((a) => a.truthState === 'INFERRED' && !HIDDEN_REVIEW_KEYS.has(a.attributeKey))
+        .sort((a, b) => Number(isUncertain(b.confidence)) - Number(isUncertain(a.confidence))),
     [nonConditionAttrs],
   );
   const autoConfirmed = useMemo(
-    () => detail.attributes.filter((a) => a.truthState === 'USER_CONFIRMED' && a.attributeKey !== 'condition'),
+    () =>
+      detail.attributes.filter(
+        (a) => a.truthState === 'USER_CONFIRMED' && !HIDDEN_REVIEW_KEYS.has(a.attributeKey),
+      ),
     [detail.attributes],
   );
+  const titleAttr = detail.attributes.find((attribute) => attribute.attributeKey === 'title');
+  const modelAttr = detail.attributes.find((attribute) => attribute.attributeKey === 'model');
+  const descriptionAttr = detail.attributes.find((attribute) => attribute.attributeKey === 'description');
+  const showUncertainNote =
+    isUncertain(titleAttr?.confidence) ||
+    isUncertain(modelAttr?.confidence) ||
+    isUncertain(descriptionAttr?.confidence) ||
+    isUncertain(aiConditionAttr?.confidence) ||
+    inferred.some((attribute) => isUncertain(attribute.confidence));
 
   const totalQuestions = missingCount + inferred.length + 1; // +1 for condition
   const answeredQuestions =
@@ -135,6 +177,22 @@ export function SmartReviewPanel({
   const isConditionConfirmed = detail.item.condition !== null;
   const canSave = selectedCondition !== null;
   const anyActionInProgress = saving || savingKey !== null;
+
+  const flushDrafts = async () => {
+    const title = titleDraft.trim();
+    if (title && title !== (detail.item.title ?? '').trim()) {
+      await itemsApi.updateTitle(detail.item.id, title);
+      await itemsApi.confirmAttribute(detail.item.id, 'title', title);
+    }
+    const model = modelDraft.trim();
+    if (model && model !== (modelAttr?.attributeValue ?? '').trim()) {
+      await itemsApi.confirmAttribute(detail.item.id, 'model', model);
+    }
+    const description = descriptionDraft.trim();
+    if (description && description !== (descriptionAttr?.attributeValue ?? '').trim()) {
+      await itemsApi.confirmAttribute(detail.item.id, 'description', description);
+    }
+  };
 
   const confirmAttr = async (key: string, value?: string) => {
     setSavingKey(key);
@@ -204,6 +262,71 @@ export function SmartReviewPanel({
       </header>
 
       <div className="p-4 space-y-4">
+        <Card className="p-4 space-y-4">
+          {showUncertainNote && (
+            <Notice tone="warning">
+              Gelb markierte Angaben sind unsicher. Ein Foto vom Etikett oder Typenschild und ein kurzer Hinweis
+              verbessern die nächste Analyse.
+            </Notice>
+          )}
+          <Field
+            label="Titel"
+            hint={
+              titleAttr?.attributeValue
+                ? isUncertain(titleAttr.confidence)
+                  ? 'Unsicher — bitte kurz prüfen'
+                  : 'Vorschlag aus den Fotos'
+                : detail.item.title
+                  ? 'Dein Titel. Die Analyse ersetzt ihn nicht.'
+                  : 'Wird aus den Fotos vorgeschlagen, sobald die Analyse etwas erkennt'
+            }
+          >
+            <input
+              value={titleDraft}
+              onChange={(event) => setTitleOverride(event.target.value)}
+              placeholder="z.B. Bosch GBH 2-28 F Schlagbohrmaschine"
+              aria-label="Titel"
+              className={inputClass}
+            />
+          </Field>
+          <Field
+            label="Modell"
+            hint={
+              !modelAttr?.attributeValue
+                ? 'Nur ausfüllen, wenn es auf dem Etikett oder Typenschild steht'
+                : isUncertain(modelAttr.confidence)
+                  ? 'Unsicher — nur übernehmen, wenn es lesbar ist'
+                  : 'Vom Typenschild oder Etikett'
+            }
+          >
+            <input
+              value={modelDraft}
+              onChange={(event) => setModelOverride(event.target.value)}
+              placeholder="z.B. GBH 2-28 F"
+              aria-label="Modell"
+              className={inputClass}
+            />
+          </Field>
+          <Field
+            label="Beschreibung"
+            hint={
+              !descriptionAttr?.attributeValue
+                ? 'Kurzer Text aus dem, was auf den Fotos zu sehen ist'
+                : isUncertain(descriptionAttr.confidence)
+                  ? 'Unsicher — bitte kurz prüfen'
+                  : 'Zwei bis vier Sätze aus den Fotos'
+            }
+          >
+            <textarea
+              value={descriptionDraft}
+              onChange={(event) => setDescriptionOverride(event.target.value)}
+              placeholder="Was es ist, welcher Zustand, welche Mängel"
+              aria-label="Beschreibung"
+              rows={4}
+              className={inputClass}
+            />
+          </Field>
+        </Card>
 
         {gapKeys.map((key) => (
           <div key={key} className="bg-danger/5 p-4 rounded-card border border-danger/20 space-y-2">
@@ -212,7 +335,7 @@ export function SmartReviewPanel({
                 ? 'Welche Kategorie passt?'
                 : key === 'functionChecked'
                   ? 'Funktioniert der Artikel?'
-                  : `${KEY_LABELS[key] ?? attributeLabel(key)}?`}
+                  : `${factLabel(key)}?`}
             </label>
             <p className="text-label font-normal text-ink-muted">
               Pflichtangabe dieser Kategorie — auf dem Foto nicht erkennbar
@@ -250,8 +373,8 @@ export function SmartReviewPanel({
                 ) : (
                   <input
                     type="text"
-                    aria-label={KEY_LABELS[key] ?? attributeLabel(key)}
-                    placeholder={`${KEY_LABELS[key] ?? attributeLabel(key)} eingeben…`}
+                    aria-label={factLabel(key)}
+                    placeholder={`${factLabel(key)} eingeben…`}
                     value={missingDrafts[key] ?? ''}
                     onChange={(e) => setMissingDrafts((prev) => ({ ...prev, [key]: e.target.value }))}
                     className={`${inputClass} flex-1 min-w-0`}
@@ -278,7 +401,7 @@ export function SmartReviewPanel({
               </span>
               <div className="flex-1 min-w-0">
                 <label className="block text-body font-bold text-ink">
-                  {KEY_LABELS[a.attributeKey] ?? a.attributeKey}?
+                  {factLabel(a.attributeKey)}?
                 </label>
                 <p className="text-label font-normal text-ink-muted mt-0.5">
                   Auf dem Foto nicht erkennbar — bitte ergänzen
@@ -288,8 +411,8 @@ export function SmartReviewPanel({
             <div className="flex gap-2">
               <input
                 type="text"
-                aria-label={KEY_LABELS[a.attributeKey] ?? a.attributeKey}
-                placeholder={`${KEY_LABELS[a.attributeKey] ?? a.attributeKey} eingeben…`}
+                aria-label={factLabel(a.attributeKey)}
+                placeholder={`${factLabel(a.attributeKey)} eingeben…`}
                 value={missingDrafts[a.attributeKey] ?? ''}
                 onChange={(e) =>
                   setMissingDrafts((prev) => ({ ...prev, [a.attributeKey]: e.target.value }))
@@ -321,11 +444,14 @@ export function SmartReviewPanel({
             </div>
             <div className="divide-y divide-line">
               {inferred.map((a) => (
-                <div key={a.id} className="p-3 space-y-2">
+                <div key={a.id} className={`p-3 space-y-2 ${isUncertain(a.confidence) ? 'bg-warning/10' : ''}`}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <span className="text-micro uppercase capitalize text-ink-faint block">
-                        {KEY_LABELS[a.attributeKey] ?? a.attributeKey}
+                        {factLabel(a.attributeKey)}
+                        {isUncertain(a.confidence) && (
+                          <span className="ml-2 normal-case text-warning">Unsicher</span>
+                        )}
                       </span>
                       <span className="font-semibold text-ink text-body truncate block">
                         {a.attributeValue}
@@ -357,7 +483,7 @@ export function SmartReviewPanel({
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        aria-label={KEY_LABELS[a.attributeKey] ?? a.attributeKey}
+                        aria-label={factLabel(a.attributeKey)}
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         className={`${inputClass} flex-1 min-w-0`}
@@ -391,8 +517,9 @@ export function SmartReviewPanel({
             <div>
               <label className="block text-body font-bold text-ink">Wie ist der Zustand?</label>
               {aiConditionMapped && !isConditionConfirmed && (
-                <p className="text-label font-normal text-accent mt-0.5">
-                  KI-Vorschlag: <strong>{aiConditionMapped}</strong> — bitte bestätigen
+                <p className={`text-label font-normal mt-0.5 ${isUncertain(aiConditionAttr?.confidence) ? 'text-warning' : 'text-accent'}`}>
+                  KI-Vorschlag: <strong>{aiConditionMapped}</strong>
+                  {isUncertain(aiConditionAttr?.confidence) ? ' — unsicher, bitte prüfen' : ' — bitte bestätigen'}
                 </p>
               )}
             </div>
@@ -443,7 +570,7 @@ export function SmartReviewPanel({
               {autoConfirmed.map((a) => (
                 <div key={a.id}>
                   <span className="text-micro uppercase text-ink-faint block">
-                    {KEY_LABELS[a.attributeKey] ?? a.attributeKey}
+                    {factLabel(a.attributeKey)}
                   </span>
                   <span className="font-semibold text-ink text-body truncate block">
                     {a.attributeValue}
@@ -470,6 +597,8 @@ export function SmartReviewPanel({
                 onNewPhotos={setNewPhotos}
                 onUpload={() => void uploadAndReanalyze()}
                 onReanalyze={() => void reanalyze()}
+                hint={hint}
+                onHint={setHint}
               />
             </div>
           </details>
@@ -483,6 +612,8 @@ export function SmartReviewPanel({
             onNewPhotos={setNewPhotos}
             onUpload={() => void uploadAndReanalyze()}
             onReanalyze={() => void reanalyze()}
+            hint={hint}
+            onHint={setHint}
           />
         )}
       </div>
@@ -493,7 +624,22 @@ export function SmartReviewPanel({
           icon="check"
           loading={saving}
           disabled={!canSave || anyActionInProgress}
-          onClick={() => selectedCondition && onConfirmCondition(selectedCondition)}
+          onClick={() => {
+            if (!selectedCondition) return;
+            void (async () => {
+              setSavingKey('drafts');
+              setReanalyzeError(null);
+              try {
+                await flushDrafts();
+              } catch (error) {
+                setReanalyzeError(errorMessage(error, 'Angaben konnten nicht gespeichert werden'));
+                setSavingKey(null);
+                return;
+              }
+              setSavingKey(null);
+              await onConfirmCondition(selectedCondition);
+            })();
+          }}
         >
           {!canSave
             ? 'Bitte Zustand auswählen'
@@ -517,6 +663,8 @@ function PhotosAndReanalyze({
   onNewPhotos,
   onUpload,
   onReanalyze,
+  hint,
+  onHint,
 }: {
   newPhotos: File[];
   uploadingPhotos: boolean;
@@ -526,6 +674,8 @@ function PhotosAndReanalyze({
   onNewPhotos: (fn: (prev: File[]) => File[]) => void;
   onUpload: () => void;
   onReanalyze: () => void;
+  hint: string;
+  onHint: (value: string) => void;
 }) {
   return (
     <>
@@ -571,6 +721,16 @@ function PhotosAndReanalyze({
           </div>
         )}
       </div>
+      <Field label="Hinweis für die nächste Analyse" hint="Optional, z.B. Marke oder Modell. Was nicht auf dem Foto steht, bleibt unsicher.">
+        <input
+          value={hint}
+          onChange={(event) => onHint(event.target.value)}
+          placeholder="z.B. es ist eine Bosch Bohrmaschine"
+          aria-label="Hinweis für die KI"
+          maxLength={200}
+          className={inputClass}
+        />
+      </Field>
       <Button
         variant="secondary"
         size="sm"
