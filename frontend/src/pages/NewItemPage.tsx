@@ -48,7 +48,8 @@ export function NewItemPage() {
         // zur Artikelseite weiterleiten, wo die Analyse erneut angestoßen
         // werden kann, statt bei einem erneuten Versuch hier ein Duplikat
         // samt Doppel-Upload zu erzeugen.
-        navigate(`/items/${createdItemId}`);
+        const message = e instanceof ApiRequestError ? e.body.message : 'Die Analyse ist fehlgeschlagen.';
+        navigate(`/items/${createdItemId}`, { state: { analysisError: message } });
         return;
       }
       setError(e instanceof ApiRequestError ? e.body.message : 'Unbekannter Fehler');

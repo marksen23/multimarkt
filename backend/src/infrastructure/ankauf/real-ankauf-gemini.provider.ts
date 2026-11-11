@@ -8,6 +8,7 @@ import type {
   RawAnkaufListing,
 } from '../../domain/ankauf/ankauf-search-provider.interface';
 import type { AnkaufPlatform } from '../../domain/ankauf/ankauf.types';
+import { extractJsonObject } from '../ai/extract-json-object';
 
 const MODEL_ID = 'gemini-flash-latest';
 
@@ -72,7 +73,7 @@ Antworte AUSSCHLIESSLICH mit validem JSON, kein Markdown, kein Erklärtext:
       "title": "<exakter Anzeigentitel>",
       "price": <Preis als Zahl in EUR>,
       "platform": "<Kleinanzeigen|eBay|Vinted|Facebook|Sonstige>",
-      "url": "<direkte Anzeigen-URL als String oder null>,
+      "url": "<direkte Anzeigen-URL als String oder null>",
       "condition": "<Zustandsbeschreibung aus der Anzeige als String oder null>"
     }
   ]
@@ -87,38 +88,33 @@ Regeln:
   }
 
   private parseResponse(text: string | undefined): AnkaufSearchProviderResult | null {
-    if (!text) return null;
-
-    let parsed: { marketMedian?: number | null; listings?: unknown[] };
-    try {
-      const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
-      parsed = JSON.parse(cleaned) as typeof parsed;
-    } catch (error) {
-      this.logger.error(`Could not parse Ankauf Gemini output: ${(error as Error).message}`);
+    const parsed = extractJsonObject(text);
+    if (!parsed || !Array.isArray(parsed.listings)) {
+      this.logger.warn('Ankauf Gemini response had no listings array');
       return null;
     }
-
-    if (!Array.isArray(parsed.listings)) return null;
 
     const listings: RawAnkaufListing[] = [];
     for (const raw of parsed.listings) {
       if (typeof raw !== 'object' || raw === null) continue;
       const item = raw as Record<string, unknown>;
-      const price = Number(item['price']);
-      if (!isNaN(price) && price > 0 && typeof item['title'] === 'string') {
+      const price = Number(item.price);
+      if (!Number.isNaN(price) && price > 0 && typeof item.title === 'string' && item.title.trim()) {
+        const url = typeof item.url === 'string' && /^https?:\/\//i.test(item.url) ? item.url : null;
         listings.push({
-          title: item['title'],
+          title: item.title.trim(),
           price,
-          platform: normalizePlatform(String(item['platform'] ?? '')),
-          url: typeof item['url'] === 'string' ? item['url'] : null,
-          condition: typeof item['condition'] === 'string' ? item['condition'] : null,
+          platform: normalizePlatform(String(item.platform ?? '')),
+          url,
+          condition: typeof item.condition === 'string' && item.condition.trim() ? item.condition.trim() : null,
         });
       }
     }
 
-    return {
-      marketMedian: typeof parsed.marketMedian === 'number' ? parsed.marketMedian : null,
-      listings,
-    };
+    const marketMedian = typeof parsed.marketMedian === 'number' && Number.isFinite(parsed.marketMedian)
+      ? parsed.marketMedian
+      : null;
+
+    return { marketMedian, listings };
   }
 }

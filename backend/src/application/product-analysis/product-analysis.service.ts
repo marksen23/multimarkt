@@ -1,4 +1,10 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { ActorContext } from '../../domain/actor-context';
@@ -41,12 +47,12 @@ export class ProductAnalysisService {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id: itemId });
     if (!item) throw new NotFoundException(`Item ${itemId} not found`);
 
-    const result = await this.aiProvider.analyzeItem({ imageUrls });
+    const result = await this.runVision(imageUrls);
     const claims = claimsForStorage(result.attributes);
 
     await this.dataSource.transaction(async (manager) => {
       for (const claim of claims) {
-        const { truthState, autoConfirm } = classifyClaim(claim);
+        const { truthState } = classifyVisionClaim(claim);
         await manager.upsert(
           ItemAttributeEntity,
           {
@@ -54,7 +60,7 @@ export class ProductAnalysisService {
             attributeKey: claim.key,
             attributeValue: truthState === 'UNKNOWN' ? null : claim.value,
             truthState,
-            source: autoConfirm ? `${result.modelId}:auto` : result.modelId,
+            source: result.modelId,
             confidence: claim.confidence,
           },
           ['itemId', 'attributeKey'],
@@ -88,9 +94,7 @@ export class ProductAnalysisService {
       throw new BadRequestException('Keine Fotos vorhanden für Re-Analyse');
     }
 
-    const result = await this.aiProvider.analyzeItem({
-      imageUrls: photos.map((p) => p.url),
-    });
+    const result = await this.runVision(photos.map((p) => p.url));
     const claims = claimsForStorage(result.attributes);
 
     await this.dataSource.transaction(async (manager) => {
@@ -100,10 +104,12 @@ export class ProductAnalysisService {
           attributeKey: claim.key,
         });
 
-        // USER_CONFIRMED-Attribute nie überschreiben
-        if (existing?.truthState === 'USER_CONFIRMED') continue;
+        // Echte Nutzer-Bestätigungen bleiben. `:auto` war keine: die
+        // Analyse hatte hohe Konfidenz selbst auf USER_CONFIRMED gehoben
+        // und danach jede Korrektur blockiert.
+        if (keepUserConfirmed(existing)) continue;
 
-        const { truthState, autoConfirm } = classifyClaim(claim);
+        const { truthState } = classifyVisionClaim(claim);
 
         await manager.upsert(
           ItemAttributeEntity,
@@ -112,7 +118,7 @@ export class ProductAnalysisService {
             attributeKey: claim.key,
             attributeValue: truthState === 'UNKNOWN' ? null : claim.value,
             truthState,
-            source: autoConfirm ? `${result.modelId}:auto` : result.modelId,
+            source: result.modelId,
             confidence: claim.confidence,
           },
           ['itemId', 'attributeKey'],
@@ -121,6 +127,18 @@ export class ProductAnalysisService {
     });
 
     return this.dataSource.manager.findOneByOrFail(ItemEntity, { id: itemId });
+  }
+
+  private async runVision(imageUrls: string[]) {
+    try {
+      return await this.aiProvider.analyzeItem({ imageUrls });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Bildanalyse fehlgeschlagen';
+      if (/GEMINI_API_KEY|Gemini hat/i.test(message)) {
+        throw new ServiceUnavailableException(message);
+      }
+      throw new BadRequestException(message);
+    }
   }
 }
 
@@ -134,20 +152,26 @@ function claimsForStorage(
   const seen = new Set(projected.map((claim) => claim.key));
   const extras = raw.filter(
     (claim) =>
-      (PASSTHROUGH_ATTRIBUTE_KEYS as readonly string[]).includes(claim.key) && !seen.has(claim.key),
+      (PASSTHROUGH_ATTRIBUTE_KEYS as readonly string[]).includes(claim.key) &&
+      !seen.has(claim.key) &&
+      !!claim.value?.trim(),
   );
   return [...projected, ...extras];
 }
 
 /**
- * condition bleibt immer INFERRED — CONFIRM_TRUTH ist menschlich gegatet.
- * Andere sichtbare Angaben ab Konfidenz 0.85 gelten als bestätigt.
+ * KI schreibt nie USER_CONFIRMED. Hohe Konfidenz bleibt ein Vorschlag,
+ * den ein Mensch in der Prüfung bestätigt (T02).
  */
-function classifyClaim(claim: { key: string; value: string | null; confidence: number }): {
+export function classifyVisionClaim(claim: { key: string; value: string | null; confidence: number }): {
   truthState: TruthState;
-  autoConfirm: boolean;
 } {
-  const autoConfirm = claim.value !== null && claim.confidence >= 0.85 && claim.key !== 'condition';
-  const truthState: TruthState = !claim.value ? 'UNKNOWN' : autoConfirm ? 'USER_CONFIRMED' : 'INFERRED';
-  return { truthState, autoConfirm };
+  return { truthState: claim.value ? 'INFERRED' : 'UNKNOWN' };
+}
+
+export function keepUserConfirmed(
+  existing: { truthState: string; source: string | null } | null | undefined,
+): boolean {
+  if (!existing || existing.truthState !== 'USER_CONFIRMED') return false;
+  return !existing.source?.endsWith(':auto');
 }

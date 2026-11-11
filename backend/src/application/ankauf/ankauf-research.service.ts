@@ -12,6 +12,7 @@ import {
   formatSearchLocation,
   type AnkaufSearchPlace,
 } from '../../domain/ankauf/search-place';
+import { marketplaceSearchLinks } from '../../domain/search/marketplace-search-links';
 import type {
   AnkaufListing,
   AnkaufResearchResult,
@@ -61,16 +62,25 @@ export class AnkaufResearchService {
     if (cached && Date.now() < cached.expiresAt) return cached.result;
 
     const [raw, ebayResult] = await Promise.all([
-      this.provider.search({ keywords, location }),
-      this.ebayProvider.search({ keywords, condition: null }),
+      this.provider.search({ keywords, location }).catch(() => null),
+      this.ebayProvider.search({ keywords, condition: null }).catch(() => null),
     ]);
 
-    const marketMedian = raw?.marketMedian ?? ebayResult?.median ?? null;
-    const rawListings = raw?.listings ?? [];
+    const sourceIllustrative = raw?.illustrative === true;
+    const ebayIllustrative = ebayResult?.illustrative === true || /\(Mock\)/i.test(ebayResult?.providerLabel ?? '');
+    const rawListings = sourceIllustrative ? [] : (raw?.listings ?? []);
+    const marketMedian = sourceIllustrative
+      ? ebayIllustrative
+        ? null
+        : (ebayResult?.median ?? null)
+      : (raw?.marketMedian ?? (ebayIllustrative ? null : (ebayResult?.median ?? null)));
 
-    // Merge eBay comparableListings as additional EBAY-platform listings, dedup by title
+    // Merge eBay comparableListings as additional EBAY-platform listings, dedup by title.
+    // Beispielwerte aus einem Mock werden nicht als Angebote angezeigt.
     const seenTitles = new Set(rawListings.map((l) => l.title.toLowerCase().trim()));
-    const ebayListings = (ebayResult?.comparableListings ?? [])
+    const ebayListings = ebayIllustrative
+      ? []
+      : (ebayResult?.comparableListings ?? [])
       .filter((l) => l.price > 0 && !seenTitles.has(l.title.toLowerCase().trim()))
       .map((l) => ({
         title: l.title,
@@ -109,6 +119,13 @@ export class AnkaufResearchService {
         return a.price - b.price;
       });
 
+    const illustrative = sourceIllustrative && listings.length === 0;
+    const notice = listings.length > 0
+      ? null
+      : illustrative
+        ? 'Ohne Gemini-Schlüssel werden keine Anzeigen eingesammelt. Die Links öffnen die Suche im Umkreis, ohne Preise zu erfinden.'
+        : 'Keine belegten Angebote. Die Links öffnen dieselbe Suche auf den Plattformen.';
+
     const result: AnkaufResearchResult = {
       keywords,
       location,
@@ -116,6 +133,9 @@ export class AnkaufResearchService {
       listings,
       conditionPriceImpact: CONDITION_IMPACT,
       searchedAt: new Date().toISOString(),
+      searchLinks: marketplaceSearchLinks(keywords, place),
+      notice,
+      illustrative,
     };
 
     this.cache.set(cacheKey, { result, expiresAt: Date.now() + CACHE_TTL_MS });

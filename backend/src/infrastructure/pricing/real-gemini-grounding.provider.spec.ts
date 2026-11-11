@@ -58,6 +58,21 @@ describe('RealGeminiGroundingProvider', () => {
     expect(result?.median).toBe(40);
   });
 
+  it('builds a span from the listed prices when the model withholds the median', async () => {
+    interactionsCreateMock.mockResolvedValue({
+      output_text:
+        'Zu wenig für einen Median.\n{"median":null,"p25":null,"p75":null,"sampleSize":2,"comparableListings":[{"title":"A","price":20,"url":"https://www.ebay.de/itm/1"},{"title":"B","price":40,"url":"not-a-url"}]}',
+    });
+
+    const provider = new RealGeminiGroundingProvider(makeConfig({ GEMINI_API_KEY: 'real-key' }));
+    const result = await provider.search({ keywords: 'Nike Sneaker', condition: 'good' });
+
+    expect(result?.sampleSize).toBe(2);
+    expect(result?.median).toBe(30);
+    expect(result?.comparableListings[0].url).toBe('https://www.ebay.de/itm/1');
+    expect(result?.comparableListings[1].url).toBeNull();
+  });
+
   it('returns null (not a fabricated number) when the model reports too few sources', async () => {
     interactionsCreateMock.mockResolvedValue({
       output_text: JSON.stringify({ median: null, p25: null, p75: null, sampleSize: 2, comparableListings: [] }),

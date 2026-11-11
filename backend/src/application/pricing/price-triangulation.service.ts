@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { SalesGoal } from '../../domain/ai/description-generation-provider.interface';
@@ -11,8 +11,10 @@ import {
   MARKET_DISTRIBUTION_PROVIDER,
   MarketDistributionProvider,
 } from '../../domain/pricing/market-distribution-provider.interface';
+import { buildMarketKeywords } from '../../domain/pricing/market-keywords';
 import { PriceResearchSource } from '../../domain/pricing/price-research-vocabulary';
 import { PriceRecommendation } from '../../domain/pricing/price-recommendation';
+import { marketplaceSearchLinks, type MarketplaceSearchLink } from '../../domain/search/marketplace-search-links';
 import {
   ItemAttributeEntity,
   ItemEntity,
@@ -68,10 +70,18 @@ export interface PriceResearchResult {
    * übergebenen `salesGoal` ab, auch wenn die Rohdaten aus dem Cache kommen.
    */
   recommendation: PriceRecommendation | null;
+  /** Suchbegriff, mit dem die Quellen gefragt wurden. Leer, wenn nichts Identifizierendes da ist. */
+  query: string;
+  /** Direkte Plattformsuchen. Kein Abruf der Seiten. */
+  searchLinks: MarketplaceSearchLink[];
+  /** Warum es keinen belastbaren Vorschlag gibt, sonst null. */
+  notice: string | null;
 }
 
 @Injectable()
 export class PriceTriangulationService {
+  private readonly logger = new Logger(PriceTriangulationService.name);
+
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     @Inject(MARKET_DISTRIBUTION_PROVIDER)
@@ -90,24 +100,33 @@ export class PriceTriangulationService {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id: itemId });
     if (!item) throw new NotFoundException(`Item ${itemId} not found`);
 
-    if (!options.forceRefresh) {
-      const cached = await this.readFreshCache(itemId);
-      if (cached) {
-        return { ...cached, recommendation: this.recommendationService.recommend(cached.sources, options.salesGoal ?? null) };
-      }
-    }
-
     const attributes = await this.dataSource.manager.find(ItemAttributeEntity, {
       where: { itemId },
     });
     const attributeValue = (key: string): string | null =>
       attributes.find((a) => a.attributeKey === key)?.attributeValue ?? null;
+    const keywords = buildMarketKeywords({
+      title: item.title,
+      brand: attributeValue('brand'),
+      category: attributeValue('category'),
+      categoryDetail: attributeValue('categoryDetail'),
+      color: attributeValue('color'),
+    });
+    const place = /^\d{5}$/.test(item.postalCode?.trim() ?? '')
+      ? { postalCode: item.postalCode!.trim(), radiusKm: 20 }
+      : null;
+
+    if (!options.forceRefresh) {
+      const cached = await this.readFreshCache(itemId);
+      if (cached) {
+        return this.withAdvice(cached, options.salesGoal ?? null, keywords, place);
+      }
+    }
 
     const brand = attributeValue('brand');
     const category = attributeValue('category');
 
     const sources: PriceResearchSourceResult[] = [];
-    const keywords = [brand, category].filter((v): v is string => !!v).join(' ');
 
     const marketResult = await this.researchMarketDistribution(
       this.marketProvider,
@@ -134,11 +153,40 @@ export class PriceTriangulationService {
     const fetchedAt = new Date();
     await this.persist(itemId, sources, fetchedAt);
 
+    return this.withAdvice(
+      { itemId, sources, fetchedAt },
+      options.salesGoal ?? null,
+      keywords,
+      place,
+    );
+  }
+
+  private withAdvice(
+    base: Omit<PriceResearchResult, 'recommendation' | 'query' | 'searchLinks' | 'notice'>,
+    salesGoal: SalesGoal | null,
+    query: string,
+    place: { postalCode: string; radiusKm: number } | null,
+  ): PriceResearchResult {
+    const recommendation = this.recommendationService.recommend(base.sources, salesGoal);
+    const liveMarket = base.sources.some(
+      (source) =>
+        (source.source === 'EBAY_ACTIVE_LISTINGS' || source.source === 'GEMINI_GROUNDING') &&
+        source.detail?.illustrative !== true &&
+        !/\(Mock\)/i.test(source.providerLabel),
+    );
+    let notice: string | null = null;
+    if (!query) {
+      notice = 'Für einen Preisvergleich fehlen Marke, Artikelart oder Titel.';
+    } else if (!liveMarket) {
+      notice =
+        'Keine Vergleichsangebote von eBay oder der Websuche. Die Links öffnen dieselbe Suche, ohne Preise zu erfinden.';
+    }
     return {
-      itemId,
-      sources,
-      fetchedAt,
-      recommendation: this.recommendationService.recommend(sources, options.salesGoal ?? null),
+      ...base,
+      recommendation,
+      query,
+      searchLinks: marketplaceSearchLinks(query, place),
+      notice,
     };
   }
 
@@ -150,7 +198,13 @@ export class PriceTriangulationService {
   ): Promise<PriceResearchSourceResult | null> {
     if (!keywords.trim()) return null;
 
-    const result = await provider.search({ keywords, condition });
+    let result: Awaited<ReturnType<MarketDistributionProvider['search']>>;
+    try {
+      result = await provider.search({ keywords, condition });
+    } catch (error) {
+      this.logger.warn(`${source} search failed: ${(error as Error).message}`);
+      return null;
+    }
     // Feature 2.7: auch unter fünf Vergleichen bleibt die Quelle sichtbar,
     // damit die Spanne gezeigt werden kann. Der konkrete Startpreis wird
     // erst in PriceRecommendationService zurückgehalten.
@@ -166,7 +220,10 @@ export class PriceTriangulationService {
       currency: result.currency,
       // §9e-Ergänzung (September 2026): dient auch dem Titel-/
       // Beschreibungsvergleich, nicht nur der Preisrecherche.
-      detail: { comparableListings: result.comparableListings },
+      detail: {
+        comparableListings: result.comparableListings,
+        ...(result.illustrative || /\(Mock\)/i.test(result.providerLabel) ? { illustrative: true } : {}),
+      },
     };
   }
 
@@ -207,7 +264,7 @@ export class PriceTriangulationService {
    */
   private async readFreshCache(
     itemId: string,
-  ): Promise<Omit<PriceResearchResult, 'recommendation'> | null> {
+  ): Promise<Omit<PriceResearchResult, 'recommendation' | 'query' | 'searchLinks' | 'notice'> | null> {
     const rows = await this.dataSource.manager.find(ItemPriceResearchEntity, {
       where: { itemId },
       order: { fetchedAt: 'DESC' },

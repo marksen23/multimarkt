@@ -46,17 +46,19 @@ cd backend && npm run migration:run
 
 ### Welche Variablen Mocks abschalten
 
-Ohne echten Schlüssel, oder mit dem Platzhalter `unused-mock-provider-active`, antwortet ein Mock. Die Oberfläche sieht dann vollständig aus.
+Ohne echten Schlüssel, oder mit dem Platzhalter `unused-mock-provider-active`, bleibt die jeweilige Quelle aus. Sie erfindet dann keine Attribute, keine Preise und keine Anzeigen. Die Oberfläche sagt das und bietet Links zu Kleinanzeigen, eBay, Vinted und Facebook. Diese Links rufen die Seiten nicht ab.
 
-| Variable | Mock aus, sobald |
+| Variable | Echte Quelle, sobald |
 | --- | --- |
-| `GEMINI_API_KEY` | ein echter Schlüssel, nicht der Platzhalter. Gilt für Bildanalyse, Titel, Beschreibung, Preisrecherche über Google-Suche, Ankaufsuche und Bildoptimierung. |
-| `EBAY_CLIENT_ID` und `EBAY_CLIENT_SECRET` | beide gesetzt und die Client-ID kein Platzhalter. Dann kommen aktive Angebote aus der eBay Browse API. Abgeschlossene Verkäufe liefert diese API nicht. |
+| `GEMINI_API_KEY` | ein echter Schlüssel, nicht der Platzhalter. Gilt für Bildanalyse, Titel, Beschreibung, Preisrecherche über Google-Suche, Ankaufsuche und Bildoptimierung. Anlegen unter [Google AI Studio](https://aistudio.google.com/apikey). |
+| `EBAY_CLIENT_ID` und `EBAY_CLIENT_SECRET` | beide gesetzt und die Client-ID kein Platzhalter. Dann kommen aktive Angebote aus der eBay Browse API. Abgeschlossene Verkäufe liefert diese API nicht. Production App ID (Client ID) und Cert ID (Client Secret) unter [eBay Developer](https://developer.ebay.com/my/keys). Sandbox-Schlüssel sehen den echten Markt nicht. |
 | `S3_BUCKET` zusammen mit `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` und `S3_PUBLIC_URL_BASE` | Fotos liegen in einem S3-kompatiblen Bucket, zum Beispiel Cloudflare R2. |
 
-Der Ankaufsanker bleibt ein Mock. Seine Zahl ist kein Marktpreis.
+Der Ankaufsanker (momox und vergleichbare Portale) bleibt ein Beispiel. Seine Zahl ist kein Marktpreis und hebt die Schmerzgrenze nicht an.
 
-`PUBLIC_BASE_URL` muss für die echte Bildanalyse erreichbar sein, damit relative Foto-URLs abgerufen werden können.
+Lokale Fotos liest die Bildanalyse aus `UPLOAD_DIR`. `PUBLIC_BASE_URL` braucht sie nur noch für Bild-URLs, die nicht unter `/uploads/` liegen.
+
+In Coolify stehen die Schlüssel als Environment Variables an der App, nicht in Git. Danach neu deployen. Die Schritte stehen in [docs/DEPLOY-COOLIFY.md](docs/DEPLOY-COOLIFY.md).
 
 ### Kleinanzeigen
 

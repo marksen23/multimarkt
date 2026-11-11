@@ -1,51 +1,34 @@
 import { Injectable } from '@nestjs/common';
 import { AiAnalysisResult, AiVisionProvider } from '../../domain/ai/ai-vision-provider.interface';
 
+const ATTRIBUTE_KEYS = [
+  'category',
+  'categoryDetail',
+  'color',
+  'brand',
+  'material',
+  'condition',
+  'size',
+  'measurements',
+  'functionChecked',
+  'notable_features',
+  'visible_defects',
+] as const;
+
 /**
- * Deterministischer Stub für die echte Gemini-Vision-Anbindung (Doc 01 §16).
- * Liefert plausible, aber erfundene Claims mit variierender Konfidenz — nie
- * `USER_CONFIRMED` (siehe `AiAttributeClaim`, der Typ erlaubt das nicht).
- * Ein Feld mit niedriger/fehlender Konfidenz wird bewusst als `value: null`
- * zurückgegeben statt geraten (Prinzip "Never silently invent" gilt auch
- * für den Mock, nicht nur für das Backend-Enforcement).
+ * Läuft, solange kein echter GEMINI_API_KEY gesetzt ist. Liest die Fotos
+ * nicht und erfindet keine Jacke, keine Farbe und keine Marke — ein
+ * stiller Platzhalter würde in der Prüfung wie eine echte Analyse
+ * aussehen. Die Oberfläche weist auf den fehlenden Schlüssel hin.
  */
 @Injectable()
 export class MockGeminiVisionProvider implements AiVisionProvider {
   async analyzeItem(input: { imageUrls: string[] }): Promise<AiAnalysisResult> {
-    const hasImages = input.imageUrls.length > 0;
-
+    void input;
     return {
       modelId: 'mock-gemini-vision-stub-v1',
-      promptVersion: '2026-09-20',
-      // Nur, was auf einem Jackenfoto typischerweise sichtbar ist. Größe,
-      // Marke und Funktion werden nicht geraten — ProductAnalysisService
-      // macht daraus Lücken, wenn die Kategorie sie verlangt.
-      attributes: hasImages
-        ? [
-            { key: 'category', value: 'Bekleidung > Herren > Jacken & Mäntel', confidence: 0.91 },
-            { key: 'color', value: 'Schwarz', confidence: 0.87 },
-            { key: 'brand', value: null, confidence: 0.22 },
-            { key: 'material', value: 'Polyester', confidence: 0.58 },
-            // Größe, Maße und Funktion nicht raten — die Taxonomie macht daraus Lücken.
-            { key: 'size', value: null, confidence: 0 },
-            { key: 'measurements', value: null, confidence: 0 },
-            { key: 'functionChecked', value: null, confidence: 0 },
-            { key: 'condition', value: 'good', confidence: 0.64 },
-            { key: 'notable_features', value: null, confidence: 0.1 },
-            { key: 'visible_defects', value: null, confidence: 0.8 },
-          ]
-        : [
-            { key: 'category', value: null, confidence: 0 },
-            { key: 'color', value: null, confidence: 0 },
-            { key: 'brand', value: null, confidence: 0 },
-            { key: 'material', value: null, confidence: 0 },
-            { key: 'size', value: null, confidence: 0 },
-            { key: 'measurements', value: null, confidence: 0 },
-            { key: 'functionChecked', value: null, confidence: 0 },
-            { key: 'condition', value: null, confidence: 0 },
-            { key: 'notable_features', value: null, confidence: 0 },
-            { key: 'visible_defects', value: null, confidence: 0 },
-          ],
+      promptVersion: '2026-11-11',
+      attributes: ATTRIBUTE_KEYS.map((key) => ({ key, value: null, confidence: 0 })),
     };
   }
 }

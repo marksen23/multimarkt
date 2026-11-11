@@ -8,7 +8,7 @@ import { PriceResearchSourceResult } from './price-triangulation.service';
 function marketSource(overrides: Partial<PriceResearchSourceResult> = {}): PriceResearchSourceResult {
   return {
     source: 'EBAY_ACTIVE_LISTINGS',
-    providerLabel: 'eBay Browse API (Mock)',
+    providerLabel: 'eBay Browse API',
     median: 100,
     p25: 90,
     p75: 110,
@@ -41,6 +41,21 @@ describe('PriceRecommendationService', () => {
   it('returns null when no market distribution source produced data (buyback alone is not a sell-price suggestion)', () => {
     const result = service.recommend([buybackSource(30)], null);
     expect(result).toBeNull();
+  });
+
+  it('ignores illustrative or mock-labeled market numbers instead of turning them into a start price', () => {
+    expect(
+      service.recommend(
+        [marketSource({ providerLabel: 'eBay Browse API (Mock)', sampleSize: 20, median: 34 })],
+        'BALANCED',
+      ),
+    ).toBeNull();
+    expect(
+      service.recommend(
+        [marketSource({ sampleSize: 20, median: 34, detail: { illustrative: true } })],
+        'BALANCED',
+      ),
+    ).toBeNull();
   });
 
   it('derives target/list/min prices from a single market source using the documented asking->realized factor', () => {

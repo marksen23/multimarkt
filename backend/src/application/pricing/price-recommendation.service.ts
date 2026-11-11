@@ -47,6 +47,11 @@ function round2(value: number): number {
  * gekennzeichnet ist — explizit oder über das „(Mock)“ im Label —, darf
  * ihre Zahl die Schmerzgrenze nicht anheben und keinen Ankauf empfehlen.
  */
+function isIllustrativeMarket(source: PriceResearchSourceResult): boolean {
+  if (source.detail?.illustrative === true) return true;
+  return /\(Mock\)/i.test(source.providerLabel);
+}
+
 function isIllustrativeBuyback(source: PriceResearchSourceResult): boolean {
   if (source.source !== 'ANKAUF_PORTAL') return false;
   if (source.detail?.illustrative === true) return true;
@@ -67,7 +72,9 @@ export class PriceRecommendationService {
     salesGoal: SalesGoal | null,
   ): PriceRecommendation | null {
     const marketSources = sources.filter(
-      (s) => s.source === 'EBAY_ACTIVE_LISTINGS' || s.source === 'GEMINI_GROUNDING',
+      (s) =>
+        (s.source === 'EBAY_ACTIVE_LISTINGS' || s.source === 'GEMINI_GROUNDING') &&
+        !isIllustrativeMarket(s),
     );
     if (marketSources.length === 0) return null;
 

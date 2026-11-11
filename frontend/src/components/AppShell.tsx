@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { clearAccessToken } from './TokenGate';
 import { useItems } from '../contexts/ItemsContext';
+import { IntegrationBanner } from './IntegrationBanner';
 import { Icon, type IconName } from '../ui';
 
 interface NavItem {
@@ -109,6 +110,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex-1 min-w-0">
+        <div className="max-w-2xl mx-auto px-4 pt-4">
+          <IntegrationBanner />
+        </div>
         <main aria-label="Hauptinhalt" className="pb-[calc(76px+env(safe-area-inset-bottom,0px))] sm:pb-0">{children}</main>
       </div>
 

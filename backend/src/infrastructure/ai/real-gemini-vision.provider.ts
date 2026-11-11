@@ -1,10 +1,12 @@
+import { readFile } from 'node:fs/promises';
+import { extname, join, resolve } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
 import { AiAnalysisResult, AiVisionProvider } from '../../domain/ai/ai-vision-provider.interface';
 
 const MODEL_ID = 'gemini-flash-latest';
-const PROMPT_VERSION = '2026-10-15';
+const PROMPT_VERSION = '2026-11-11';
 
 // Taxonomie-Felder plus Marktplatz-Merkmale. ProductAnalysisService legt die
 // Kategorie auf die kleine Taxonomie und behält notable_features/visible_defects.
@@ -22,15 +24,15 @@ const ATTRIBUTE_KEYS = [
   'visible_defects',
 ] as const;
 
-const PROMPT = `Analysiere die angehängten Fotos eines gebrauchten Gegenstands, der auf deutschen Wiederverkaufsplattformen (Kleinanzeigen, eBay, Vinted) inseriert werden soll.
-Fülle ausschließlich, was auf den Fotos sichtbar ist.
+const PROMPT = `Analysiere die angehängten Fotos eines gebrauchten Gegenstands für Kleinanzeigen, eBay und Vinted.
+Die Fotos können den ganzen Gegenstand, ein Etikett, ein Typenschild oder einen Mangel zeigen. Nutze alle Fotos gemeinsam.
 
 Felder:
-- category: genau eine von Kleidung, Schuhe, Elektronik, Medien, Haushalt, Möbel, Sonstiges — oder null, wenn der Gegenstand nicht erkennbar ist. Eine feinere Pfadangabe wie "Bekleidung > Damen > Jacken" ist erlaubt; sie wird auf diese Liste gelegt.
-- categoryDetail: kurze sichtbare Artikelart (z.B. "Herrenjacke", "iPhone"), oder null.
+- category: genau eine von Kleidung, Schuhe, Elektronik, Medien, Haushalt, Möbel, Sonstiges — oder null, wenn der Gegenstand nicht erkennbar ist.
+- categoryDetail: kurze, suchbare Artikelbezeichnung nur aus sichtbaren Merkmalen, z.B. "Nike Air Max 90", "iPhone 13", "Herren Lederjacke". Kein Kategoriepfad wie "Bekleidung > Herren > Jacken". null, wenn die Art nicht erkennbar ist.
 - color: Hauptfarbe auf Deutsch, nur wenn sichtbar, sonst null.
-- brand: Marke/Hersteller — nur wenn eindeutig erkennbar (Logo, Aufschrift, typisches Design), sonst null.
-- material: Hauptmaterial nur wenn sichtbar, sonst null.
+- brand: Marke nur bei lesbarem Logo, Aufschrift oder eindeutigem Typenschild, sonst null.
+- material: Hauptmaterial nur wenn sichtbar oder auf dem Etikett lesbar, sonst null.
 - condition: eine von new, like_new, good, fair, defective, oder null.
 - size: Größe nur wenn ein Etikett oder eine Größenangabe sichtbar ist, sonst null. Nicht aus dem Schnitt raten.
 - measurements: Maße nur wenn eine Zahl sichtbar ist, sonst null.
@@ -58,34 +60,40 @@ const RESPONSE_SCHEMA = {
   required: [...ATTRIBUTE_KEYS],
 };
 
+const MIME_BY_EXTENSION: Record<string, string> = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.heic': 'image/heic',
+  '.gif': 'image/gif',
+};
+
 interface RawAttributeClaim {
   value: string | null;
   confidence: number;
 }
 
 /**
- * Echte Gemini-Vision-Anbindung (docs/README.md Doc 01 §16, §9e). Ersetzt
- * `MockGeminiVisionProvider` 1:1 am selben Interface — kein Aufrufer-Code
- * ändert sich (siehe ProductAnalysisModule für das Umschalten). Liefert wie
- * der Mock NIE `USER_CONFIRMED` (der Typ `AiAttributeClaim` lässt das
- * strukturell gar nicht zu, siehe dortige Doku).
+ * Echte Gemini-Vision-Anbindung. Ersetzt `MockGeminiVisionProvider` am
+ * selben Interface. Liefert nie USER_CONFIRMED — das setzt nur ein Mensch.
  *
- * Bild-Handling: `imageUrls` sind relative Pfade vom StorageProvider
- * (`/uploads/<key>`, siehe LocalDiskStorageProvider) — Gemini kann damit
- * nichts anfangen, es braucht entweder Bild-Bytes oder eine echte
- * abrufbare URL. Deshalb wird hier `PUBLIC_BASE_URL` + relativer Pfad
- * abgerufen und als Inline-Base64 mitgeschickt (funktioniert unverändert
- * mit einem künftigen S3Provider, dessen URLs schon absolut wären).
+ * Lokale Uploads (`/uploads/<key>`) werden von der Platte gelesen.
+ * Ein Umweg über PUBLIC_BASE_URL scheitert in Coolify oft, weil
+ * `mm.localhost` aus dem Container nicht erreichbar ist. Öffentliche
+ * http(s)-URLs (S3) werden weiter per HTTP geholt.
  */
 @Injectable()
 export class RealGeminiVisionProvider implements AiVisionProvider {
   private readonly logger = new Logger(RealGeminiVisionProvider.name);
   private readonly client: GoogleGenAI;
   private readonly publicBaseUrl: string;
+  private readonly uploadDir: string;
 
   constructor(config: ConfigService) {
     this.client = new GoogleGenAI({ apiKey: config.get<string>('GEMINI_API_KEY') });
     this.publicBaseUrl = config.get<string>('PUBLIC_BASE_URL') ?? 'http://localhost:3000';
+    this.uploadDir = resolve(process.cwd(), config.get<string>('UPLOAD_DIR') ?? 'uploads');
   }
 
   async analyzeItem(input: { imageUrls: string[] }): Promise<AiAnalysisResult> {
@@ -93,34 +101,47 @@ export class RealGeminiVisionProvider implements AiVisionProvider {
       return { modelId: MODEL_ID, promptVersion: PROMPT_VERSION, attributes: this.emptyClaims() };
     }
 
-    const imageParts = await Promise.all(input.imageUrls.map((url) => this.fetchAsInlinePart(url)));
+    const imageParts = await Promise.all(input.imageUrls.map((url) => this.loadInlinePart(url)));
 
-    const response = await this.client.models.generateContent({
-      model: MODEL_ID,
-      contents: [{ role: 'user', parts: [{ text: PROMPT }, ...imageParts] }],
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: RESPONSE_SCHEMA,
-      },
-    });
+    let text: string | undefined;
+    try {
+      const response = await this.client.models.generateContent({
+        model: MODEL_ID,
+        contents: [{ role: 'user', parts: [{ text: PROMPT }, ...imageParts] }],
+        config: {
+          temperature: 0.2,
+          responseMimeType: 'application/json',
+          responseSchema: RESPONSE_SCHEMA,
+        },
+      });
+      text = response.text;
+    } catch (error) {
+      this.logger.error(`Gemini vision request failed: ${(error as Error).message}`);
+      throw new Error(
+        'Gemini hat die Fotos nicht analysiert. Prüfe GEMINI_API_KEY und das Kontingent in Google AI Studio. Die Fotos bleiben gespeichert.',
+      );
+    }
 
-    const raw = this.parseResponse(response.text);
+    const raw = this.parseResponse(text);
 
     return {
       modelId: MODEL_ID,
       promptVersion: PROMPT_VERSION,
       attributes: ATTRIBUTE_KEYS.map((key) => ({
         key,
-        // "Never silently invent" gilt auch hier: ein leerer/whitespace
-        // String zählt als kein Wert, nicht als (fälschlich) INFERRED.
         value: raw[key]?.value?.trim() ? raw[key].value : null,
-        confidence: raw[key]?.confidence ?? 0,
+        confidence: this.clampConfidence(raw[key]?.confidence),
       })),
     };
   }
 
   private emptyClaims() {
     return ATTRIBUTE_KEYS.map((key) => ({ key, value: null, confidence: 0 }));
+  }
+
+  private clampConfidence(value: number | undefined): number {
+    if (typeof value !== 'number' || Number.isNaN(value)) return 0;
+    return Math.min(1, Math.max(0, value));
   }
 
   private parseResponse(text: string | undefined): Record<string, RawAttributeClaim> {
@@ -131,19 +152,62 @@ export class RealGeminiVisionProvider implements AiVisionProvider {
     try {
       return JSON.parse(text) as Record<string, RawAttributeClaim>;
     } catch (error) {
-      // Ein Parsing-Fehler darf NIE dazu führen, dass irgendein Wert
-      // erfunden wird — stattdessen wird die gesamte Analyse als
-      // "nichts erkannt" behandelt (führt zu UNKNOWN je Attribut).
       this.logger.error(`Could not parse Gemini structured output: ${(error as Error).message}`);
       return {};
     }
   }
 
+  private async loadInlinePart(imageUrl: string): Promise<{ inlineData: { mimeType: string; data: string } }> {
+    const fromDisk = await this.readLocalUpload(imageUrl);
+    if (fromDisk) return fromDisk;
+    return this.fetchAsInlinePart(imageUrl);
+  }
+
+  private async readLocalUpload(
+    imageUrl: string,
+  ): Promise<{ inlineData: { mimeType: string; data: string } } | null> {
+    const key = this.uploadKey(imageUrl);
+    if (!key) return null;
+    try {
+      const buffer = await readFile(join(this.uploadDir, key));
+      const mimeType = MIME_BY_EXTENSION[extname(key).toLowerCase()] ?? 'image/jpeg';
+      return { inlineData: { mimeType, data: buffer.toString('base64') } };
+    } catch (error) {
+      this.logger.warn(`Local upload ${key} was not readable (${(error as Error).message}), trying HTTP`);
+      return null;
+    }
+  }
+
+  /** Nur der Dateiname unter /uploads, kein Pfad dazwischen. */
+  private uploadKey(imageUrl: string): string | null {
+    let pathname = imageUrl;
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      try {
+        pathname = new URL(imageUrl).pathname;
+      } catch {
+        return null;
+      }
+    }
+    if (!pathname.startsWith('/uploads/')) return null;
+    const key = decodeURIComponent(pathname.slice('/uploads/'.length));
+    if (!key || key.includes('/') || key.includes('\\') || key.includes('..')) return null;
+    return key;
+  }
+
   private async fetchAsInlinePart(imageUrl: string): Promise<{ inlineData: { mimeType: string; data: string } }> {
     const absoluteUrl = imageUrl.startsWith('http') ? imageUrl : `${this.publicBaseUrl}${imageUrl}`;
-    const response = await fetch(absoluteUrl);
+    let response: Response;
+    try {
+      response = await fetch(absoluteUrl);
+    } catch (error) {
+      throw new Error(
+        `Foto nicht lesbar (${absoluteUrl}): ${(error as Error).message}. Liegt die Datei lokal, muss sie unter UPLOAD_DIR liegen.`,
+      );
+    }
     if (!response.ok) {
-      throw new Error(`Could not fetch image for Gemini analysis: ${absoluteUrl} (${response.status})`);
+      throw new Error(
+        `Foto nicht lesbar: ${absoluteUrl} (HTTP ${response.status}). Liegt die Datei lokal, muss sie unter UPLOAD_DIR liegen.`,
+      );
     }
     const mimeType = response.headers.get('content-type') ?? 'image/jpeg';
     const buffer = Buffer.from(await response.arrayBuffer());

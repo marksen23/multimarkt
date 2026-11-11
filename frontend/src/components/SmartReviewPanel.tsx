@@ -170,6 +170,18 @@ export function SmartReviewPanel({
             </span>
           )}
         </div>
+        {detail.attributes.some((attribute) => attribute.source.startsWith('mock-gemini')) && (
+          <Notice tone="warning">
+            Die Fotos wurden nicht gelesen. Ohne GEMINI_API_KEY bleibt die Erkennung leer — Kategorie und Merkmale
+            trägst du hier selbst ein.
+          </Notice>
+        )}
+        {detail.attributes.some((attribute) => attribute.source.endsWith(':auto')) && (
+          <Notice tone="warning">
+            Einige Angaben wurden früher ohne deine Prüfung als bestätigt gespeichert. „KI-Analyse wiederholen“ setzt
+            sie zurück.
+          </Notice>
+        )}
         {reanalyzeError && (
           <Notice tone="danger">{reanalyzeError}</Notice>
         )}
