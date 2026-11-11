@@ -37,7 +37,7 @@ describe('RealEbayBrowseProvider', () => {
     expect(await provider.search({ keywords: '  ', condition: null })).toBeNull();
   });
 
-  it('returns null when fewer than 3 priced listings are returned', async () => {
+  it('keeps a thin sample instead of hiding one or two real listings', async () => {
     global.fetch = makeFetch(TOKEN_RESPONSE, {
       itemSummaries: [
         { title: 'Jacke', price: { value: '30' } },
@@ -46,7 +46,42 @@ describe('RealEbayBrowseProvider', () => {
     }) as unknown as typeof global.fetch;
 
     const provider = new RealEbayBrowseProvider(makeConfig());
-    expect(await provider.search({ keywords: 'Jacke', condition: null })).toBeNull();
+    const result = await provider.search({ keywords: 'Jacke', condition: null });
+
+    expect(result?.sampleSize).toBe(2);
+    expect(result?.median).toBe(25);
+    expect(result?.comparableListings).toHaveLength(2);
+  });
+
+  it('asks for used condition ids and falls back when that filter matches nothing', async () => {
+    const fetchMock = jest.fn().mockImplementation((url: string) => {
+      if (String(url).includes('oauth2/token')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(TOKEN_RESPONSE) });
+      }
+      if (String(url).includes('conditionIds')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ itemSummaries: [] }) });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            itemSummaries: [
+              { title: 'A', price: { value: '10' } },
+              { title: 'B', price: { value: '20' } },
+              { title: 'C', price: { value: '30' } },
+            ],
+          }),
+      });
+    });
+    global.fetch = fetchMock as unknown as typeof global.fetch;
+
+    const provider = new RealEbayBrowseProvider(makeConfig());
+    const result = await provider.search({ keywords: 'Jacke', condition: null });
+
+    const searchUrls = fetchMock.mock.calls.map((call) => String(call[0])).filter((url) => url.includes('item_summary'));
+    expect(searchUrls[0]).toContain('conditionIds%3A%7B3000%7C4000%7C5000%7C6000%7D');
+    expect(searchUrls[1]).not.toContain('conditionIds');
+    expect(result?.sampleSize).toBe(3);
   });
 
   it('computes median / p25 / p75 from sorted prices', async () => {

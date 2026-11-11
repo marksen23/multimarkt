@@ -36,6 +36,11 @@ export interface MarketDistributionResult {
   providerLabel: string;
   /** Beispieltitel zum Abgleich ("wie beschreiben andere das?"), keine vollen Beschreibungstexte. */
   comparableListings: ComparableListing[];
+  /**
+   * true: die Zahlen sind ein Beispiel und dürfen keinen Startpreis
+   * und keine Konfidenz begründen. Echte Provider lassen das weg.
+   */
+  illustrative?: boolean;
 }
 
 export interface MarketDistributionProvider {

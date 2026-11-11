@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   MarketDistributionProvider,
@@ -10,7 +10,9 @@ const TOKEN_ENDPOINT = 'https://api.ebay.com/identity/v1/oauth2/token';
 const SEARCH_ENDPOINT = 'https://api.ebay.com/buy/browse/v1/item_summary/search';
 const MARKETPLACE_ID = 'EBAY_DE';
 const OAUTH_SCOPE = 'https://api.ebay.com/oauth/api_scope';
-const MIN_SAMPLE_SIZE = 3;
+// 3000 Used, 4000 Very Good, 5000 Good, 6000 Acceptable.
+// 2000/2500 sind generalüberholt, nicht „Gut“ / „Sehr gut“.
+const USED_CONDITION_FILTER = 'conditionIds:{3000|4000|5000|6000}';
 
 interface TokenCache {
   accessToken: string;
@@ -29,6 +31,7 @@ interface EbaySearchResponse {
 
 @Injectable()
 export class RealEbayBrowseProvider implements MarketDistributionProvider {
+  private readonly logger = new Logger(RealEbayBrowseProvider.name);
   private tokenCache: TokenCache | null = null;
 
   constructor(private readonly config: ConfigService) {}
@@ -38,8 +41,13 @@ export class RealEbayBrowseProvider implements MarketDistributionProvider {
 
     try {
       const token = await this.getAccessToken();
-      const items = await this.fetchListings(token, query.keywords);
-      if (items.length < MIN_SAMPLE_SIZE) return null;
+      let items = await this.fetchListings(token, query.keywords, USED_CONDITION_FILTER);
+      // Ein abgelehnter oder zu enger Zustandsfilter darf die Suche nicht
+      // auf null setzen, wenn es ohne Filter Treffer gibt.
+      if (items.length === 0) {
+        items = await this.fetchListings(token, query.keywords, null);
+      }
+      if (items.length < 1) return null;
 
       const prices = items.map((i) => i.price).sort((a, b) => a - b);
       return {
@@ -51,7 +59,8 @@ export class RealEbayBrowseProvider implements MarketDistributionProvider {
         providerLabel: 'eBay Browse API',
         comparableListings: items.slice(0, 20).map((i) => ({ title: i.title, price: i.price, url: i.url })),
       };
-    } catch {
+    } catch (error) {
+      this.logger.warn(`eBay Browse search failed: ${(error as Error).message}`);
       return null;
     }
   }
@@ -85,13 +94,13 @@ export class RealEbayBrowseProvider implements MarketDistributionProvider {
   private async fetchListings(
     token: string,
     keywords: string,
+    conditionFilter: string | null,
   ): Promise<{ title: string; price: number; url: string | null }[]> {
     const params = new URLSearchParams({
       q: keywords,
       limit: '50',
-      // conditionIds: 3000 = Used, 2500 = Very Good, 2000 = Good
-      filter: 'conditionIds:{3000|2500|2000}',
     });
+    if (conditionFilter) params.set('filter', conditionFilter);
 
     const res = await fetch(`${SEARCH_ENDPOINT}?${params}`, {
       headers: {
@@ -101,7 +110,10 @@ export class RealEbayBrowseProvider implements MarketDistributionProvider {
       },
     });
 
-    if (!res.ok) return [];
+    if (!res.ok) {
+      this.logger.warn(`eBay Browse search HTTP ${res.status} for "${keywords}"`);
+      return [];
+    }
 
     const data = (await res.json()) as EbaySearchResponse;
     return (data.itemSummaries ?? [])

@@ -1,4 +1,5 @@
 import type { AnkaufConditionKey } from './condition';
+import type { MarketplaceSearchLink } from '../search/marketplace-search-links';
 
 export type DealScore = 'SEHR_GUT' | 'GUT' | 'FAIR' | 'TEUER';
 
@@ -30,6 +31,12 @@ export interface AnkaufResearchResult {
   listings: AnkaufListing[];
   conditionPriceImpact: Record<string, ConditionPriceImpact>;
   searchedAt: string;
+  /** Plattformsuchen zum Selbstöffnen. Immer gesetzt, auch wenn listings leer sind. */
+  searchLinks: MarketplaceSearchLink[];
+  /** Warum keine eingesammelten Anzeigen da sind, sonst null. */
+  notice: string | null;
+  /** true, wenn die Quelle keine echten Anzeigen geliefert hat (z. B. fehlender Schlüssel). */
+  illustrative: boolean;
 }
 
 export interface AnkaufSearchRequest {

@@ -74,7 +74,7 @@ describe('PriceTriangulationService', () => {
       p75: 41,
       sampleSize: 12,
       currency: 'EUR',
-      providerLabel: 'eBay Browse API (Mock)',
+      providerLabel: 'eBay Browse API',
       comparableListings: [{ title: 'Nike Sneaker, guter Zustand', price: 34 }],
     });
     buybackProvider.quote.mockResolvedValue({
@@ -113,7 +113,7 @@ describe('PriceTriangulationService', () => {
       p75: 41,
       sampleSize: 12,
       currency: 'EUR',
-      providerLabel: 'eBay Browse API (Mock)',
+      providerLabel: 'eBay Browse API',
       comparableListings: [],
     });
     buybackProvider.quote.mockResolvedValue({
@@ -167,7 +167,7 @@ describe('PriceTriangulationService', () => {
       p75: 41,
       sampleSize: 2, // unter fünf Vergleichen
       currency: 'EUR',
-      providerLabel: 'eBay Browse API (Mock)',
+      providerLabel: 'eBay Browse API',
       comparableListings: [],
     });
     buybackProvider.quote.mockResolvedValue(null);
@@ -184,6 +184,36 @@ describe('PriceTriangulationService', () => {
     expect(result.recommendation?.priceBasisNote).toBe(
       'Angebotspreise, nicht erzielte Verkäufe, Faktor 0,87',
     );
+  });
+
+  it('searches with the concrete article instead of only the coarse category', async () => {
+    const { dataSource } = makeDataSource({
+      item: { id: 'i1', condition: 'good', title: 'unbrauchbarer Titel' },
+      attributes: [
+        attr('brand', 'Nike'),
+        attr('category', 'Schuhe'),
+        attr('categoryDetail', 'Air Max 90'),
+        attr('color', 'Schwarz'),
+      ],
+    });
+    marketProvider.search.mockResolvedValue(null);
+    buybackProvider.quote.mockResolvedValue(null);
+
+    const service = makeService(dataSource);
+    const result = await service.research('i1');
+
+    expect(marketProvider.search).toHaveBeenCalledWith({
+      keywords: 'Nike Air Max 90 Schwarz',
+      condition: 'good',
+    });
+    expect(result.query).toBe('Nike Air Max 90 Schwarz');
+    expect(result.notice).toMatch(/Keine Vergleichsangebote/);
+    expect(result.searchLinks.map((link) => link.platform)).toEqual([
+      'KLEINANZEIGEN',
+      'EBAY',
+      'VINTED',
+      'FACEBOOK',
+    ]);
   });
 
   it('skips the market lookup entirely when no brand/category attribute is known', async () => {
@@ -212,7 +242,7 @@ describe('PriceTriangulationService', () => {
       p75: 41,
       sampleSize: 12,
       currency: 'EUR',
-      providerLabel: 'eBay Browse API (Mock)',
+      providerLabel: 'eBay Browse API',
       comparableListings: [{ title: 'Nike Sneaker, guter Zustand', price: 34 }],
     });
     buybackProvider.quote.mockResolvedValue(null);
@@ -231,7 +261,7 @@ describe('PriceTriangulationService', () => {
       cachedRows: [
         {
           source: 'EBAY_ACTIVE_LISTINGS',
-          providerLabel: 'eBay Browse API (Mock)',
+          providerLabel: 'eBay Browse API',
           median: 34,
           p25: 28,
           p75: 41,
@@ -262,7 +292,7 @@ describe('PriceTriangulationService', () => {
       cachedRows: [
         {
           source: 'EBAY_ACTIVE_LISTINGS',
-          providerLabel: 'eBay Browse API (Mock)',
+          providerLabel: 'eBay Browse API',
           median: 34,
           p25: 28,
           p75: 41,
@@ -279,7 +309,7 @@ describe('PriceTriangulationService', () => {
       p75: 45,
       sampleSize: 8,
       currency: 'EUR',
-      providerLabel: 'eBay Browse API (Mock)',
+      providerLabel: 'eBay Browse API',
       comparableListings: [],
     });
     buybackProvider.quote.mockResolvedValue(null);
@@ -299,7 +329,7 @@ describe('PriceTriangulationService', () => {
       cachedRows: [
         {
           source: 'EBAY_ACTIVE_LISTINGS',
-          providerLabel: 'eBay Browse API (Mock)',
+          providerLabel: 'eBay Browse API',
           median: 34,
           p25: 28,
           p75: 41,
@@ -316,7 +346,7 @@ describe('PriceTriangulationService', () => {
       p75: 45,
       sampleSize: 8,
       currency: 'EUR',
-      providerLabel: 'eBay Browse API (Mock)',
+      providerLabel: 'eBay Browse API',
       comparableListings: [],
     });
     buybackProvider.quote.mockResolvedValue(null);

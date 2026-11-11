@@ -282,11 +282,28 @@ export interface PriceRecommendation {
   priceBasisNote: string;
 }
 
+export interface MarketplaceSearchLink {
+  platform: 'KLEINANZEIGEN' | 'EBAY' | 'VINTED' | 'FACEBOOK';
+  label: string;
+  url: string;
+  note: string | null;
+}
+
 export interface PriceResearchResult {
   itemId: string;
   sources: PriceResearchSourceResult[];
   fetchedAt: string;
   recommendation: PriceRecommendation | null;
+  query?: string;
+  searchLinks?: MarketplaceSearchLink[];
+  notice?: string | null;
+}
+
+export interface IntegrationStatus {
+  geminiLive: boolean;
+  ebayLive: boolean;
+  photoStorageDurable: boolean;
+  buybackLive: false;
 }
 
 export type ListingChannel = 'KLEINANZEIGEN' | 'EBAY' | 'VINTED';
@@ -432,6 +449,9 @@ export interface AnkaufResearchResult {
   listings: AnkaufListing[];
   conditionPriceImpact: Record<string, ConditionPriceImpact>;
   searchedAt: string;
+  searchLinks?: MarketplaceSearchLink[];
+  notice?: string | null;
+  illustrative?: boolean;
 }
 
 export interface AnkaufSearchProfile {

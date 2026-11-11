@@ -37,7 +37,25 @@ Coolify erzeugt die Werte zu den `SERVICE_*`-Namen beim Laden der Compose-Datei.
 
 `PUBLIC_BASE_URL` übernimmt die von Coolify erzeugte URL. Für Foto-Links, die ein externer Dienst abruft, muss diese URL von außen erreichbar sein.
 
-Leer lassen, solange die Mocks reichen: `GEMINI_API_KEY`, `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`, `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_URL_BASE`. Ein echter Wert wird nur im Coolify-UI eingetragen. Der Platzhalter `unused-mock-provider-active` lässt den Mock ebenfalls an. Welche Namen der Code liest, steht in `backend/.env.example`.
+Leer lassen, solange Beispielwerte reichen: `GEMINI_API_KEY`, `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`, `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_URL_BASE`. Ein echter Wert wird nur im Coolify-UI eingetragen. Der Platzhalter `unused-mock-provider-active` lässt die Quelle ebenfalls aus. Welche Namen der Code liest, steht in `backend/.env.example`.
+
+Ohne diese Schlüssel erfindet die App keine Fotomerksmale, keine Preise und keine Anzeigen. Oben in der Oberfläche steht dann, was fehlt. Stattdessen gibt es Links auf die Suche bei Kleinanzeigen, eBay, Vinted und Facebook. Die App ruft diese Seiten nicht ab.
+
+So schaltest du eine Quelle scharf:
+
+1. In Coolify die App öffnen, dann **Environment Variables** (nicht die Compose-Datei im Git).
+2. Den Namen exakt so eintragen, den Wert nur dort speichern, Redeploy starten.
+3. Die Leiste in der App verschwindet für die gesetzte Quelle, sobald der neue Prozess läuft.
+
+| Variable | Wofür | Woher |
+| --- | --- | --- |
+| `GEMINI_API_KEY` | Bildanalyse, Titel, Beschreibung, Web-Preisrecherche, Ankaufsuche, Bildoptimierung | [Google AI Studio](https://aistudio.google.com/apikey), „API key“ anlegen |
+| `EBAY_CLIENT_ID` | aktive Angebote auf eBay.de (Browse API). Zusammen mit dem Secret. | [eBay Developer](https://developer.ebay.com/my/keys): Keyset **Production**, Feld App ID (Client ID). Sandbox-Schlüssel liefern nicht den echten Markt. Abgeschlossene Verkäufe gibt diese API nicht her. |
+| `EBAY_CLIENT_SECRET` | dasselbe Keyset, Feld Cert ID (Client Secret) | dieselbe Seite |
+
+`PUBLIC_BASE_URL` setzt Coolify über `SERVICE_URL_APP_3000`. Die Bildanalyse liest lokale Fotos aus dem Volume `uploads` und muss diese URL dafür nicht von außen abrufen. Eine fremde http(s)-Bildadresse wird weiter über diese Basis geholt.
+
+Das Ankaufportal (momox und vergleichbare Portale) hat keine angebundene Schnittstelle. Der Richtwert bleibt ein Beispiel und hebt die Schmerzgrenze nicht an.
 
 ## Daten
 

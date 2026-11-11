@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { copyText } from '../lib/clipboard';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import { followUpsApi, type ItemFollowUp } from '../api/follow-ups';
 import { itemsApi } from '../api/items';
@@ -52,11 +52,14 @@ const FINISHED = new Set(['SOLD', 'CANCELLED', 'ARCHIVED']);
 export function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   const { refresh: refreshItems } = useItems();
   const [detail, setDetail] = useState<ItemDetail | null>(null);
   const [followUp, setFollowUp] = useState<ItemFollowUp | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    () => (location.state as { analysisError?: string } | null)?.analysisError ?? null,
+  );
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState<'discard' | 'sold' | null>(null);
   const [manual, setManual] = useState(false);

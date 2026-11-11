@@ -37,6 +37,7 @@ import { ListingsController } from './controllers/listings.controller';
 import { SaleEventsController } from './controllers/sale-events.controller';
 import { SalesController } from './controllers/sales.controller';
 import { StorageController } from './controllers/storage.controller';
+import { SystemController } from './controllers/system.controller';
 import { WorklistController } from './controllers/worklist.controller';
 import { WebhooksModule } from './webhooks/webhooks.module';
 
@@ -83,6 +84,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     AccountController,
     AnkaufController,
     WorklistController,
+    SystemController,
   ],
 })
 export class ApiModule {}

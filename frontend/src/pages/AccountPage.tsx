@@ -5,6 +5,7 @@ import { ApiRequestError } from '../api/client';
 import { clearAccessToken } from '../components/TokenGate';
 import { useTheme } from '../hooks/useTheme';
 import type { DeletionAuditLog, ItemListEntry } from '../api/types';
+import { IntegrationBanner } from '../components/IntegrationBanner';
 import { Button, Card, Icon, Notice, PageHeader, SectionLabel } from '../ui';
 import { formatEuro, realizedPrice } from '../lib/format';
 
@@ -69,6 +70,8 @@ export function AccountPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-5">
       <PageHeader title="Konto" />
+
+      <IntegrationBanner verbose />
 
       <SectionLabel>Statistik</SectionLabel>
 

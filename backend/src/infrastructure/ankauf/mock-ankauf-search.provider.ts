@@ -5,91 +5,16 @@ import type {
   AnkaufSearchQuery,
 } from '../../domain/ankauf/ankauf-search-provider.interface';
 
+/**
+ * Ohne GEMINI_API_KEY. PLZ und Umkreis werden nicht ignoriert, indem
+ * feste Beispielanzeigen zurückkommen — es gibt schlicht keine
+ * eingesammelten Angebote. AnkaufResearchService hängt stattdessen
+ * Links auf Kleinanzeigen, eBay, Vinted und Facebook an.
+ */
 @Injectable()
 export class MockAnkaufSearchProvider implements AnkaufSearchProvider {
-  async search(query: AnkaufSearchQuery): Promise<AnkaufSearchProviderResult> {
-    const kw = query.keywords.trim();
-    return {
-      marketMedian: 65,
-      listings: [
-        {
-          title: `${kw} — wie neu, kaum getragen`,
-          price: 55,
-          platform: 'KLEINANZEIGEN',
-          url: 'https://www.kleinanzeigen.de/s-anzeige/example/1234567890',
-          condition: 'Wie neu',
-        },
-        {
-          title: `${kw} — sehr guter Zustand`,
-          price: 48,
-          platform: 'VINTED',
-          url: 'https://www.vinted.de/items/1234567',
-          condition: 'Sehr guter Zustand',
-        },
-        {
-          title: `${kw} TOP Zustand mit OVP`,
-          price: 72,
-          platform: 'EBAY',
-          url: 'https://www.ebay.de/itm/123456789012',
-          condition: 'Sehr gut',
-        },
-        {
-          title: `${kw} gebraucht, ein paar Kratzer`,
-          price: 35,
-          platform: 'KLEINANZEIGEN',
-          url: 'https://www.kleinanzeigen.de/s-anzeige/example/9876543210',
-          condition: 'Gebraucht — kleine Kratzer an der Sohle',
-        },
-        {
-          title: `${kw} Gr. 42`,
-          price: 60,
-          platform: 'FACEBOOK',
-          url: null,
-          condition: 'Guter Zustand',
-        },
-        {
-          title: `${kw} defekt, wie neu, OVP`,
-          price: 51,
-          platform: 'EBAY',
-          url: 'https://www.ebay.de/itm/555555555555',
-          condition: 'Gut',
-        },
-        {
-          title: `${kw} — wie neu laut Überschrift`,
-          price: 44,
-          platform: 'FACEBOOK',
-          url: null,
-          condition: null,
-        },
-        {
-          title: `${kw} Beschreibung im Fließtext`,
-          price: 39,
-          platform: 'KLEINANZEIGEN',
-          url: 'https://www.kleinanzeigen.de/s-anzeige/example/2222222222',
-          condition: 'siehe Beschreibung',
-        },
-        {
-          title: `${kw} original, Rechnung vorhanden`,
-          price: 89,
-          platform: 'EBAY',
-          url: 'https://www.ebay.de/itm/987654321098',
-          condition: 'Wie neu, mit Originalrechnung',
-        },
-        {
-          title: `${kw} Schnäppchen! Defekt (Sohle löst sich)`,
-          price: 15,
-          platform: 'KLEINANZEIGEN',
-          url: 'https://www.kleinanzeigen.de/s-anzeige/example/1111111111',
-          condition: 'Defekt — Sohle löst sich',
-        },
-        {
-          title: `${kw} guter Zustand, kein Tausch`,
-          price: 58,
-          platform: 'VINTED',
-          url: 'https://www.vinted.de/items/7654321',
-          condition: 'Gut',
-        },
-      ],
-    };
+  async search(query: AnkaufSearchQuery): Promise<AnkaufSearchProviderResult | null> {
+    if (!query.keywords.trim()) return null;
+    return { marketMedian: null, listings: [], illustrative: true };
   }
 }

@@ -10,6 +10,7 @@ import type {
   AnkaufSearchSummary,
   DealScore,
 } from '../api/types';
+import { MarketplaceSearchLinks } from '../components/MarketplaceSearchLinks';
 import { Button, Card, EmptyState, Field, Icon, Notice, PageHeader, SectionLabel, Spinner, inputClass } from '../ui';
 import { formatEuro } from '../lib/format';
 
@@ -322,6 +323,13 @@ export function AnkaufPage() {
 
       {result && !loading && (
         <div className="space-y-4">
+          {result.notice && <Notice tone={result.illustrative ? 'warning' : 'info'}>{result.notice}</Notice>}
+          {(result.searchLinks?.length ?? 0) > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-micro uppercase text-ink-muted">Direkt auf der Plattform suchen</p>
+              <MarketplaceSearchLinks links={result.searchLinks} />
+            </div>
+          )}
           {result.marketMedianEur !== null && (
             <div className="bg-accent-soft border border-accent/20 rounded-control px-4 py-3">
               <div className="flex items-center justify-between gap-3">

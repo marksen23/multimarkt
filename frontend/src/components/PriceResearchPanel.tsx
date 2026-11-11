@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { itemsApi } from '../api/items';
 import type { PriceRecommendation, PriceResearchResult, PriceResearchSourceResult, SalesGoal } from '../api/types';
+import { MarketplaceSearchLinks } from './MarketplaceSearchLinks';
 import { SkeletonBlock } from './Skeleton';
-import { Button, Icon, Spinner } from '../ui';
+import { Button, Icon, Notice, Spinner } from '../ui';
 import type { LogisticsProfile } from '../logistics/profile';
 import { ChannelNetComparison } from './ChannelNetComparison';
 import { ExpectedMarginFields } from './ExpectedMarginFields';
@@ -92,8 +93,14 @@ export function PriceResearchPanel({
       <SkeletonBlock className="h-14" />
     </div>
   );
-  // Rein beratend — ein Fehlschlag blockiert nie die manuelle Preiseingabe.
-  if (failed || !result || result.sources.length === 0) return null;
+  if (failed) {
+    return (
+      <Notice tone="warning">
+        Preisvergleich gerade nicht erreichbar. Den Preis kannst du trotzdem von Hand eintragen.
+      </Notice>
+    );
+  }
+  if (!result) return null;
 
   return (
     <div className="space-y-2">
@@ -126,7 +133,10 @@ export function PriceResearchPanel({
       </div>
       <p className="text-label font-normal text-ink-faint">
         Stand: {new Date(result.fetchedAt).toLocaleString('de-DE')}
+        {result.query ? ` · Suche: ${result.query}` : ''}
       </p>
+      {result.notice && <Notice tone="info">{result.notice}</Notice>}
+      <MarketplaceSearchLinks links={result.searchLinks} />
 
       {result.recommendation && (
         <>
@@ -244,8 +254,7 @@ function RecommendationCard({
   );
 }
 
-function isExampleBuyback(source: PriceResearchSourceResult): boolean {
-  if (source.source !== 'ANKAUF_PORTAL') return false;
+function isExampleSource(source: PriceResearchSourceResult): boolean {
   if (source.detail?.illustrative === true) return true;
   return /\(Mock\)/i.test(source.providerLabel);
 }
@@ -258,13 +267,17 @@ function SourceCard({
   onSuggestPrice: (price: number) => void;
 }) {
   const listings = source.detail?.comparableListings ?? [];
-  const example = isExampleBuyback(source);
+  const example = isExampleSource(source);
 
   return (
     <div className="bg-surface-hover border border-line rounded-control p-3 space-y-1">
       <div className="flex items-center justify-between gap-2">
         <span className="text-label text-ink-muted">
-          {example ? 'Ankaufportal (Beispiel)' : (SOURCE_LABELS[source.source] ?? source.source)}
+          {example
+            ? source.source === 'ANKAUF_PORTAL'
+              ? 'Ankaufportal (Beispiel)'
+              : `${SOURCE_LABELS[source.source] ?? source.source} (Beispiel)`
+            : (SOURCE_LABELS[source.source] ?? source.source)}
         </span>
         {source.median !== null && !example && (
           <Button size="sm" className="shrink-0 tabular-nums" onClick={() => onSuggestPrice(source.median as number)}
@@ -275,8 +288,10 @@ function SourceCard({
       </div>
 
       <p className="text-label font-normal text-ink-faint">
-        {example
+        {example && source.source === 'ANKAUF_PORTAL'
           ? `${source.providerLabel}: Beispiel, kein echtes Angebot (${Number(source.detail?.buybackPrice ?? 0).toFixed(2)} €). Hebt die Schmerzgrenze nicht an und lenkt nicht zum Ankauf.`
+          : example
+            ? `${source.providerLabel}: Beispielwerte, kein Marktpreis. Sie fließen nicht in Startpreis, Zielpreis oder Schmerzgrenze.`
           : source.source === 'ANKAUF_PORTAL'
             ? `${source.providerLabel}: Ankaufspreis ${Number(source.detail?.buybackPrice ?? 0).toFixed(2)} € → Richtwert (×${source.detail?.multiplier ?? '?'})`
             : source.p25 !== null && source.p75 !== null

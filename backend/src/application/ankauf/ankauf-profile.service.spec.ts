@@ -29,6 +29,9 @@ function resultFor(keywords: string): AnkaufResearchResult {
     ],
     conditionPriceImpact: {},
     searchedAt: '2026-10-15T12:00:00.000Z',
+    searchLinks: [],
+    notice: null,
+    illustrative: false,
   };
 }
 

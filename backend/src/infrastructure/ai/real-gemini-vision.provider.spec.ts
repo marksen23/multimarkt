@@ -1,3 +1,6 @@
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { ConfigService } from '@nestjs/config';
 
 const generateContentMock = jest.fn();
@@ -103,5 +106,30 @@ describe('RealGeminiVisionProvider', () => {
     const result = await provider.analyzeItem({ imageUrls: ['/uploads/abc.jpg'] });
 
     expect(result.attributes.find((a) => a.key === 'category')?.value).toBeNull();
+  });
+
+  it('reads a local /uploads file from disk instead of fetching PUBLIC_BASE_URL', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'vision-uploads-'));
+    await writeFile(join(dir, 'photo.jpg'), Buffer.from([1, 2, 3]));
+    generateContentMock.mockResolvedValue({
+      text: JSON.stringify({
+        category: { value: 'Schuhe', confidence: 0.8 },
+        categoryDetail: { value: 'Sneaker', confidence: 0.7 },
+      }),
+    });
+
+    const provider = new RealGeminiVisionProvider(
+      makeConfig({
+        GEMINI_API_KEY: 'real-key',
+        PUBLIC_BASE_URL: 'http://mm.localhost',
+        UPLOAD_DIR: dir,
+      }),
+    );
+    const result = await provider.analyzeItem({ imageUrls: ['/uploads/photo.jpg'] });
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    const call = generateContentMock.mock.calls[0][0];
+    expect(call.contents[0].parts[1].inlineData.data).toBe(Buffer.from([1, 2, 3]).toString('base64'));
+    expect(result.attributes.find((attribute) => attribute.key === 'categoryDetail')?.value).toBe('Sneaker');
   });
 });

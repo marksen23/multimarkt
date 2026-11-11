@@ -151,6 +151,28 @@ describe('AnkaufResearchService', () => {
       location: 'PLZ 80331 (50 km Umkreis)',
     });
     expect(result.location).toBe('PLZ 80331 (50 km Umkreis)');
+    expect(result.searchLinks.map((link) => link.platform)).toEqual([
+      'KLEINANZEIGEN',
+      'EBAY',
+      'VINTED',
+      'FACEBOOK',
+    ]);
+    expect(result.searchLinks[0].url).toContain('locationStr=80331');
+    expect(result.searchLinks[0].url).toContain('radius=50');
+    expect(result.notice).toMatch(/Keine belegten Angebote/);
+    expect(result.illustrative).toBe(false);
+  });
+
+  it('does not invent listings when the source is only illustrative', async () => {
+    const service = makeService(
+      makeProvider({ marketMedian: 80, listings: [], illustrative: true }),
+    );
+    const result = await search(service, 'Lederjacke');
+    expect(result.listings).toEqual([]);
+    expect(result.marketMedianEur).toBeNull();
+    expect(result.illustrative).toBe(true);
+    expect(result.notice).toMatch(/Gemini-Schlüssel/);
+    expect(result.searchLinks[1].url).toContain('_nkw=Lederjacke');
   });
 
   it('reads the source condition and marks a title-only hint uncertain', async () => {
