@@ -108,9 +108,11 @@ export class PriceTriangulationService {
     const keywords = buildMarketKeywords({
       title: item.title,
       brand: attributeValue('brand'),
+      model: attributeValue('model'),
       category: attributeValue('category'),
       categoryDetail: attributeValue('categoryDetail'),
       color: attributeValue('color'),
+      searchTerms: attributeValue('searchTerms'),
     });
     const place = /^\d{5}$/.test(item.postalCode?.trim() ?? '')
       ? { postalCode: item.postalCode!.trim(), radiusKm: 20 }

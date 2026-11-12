@@ -36,7 +36,7 @@ describe('RealGeminiDescriptionProvider', () => {
 
     expect(result).toBe('Tolle Lederjacke in gutem Zustand.');
     const prompt = generateContentMock.mock.calls[0][0].contents as string;
-    expect(prompt).toContain('material: Leder');
+    expect(prompt).toContain('Material: Leder');
     expect(prompt).not.toContain('brand: null');
   });
 

@@ -10,7 +10,7 @@ import {
   requiredFactsFor,
 } from '../../domain/category/taxonomy';
 import { HumanGateBypassException } from '../../domain/errors/state-transition.errors';
-import { ItemAttributeEntity } from '../../infrastructure/database/entities';
+import { ItemAttributeEntity, ItemEntity } from '../../infrastructure/database/entities';
 
 /**
  * `POST /items/:id/attributes/:key/confirm` — bewusste, dokumentierte
@@ -68,6 +68,7 @@ export class ItemAttributeConfirmationService {
       existing.source = 'USER_INPUT';
       const saved = await this.dataSource.manager.save(ItemAttributeEntity, existing);
       if (key === 'category') await this.ensureRequiredFacts(itemId, stored);
+      if (key === 'title') await this.writeItemTitle(itemId, stored);
       return saved;
     }
 
@@ -79,7 +80,12 @@ export class ItemAttributeConfirmationService {
       source: 'USER_INPUT',
     });
     if (key === 'category') await this.ensureRequiredFacts(itemId, stored);
+    if (key === 'title') await this.writeItemTitle(itemId, stored);
     return created;
+  }
+
+  private async writeItemTitle(itemId: string, title: string): Promise<void> {
+    await this.dataSource.manager.update(ItemEntity, { id: itemId }, { title });
   }
 
   /** Fehlende Pflichtangaben der gewählten Kategorie als Lücke anlegen. */

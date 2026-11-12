@@ -10,6 +10,7 @@ import {
   IsPositive,
   IsString,
   IsUUID,
+  MaxLength,
   MinLength,
   ValidateNested,
 } from 'class-validator';
@@ -48,6 +49,13 @@ export class ConfirmAttributeDto {
   @IsString()
   @MinLength(1)
   value?: string;
+}
+
+export class ReanalyzeItemDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  hint?: string;
 }
 
 export class UpdateTitleDto {

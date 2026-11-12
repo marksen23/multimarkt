@@ -7,6 +7,7 @@ import {
   DescriptionGenerationProvider,
   SalesGoal,
 } from '../../domain/ai/description-generation-provider.interface';
+import { factLabel } from '../../domain/category/taxonomy';
 
 const MODEL_ID = 'gemini-flash-latest';
 
@@ -70,17 +71,24 @@ export class RealGeminiDescriptionProvider implements DescriptionGenerationProvi
     const channel: DescriptionChannel = input.channel ?? 'GENERIC';
 
     // Trenne wertsteigernde Merkmale von Standardattributen für gezieltere Nutzung
+    const skipped = new Set([
+      'notable_features',
+      'visible_defects',
+      'size',
+      'condition',
+      'description',
+      'searchTerms',
+      'title',
+    ]);
     const valueAttributes = input.attributes.filter(
       (a) => a.value && ['notable_features', 'visible_defects', 'size'].includes(a.key),
     );
-    const coreAttributes = input.attributes.filter(
-      (a) => a.value && !['notable_features', 'visible_defects', 'size', 'condition'].includes(a.key),
-    );
+    const coreAttributes = input.attributes.filter((a) => a.value && !skipped.has(a.key));
 
-    const knownFacts = coreAttributes.map((a) => `${a.key}: ${a.value}`).join(', ');
+    const knownFacts = coreAttributes.map((a) => `${factLabel(a.key)}: ${a.value}`).join(', ');
 
     const valueFactsBlock = valueAttributes.length > 0
-      ? `\nWeitere Merkmale:\n${valueAttributes.map((a) => `- ${a.key}: ${a.value}`).join('\n')}`
+      ? `\nWeitere Merkmale:\n${valueAttributes.map((a) => `- ${factLabel(a.key)}: ${a.value}`).join('\n')}`
       : '';
 
     const comparablesBlock =
@@ -112,7 +120,7 @@ Zustand: ${input.condition ?? 'unbekannt'}
 Bekannte Merkmale: ${knownFacts || 'keine weiteren Angaben'}${valueFactsBlock}
 ${comparablesBlock}${logisticsBlock}${gapBlock}
 
-WICHTIG: Verwende für die FAKTEN AUSSCHLIESSLICH die oben genannten Angaben zu diesem Produkt. Erfinde KEINE zusätzlichen Details (keine Marke, kein Material, keine Maße), die dort nicht stehen — auch nicht aus den Vergleichsangeboten übernommen, die sind nur Stil-Vorbild, nicht Faktenquelle. Wenn wenig bekannt ist, bleib entsprechend allgemein, statt Lücken mit Vermutungen zu füllen. Antworte NUR mit dem Beschreibungstext, ohne Anrede, ohne Überschrift, ohne Anführungszeichen.`;
+WICHTIG: Verwende für die FAKTEN AUSSCHLIESSLICH die oben genannten Angaben zu diesem Produkt. Erfinde KEINE zusätzlichen Details (keine Marke, kein Modell, kein Material, keine Maße), die dort nicht stehen — auch nicht aus den Vergleichsangeboten übernommen, die sind nur Stil-Vorbild, nicht Faktenquelle. Wenn wenig bekannt ist, bleib entsprechend allgemein, statt Lücken mit Vermutungen zu füllen. Antworte NUR mit dem Beschreibungstext, ohne Anrede, ohne Überschrift, ohne Anführungszeichen.`;
 
     const response = await this.client.models.generateContent({
       model: MODEL_ID,

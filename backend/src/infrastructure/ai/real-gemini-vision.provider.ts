@@ -4,17 +4,25 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
 import { AiAnalysisResult, AiVisionProvider } from '../../domain/ai/ai-vision-provider.interface';
+import {
+  mapVisionPayload,
+  sanitizeVisionHint,
+  selectVisionImageUrls,
+  VISION_FIELD_KEYS,
+} from '../../domain/ai/vision-listing';
+import { extractJsonObject } from './extract-json-object';
+import { readGeminiText } from './gemini-response-text';
+import { publicVisionError, redactSecrets } from './vision-error';
 
-const MODEL_ID = 'gemini-flash-latest';
-const PROMPT_VERSION = '2026-11-11';
+const DEFAULT_MODEL_ID = 'gemini-flash-latest';
+const PROMPT_VERSION = '2026-11-11-listing';
 
-// Taxonomie-Felder plus Marktplatz-Merkmale. ProductAnalysisService legt die
-// Kategorie auf die kleine Taxonomie und behält notable_features/visible_defects.
-const ATTRIBUTE_KEYS = [
+const CLAIM_KEYS = [
   'category',
   'categoryDetail',
   'color',
   'brand',
+  'model',
   'material',
   'condition',
   'size',
@@ -22,42 +30,38 @@ const ATTRIBUTE_KEYS = [
   'functionChecked',
   'notable_features',
   'visible_defects',
+  'title',
+  'description',
+  'searchTerms',
 ] as const;
 
-const PROMPT = `Analysiere die angehängten Fotos eines gebrauchten Gegenstands für Kleinanzeigen, eBay und Vinted.
-Die Fotos können den ganzen Gegenstand, ein Etikett, ein Typenschild oder einen Mangel zeigen. Nutze alle Fotos gemeinsam.
-
-Felder:
-- category: genau eine von Kleidung, Schuhe, Elektronik, Medien, Haushalt, Möbel, Sonstiges — oder null, wenn der Gegenstand nicht erkennbar ist.
-- categoryDetail: kurze, suchbare Artikelbezeichnung nur aus sichtbaren Merkmalen, z.B. "Nike Air Max 90", "iPhone 13", "Herren Lederjacke". Kein Kategoriepfad wie "Bekleidung > Herren > Jacken". null, wenn die Art nicht erkennbar ist.
-- color: Hauptfarbe auf Deutsch, nur wenn sichtbar, sonst null.
-- brand: Marke nur bei lesbarem Logo, Aufschrift oder eindeutigem Typenschild, sonst null.
-- material: Hauptmaterial nur wenn sichtbar oder auf dem Etikett lesbar, sonst null.
-- condition: eine von new, like_new, good, fair, defective, oder null.
-- size: Größe nur wenn ein Etikett oder eine Größenangabe sichtbar ist, sonst null. Nicht aus dem Schnitt raten.
-- measurements: Maße nur wenn eine Zahl sichtbar ist, sonst null.
-- functionChecked: "ja" oder "nein" nur wenn der Betrieb sichtbar ist (z.B. eingeschaltetes Display). Sonst null. Nicht raten.
-- notable_features: Besonderheiten die den Verkaufswert erhöhen — z.B. "Mit Originalverpackung", "Rechnung vorhanden". Null wenn keine auffälligen Besonderheiten.
-- visible_defects: Sichtbare Mängel kurz beschreiben. Null wenn keine sichtbaren Mängel.
-
-WICHTIG: Wenn du dir bei einem Feld nicht ausreichend sicher bist, gib value=null zurück — rate NICHT. Ein falscher Wert ist schlimmer als kein Wert. "visible_defects: null" bedeutet explizit "keine erkennbaren Mängel auf den Fotos".`;
+const claimSchema = {
+  type: 'object',
+  properties: {
+    value: { type: 'string', nullable: true },
+    confidence: { type: 'number' },
+  },
+  required: ['value', 'confidence'],
+};
 
 const RESPONSE_SCHEMA = {
   type: 'object',
-  properties: Object.fromEntries(
-    ATTRIBUTE_KEYS.map((key) => [
-      key,
-      {
+  properties: {
+    ...Object.fromEntries(CLAIM_KEYS.map((key) => [key, claimSchema])),
+    specs: {
+      type: 'array',
+      items: {
         type: 'object',
         properties: {
-          value: { type: 'string', nullable: true },
+          name: { type: 'string' },
+          value: { type: 'string' },
           confidence: { type: 'number' },
         },
-        required: ['value', 'confidence'],
+        required: ['name', 'value', 'confidence'],
       },
-    ]),
-  ),
-  required: [...ATTRIBUTE_KEYS],
+    },
+  },
+  required: [...CLAIM_KEYS],
 };
 
 const MIME_BY_EXTENSION: Record<string, string> = {
@@ -69,19 +73,11 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   '.gif': 'image/gif',
 };
 
-interface RawAttributeClaim {
-  value: string | null;
-  confidence: number;
-}
-
 /**
- * Echte Gemini-Vision-Anbindung. Ersetzt `MockGeminiVisionProvider` am
- * selben Interface. Liefert nie USER_CONFIRMED — das setzt nur ein Mensch.
- *
- * Lokale Uploads (`/uploads/<key>`) werden von der Platte gelesen.
- * Ein Umweg über PUBLIC_BASE_URL scheitert in Coolify oft, weil
- * `mm.localhost` aus dem Container nicht erreichbar ist. Öffentliche
- * http(s)-URLs (S3) werden weiter per HTTP geholt.
+ * Echte Gemini-Vision-Anbindung. Liefert nie USER_CONFIRMED — das setzt nur
+ * ein Mensch. Lokale Uploads (`/uploads/<key>`) werden von der Platte gelesen.
+ * Ein Umweg über PUBLIC_BASE_URL scheitert in Coolify oft, weil `mm.localhost`
+ * aus dem Container nicht erreichbar ist.
  */
 @Injectable()
 export class RealGeminiVisionProvider implements AiVisionProvider {
@@ -89,72 +85,72 @@ export class RealGeminiVisionProvider implements AiVisionProvider {
   private readonly client: GoogleGenAI;
   private readonly publicBaseUrl: string;
   private readonly uploadDir: string;
+  private readonly modelId: string;
+  private readonly apiKey: string;
 
   constructor(config: ConfigService) {
-    this.client = new GoogleGenAI({ apiKey: config.get<string>('GEMINI_API_KEY') });
+    this.apiKey = config.get<string>('GEMINI_API_KEY') ?? '';
+    this.client = new GoogleGenAI({ apiKey: this.apiKey });
     this.publicBaseUrl = config.get<string>('PUBLIC_BASE_URL') ?? 'http://localhost:3000';
     this.uploadDir = resolve(process.cwd(), config.get<string>('UPLOAD_DIR') ?? 'uploads');
+    const configured = config.get<string>('GEMINI_VISION_MODEL')?.trim();
+    this.modelId = configured || DEFAULT_MODEL_ID;
   }
 
-  async analyzeItem(input: { imageUrls: string[] }): Promise<AiAnalysisResult> {
-    if (input.imageUrls.length === 0) {
-      return { modelId: MODEL_ID, promptVersion: PROMPT_VERSION, attributes: this.emptyClaims() };
+  async analyzeItem(input: { imageUrls: string[]; hint?: string | null }): Promise<AiAnalysisResult> {
+    const imageUrls = selectVisionImageUrls(input.imageUrls);
+    if (imageUrls.length === 0) {
+      return {
+        modelId: this.modelId,
+        promptVersion: PROMPT_VERSION,
+        attributes: VISION_FIELD_KEYS.map((key) => ({ key, value: null, confidence: 0 })),
+      };
     }
 
-    const imageParts = await Promise.all(input.imageUrls.map((url) => this.loadInlinePart(url)));
+    const hint = sanitizeVisionHint(input.hint);
+    const imageParts = await Promise.all(imageUrls.map((url) => this.loadInlinePart(url)));
+    const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
+      { text: buildVisionPrompt(hint, imageParts.length) },
+    ];
+    imageParts.forEach((image, index) => {
+      parts.push({ text: `Foto ${index + 1} von ${imageParts.length}` });
+      parts.push(image);
+    });
 
     let text: string | undefined;
     try {
       const response = await this.client.models.generateContent({
-        model: MODEL_ID,
-        contents: [{ role: 'user', parts: [{ text: PROMPT }, ...imageParts] }],
+        model: this.modelId,
+        contents: [{ role: 'user', parts }],
         config: {
-          temperature: 0.2,
+          temperature: 0.1,
+          maxOutputTokens: 4096,
+          // Denken frisst bei Flash oft das JSON-Budget. Für das Auslesen reicht die Antwort.
+          thinkingConfig: { thinkingBudget: 0 },
           responseMimeType: 'application/json',
           responseSchema: RESPONSE_SCHEMA,
         },
       });
-      text = response.text;
+      text = readGeminiText(response);
     } catch (error) {
-      this.logger.error(`Gemini vision request failed: ${(error as Error).message}`);
+      const raw = error instanceof Error ? error.message : 'unknown vision error';
+      this.logger.error(`Gemini vision request failed: ${redactSecrets(raw, this.apiKey)}`);
+      throw new Error(publicVisionError(error, this.apiKey));
+    }
+
+    const parsed = extractJsonObject(text);
+    if (!parsed) {
+      this.logger.error('Gemini vision response was not a JSON object');
       throw new Error(
-        'Gemini hat die Fotos nicht analysiert. Prüfe GEMINI_API_KEY und das Kontingent in Google AI Studio. Die Fotos bleiben gespeichert.',
+        'Gemini hat geantwortet, aber nicht im erwarteten Format. Bitte die Analyse erneut starten. Die Fotos bleiben gespeichert.',
       );
     }
 
-    const raw = this.parseResponse(text);
-
     return {
-      modelId: MODEL_ID,
+      modelId: this.modelId,
       promptVersion: PROMPT_VERSION,
-      attributes: ATTRIBUTE_KEYS.map((key) => ({
-        key,
-        value: raw[key]?.value?.trim() ? raw[key].value : null,
-        confidence: this.clampConfidence(raw[key]?.confidence),
-      })),
+      attributes: mapVisionPayload(parsed).attributes,
     };
-  }
-
-  private emptyClaims() {
-    return ATTRIBUTE_KEYS.map((key) => ({ key, value: null, confidence: 0 }));
-  }
-
-  private clampConfidence(value: number | undefined): number {
-    if (typeof value !== 'number' || Number.isNaN(value)) return 0;
-    return Math.min(1, Math.max(0, value));
-  }
-
-  private parseResponse(text: string | undefined): Record<string, RawAttributeClaim> {
-    if (!text) {
-      this.logger.warn('Gemini response had no text content — treating all attributes as UNKNOWN');
-      return {};
-    }
-    try {
-      return JSON.parse(text) as Record<string, RawAttributeClaim>;
-    } catch (error) {
-      this.logger.error(`Could not parse Gemini structured output: ${(error as Error).message}`);
-      return {};
-    }
   }
 
   private async loadInlinePart(imageUrl: string): Promise<{ inlineData: { mimeType: string; data: string } }> {
@@ -213,4 +209,43 @@ export class RealGeminiVisionProvider implements AiVisionProvider {
     const buffer = Buffer.from(await response.arrayBuffer());
     return { inlineData: { mimeType, data: buffer.toString('base64') } };
   }
+}
+
+export function buildVisionPrompt(hint: string | null, imageCount: number): string {
+  const hintBlock = hint
+    ? `
+
+Hinweis des Verkäufers: "${hint}"
+Der Hinweis ist eine Hilfe, kein Beweis. Übernimm Marke oder Artikelart daraus nur, wenn das Foto nicht widerspricht. Steht die Angabe nicht auf dem Foto, setze die Konfidenz unter 0,6. Erfinde keine Maße, keine Leistung und keinen Zustand aus dem Hinweis.`
+    : '';
+
+  return `Du füllst ein Kleinanzeigen-Inserat für einen gebrauchten Gegenstand anhand von ${imageCount} Foto${imageCount === 1 ? '' : 's'}. Die Fotos gehören zum selben Gegenstand: Übersicht, Detail, Etikett, Typenschild oder Mangel. Nutze alle Fotos zusammen. Eine lesbare Aufschrift schlägt eine Vermutung aus der Form.
+
+Lies Logos, Etiketten, Typenschilder, Größenangaben und Modellnummern buchstabengetreu. Eine Nummer wie "GBH 2-28 F" gehört ins Feld model.
+
+Felder, jedes als Objekt mit value (string oder null) und confidence (0 bis 1):
+- category: genau eine von Kleidung, Schuhe, Elektronik, Medien, Haushalt, Möbel, Sonstiges. Elektrowerkzeug, Haushaltsgeräte mit Strom und Unterhaltungselektronik sind Elektronik. null, wenn der Gegenstand nicht erkennbar ist.
+- categoryDetail: suchbare Artikelart auf Deutsch, zum Beispiel "Schlagbohrmaschine", "Herren Lederjacke", "iPhone 13". Kein Kategoriepfad. null, wenn die Art nicht erkennbar ist.
+- brand: nur bei lesbarem Logo oder Text, sonst null. Nicht aus der Form schließen.
+- model: Modellname oder Modellnummer nur wenn lesbar, sonst null.
+- color: Hauptfarbe auf Deutsch, nur wenn sichtbar, sonst null.
+- material: nur wenn sichtbar oder auf dem Etikett, sonst null.
+- condition: new, like_new, good, fair oder defective.
+  new = ungeöffnet oder Originalverpackung ohne Gebrauchsspuren.
+  like_new = keine sichtbaren Spuren.
+  good = normale Gebrauchsspuren.
+  fair = deutliche Kratzer, Verfärbung oder Abnutzung.
+  defective = Bruch, Riss, fehlende Teile oder Brandspuren.
+  null, wenn die Fotos den Zustand nicht hergeben.
+- size: nur vom Etikett oder einer sichtbaren Größenangabe, sonst null. Nicht aus dem Schnitt raten.
+- measurements: nur wenn eine Zahl im Bild steht, sonst null.
+- functionChecked: "ja" oder "nein" nur wenn der Betrieb sichtbar ist, zum Beispiel ein eingeschaltetes Display. Sonst null.
+- notable_features: verkaufsrelevante Besonderheit, die wirklich zu sehen ist, zum Beispiel Koffer oder Originalverpackung. Sonst null.
+- visible_defects: sichtbare Mängel in einem kurzen deutschen Satz. null, wenn kein Mangel zu sehen ist.
+- title: deutscher Inseratstitel, höchstens 80 Zeichen. Aufbau: Marke, Modell, Artikelart, wichtige Angabe, Farbe, Größe — nur die Teile, die belegt sind. Keine Wörter wie Verkaufe, VB, TOP, Hammer oder Schnäppchen.
+- description: zwei bis vier deutsche Sätze. Was es ist, welche lesbaren Daten und welches Zubehör zu sehen sind, welcher Zustand und welche Mängel. Kein Preis, keine Kontaktdaten, kein VB. Wenn wenig erkennbar ist, kurz bleiben.
+- searchTerms: Marke, Modell und Artikelart, so wie man sie bei eBay suchen würde. Kein Zustand, keine Werbewörter.
+- specs: Liste lesbarer technischer Angaben. Jeder Eintrag hat name, value und confidence. Namen auf Deutsch, zum Beispiel Leistung, Spannung, Speicher, Akkuspannung, Plattform oder Autor. Höchstens 6 Einträge. Nur was im Bild steht.
+
+Konfidenz 0,9 und höher nur bei klar lesbarem oder eindeutig sichtbarem Wert. Unter 0,65, wenn du unsicher bist, den Wert aber nicht verwerfen willst. value null, wenn du raten müsstest. Ein falscher Wert ist schlimmer als null. visible_defects null heißt: auf den Fotos ist kein Mangel zu sehen.${hintBlock}`;
 }

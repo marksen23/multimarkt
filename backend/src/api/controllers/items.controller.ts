@@ -29,6 +29,7 @@ import {
   ConfirmTruthDto,
   CreateItemDto,
   PrepareListingDto,
+  ReanalyzeItemDto,
   SaveChannelPackageDto,
   UpdateTitleDto,
 } from '../dto/items.dto';
@@ -279,6 +280,7 @@ export class ItemsController {
     @Param('id', ParseUUIDPipe) id: string,
     @UploadedFiles() files: Express.Multer.File[],
     @CurrentActor() actor: ActorContext,
+    @Body('hint') hint?: string,
   ): Promise<ItemEntity> {
     if (!files?.length) {
       throw new BadRequestException(
@@ -317,6 +319,7 @@ export class ItemsController {
       id,
       uploaded.map((f) => f.url),
       { type: 'SYSTEM' },
+      { hint },
     );
   }
 
@@ -328,8 +331,9 @@ export class ItemsController {
   @Post(':id/reanalyze')
   async reanalyze(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReanalyzeItemDto,
   ): Promise<ItemEntity> {
-    return this.productAnalysis.reanalyzeInPlace(id);
+    return this.productAnalysis.reanalyzeInPlace(id, { hint: dto.hint });
   }
 
   /**
@@ -347,6 +351,7 @@ export class ItemsController {
   async uploadMorePhotos(
     @Param('id', ParseUUIDPipe) id: string,
     @UploadedFiles() files: Express.Multer.File[],
+    @Body('hint') hint?: string,
   ): Promise<ItemEntity> {
     if (!files?.length) {
       throw new BadRequestException('At least one photo is required (field "files")');
@@ -372,7 +377,7 @@ export class ItemsController {
       uploaded.map((f) => ({ itemId: id, url: f.url, storageKey: f.key })),
     );
 
-    return this.productAnalysis.reanalyzeInPlace(id);
+    return this.productAnalysis.reanalyzeInPlace(id, { hint });
   }
 
   /**

@@ -51,6 +51,7 @@ Ohne echten Schlüssel, oder mit dem Platzhalter `unused-mock-provider-active`, 
 | Variable | Echte Quelle, sobald |
 | --- | --- |
 | `GEMINI_API_KEY` | ein echter Schlüssel, nicht der Platzhalter. Gilt für Bildanalyse, Titel, Beschreibung, Preisrecherche über Google-Suche, Ankaufsuche und Bildoptimierung. Anlegen unter [Google AI Studio](https://aistudio.google.com/apikey). |
+| `GEMINI_VISION_MODEL` | optional. Leer lässt `gemini-flash-latest` die Fotos lesen. |
 | `EBAY_CLIENT_ID` und `EBAY_CLIENT_SECRET` | beide gesetzt und die Client-ID kein Platzhalter. Dann kommen aktive Angebote aus der eBay Browse API. Abgeschlossene Verkäufe liefert diese API nicht. Production App ID (Client ID) und Cert ID (Client Secret) unter [eBay Developer](https://developer.ebay.com/my/keys). Sandbox-Schlüssel sehen den echten Markt nicht. |
 | `S3_BUCKET` zusammen mit `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` und `S3_PUBLIC_URL_BASE` | Fotos liegen in einem S3-kompatiblen Bucket, zum Beispiel Cloudflare R2. |
 

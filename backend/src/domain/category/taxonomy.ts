@@ -48,7 +48,22 @@ export const ATTRIBUTE_LABELS: Record<string, string> = {
   color: 'Farbe',
   material: 'Material',
   condition: 'Zustand',
+  model: 'Modell',
+  title: 'Titel',
+  description: 'Beschreibung',
+  searchTerms: 'Suchbegriffe',
+  notable_features: 'Besonderheiten',
+  visible_defects: 'Sichtbare Mängel',
 };
+
+/** Anzeigename eines Attributs, auch für `spec:Leistung` aus dem Typenschild. */
+export function factLabel(key: string): string {
+  if (key.startsWith('spec:')) {
+    const name = key.slice('spec:'.length).trim();
+    return name || key;
+  }
+  return ATTRIBUTE_LABELS[key] ?? key;
+}
 
 const KEY_ALIASES: Record<string, string> = {
   category: 'category',
@@ -71,6 +86,15 @@ const KEY_ALIASES: Record<string, string> = {
   material: 'material',
   condition: 'condition',
   zustand: 'condition',
+  model: 'model',
+  modell: 'model',
+  modellnummer: 'model',
+  title: 'title',
+  titel: 'title',
+  description: 'description',
+  beschreibung: 'description',
+  searchterms: 'searchTerms',
+  suchbegriffe: 'searchTerms',
 };
 
 /**
@@ -113,6 +137,10 @@ const CATEGORY_KEYWORDS: { category: ResaleCategory; words: string[] }[] = [
       'fernseher',
       'staubsauger',
       'drucker',
+      'bohrmaschine',
+      'akkuschrauber',
+      'waschmaschine',
+      'kuehlschrank',
     ],
   },
   {
@@ -325,6 +353,9 @@ export function isWritableAttributeKey(key: string): boolean {
     canonical === 'color' ||
     canonical === 'material' ||
     canonical === 'condition' ||
+    canonical === 'model' ||
+    canonical === 'title' ||
+    canonical === 'description' ||
     (FACT_KEYS as readonly string[]).includes(canonical ?? '')
   );
 }

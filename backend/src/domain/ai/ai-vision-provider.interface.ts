@@ -13,7 +13,7 @@ export interface AiAttributeClaim {
   key: string;
   /** null/leer => UNKNOWN, sonst wird der Claim als INFERRED übernommen. */
   value: string | null;
-  /** 0..1 — informativ, aktuell nicht Teil eines DB-Felds (Doc 01 hat keine Confidence-Spalte). */
+  /** 0..1. Unter 0,65 zeigt die Oberfläche das Feld als unsicher. */
   confidence: number;
 }
 
@@ -24,7 +24,7 @@ export interface AiAnalysisResult {
 }
 
 export interface AiVisionProvider {
-  analyzeItem(input: { imageUrls: string[] }): Promise<AiAnalysisResult>;
+  analyzeItem(input: { imageUrls: string[]; hint?: string | null }): Promise<AiAnalysisResult>;
 }
 
 export const AI_VISION_PROVIDER = Symbol('AI_VISION_PROVIDER');

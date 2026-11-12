@@ -1,9 +1,12 @@
 export interface MarketKeywordInput {
   title?: string | null;
   brand?: string | null;
+  model?: string | null;
   category?: string | null;
   categoryDetail?: string | null;
   color?: string | null;
+  /** Von der Bildanalyse vorgeschlagene Suchphrase. Geht vor dem Titel. */
+  searchTerms?: string | null;
 }
 
 /**
@@ -12,28 +15,44 @@ export interface MarketKeywordInput {
  * konkrete Artikelart oder der Titel geht vor.
  */
 export function buildMarketKeywords(input: MarketKeywordInput): string {
+  const color = tidy(input.color);
+  const searchTerms = tidy(input.searchTerms);
+  if (searchTerms) {
+    return withColor(searchTerms, color);
+  }
+
   const brand = tidy(input.brand);
+  const model = tidy(input.model);
   const detail = specificDetail(input.categoryDetail);
   const category = tidy(input.category);
   const title = tidy(input.title);
-  const color = tidy(input.color);
 
   // „Kleidung“ allein ist ein schlechter Suchbegriff. Eine konkrete
-  // Artikelart oder der Titel geht vor. „Sneaker“ als Kategorie bleibt,
-  // weil das schon der Suchbegriff ist.
+  // Artikelart, das Modell oder der Titel geht vor. „Sneaker“ als
+  // Kategorie bleibt, weil das schon der Suchbegriff ist.
   const specificCategory = category && !isCoarseCategory(category) ? category : null;
   const product = detail ?? specificCategory;
-  const parts = [brand, product].filter((part): part is string => !!part);
+  const parts: string[] = [];
+  if (brand) parts.push(brand);
+  if (model && product && containsFolded(product, model)) {
+    if (!containsFolded(parts.join(' '), product)) parts.push(product);
+  } else {
+    if (model && !containsFolded(parts.join(' '), model)) parts.push(model);
+    if (product && !containsFolded(parts.join(' '), product)) parts.push(product);
+  }
   if (parts.length === 0) {
     if (title) parts.push(title);
     else if (category) parts.push(category);
-  } else if (title && !detail && !specificCategory && !containsFolded(parts.join(' '), title)) {
+  } else if (title && !detail && !specificCategory && !model && !containsFolded(parts.join(' '), title)) {
     parts.push(title);
   }
 
-  const joined = parts.join(' ');
-  if (color && !containsFolded(joined, color)) parts.push(color);
+  return withColor(parts.join(' '), color);
+}
 
+function withColor(base: string, color: string | null): string {
+  const parts = [collapse(base)];
+  if (color && !containsFolded(parts[0], color)) parts.push(color);
   return collapse(parts.join(' ')).slice(0, 120);
 }
 

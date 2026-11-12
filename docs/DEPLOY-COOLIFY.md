@@ -50,6 +50,7 @@ So schaltest du eine Quelle scharf:
 | Variable | Wofür | Woher |
 | --- | --- | --- |
 | `GEMINI_API_KEY` | Bildanalyse, Titel, Beschreibung, Web-Preisrecherche, Ankaufsuche, Bildoptimierung | [Google AI Studio](https://aistudio.google.com/apikey), „API key“ anlegen |
+| `GEMINI_VISION_MODEL` | optional. Welches Modell die Fotos liest. Leer bleibt `gemini-flash-latest`. | nur setzen, wenn ein anderes Modell gewünscht ist, zum Beispiel `gemini-2.5-flash` |
 | `EBAY_CLIENT_ID` | aktive Angebote auf eBay.de (Browse API). Zusammen mit dem Secret. | [eBay Developer](https://developer.ebay.com/my/keys): Keyset **Production**, Feld App ID (Client ID). Sandbox-Schlüssel liefern nicht den echten Markt. Abgeschlossene Verkäufe gibt diese API nicht her. |
 | `EBAY_CLIENT_SECRET` | dasselbe Keyset, Feld Cert ID (Client Secret) | dieselbe Seite |
 

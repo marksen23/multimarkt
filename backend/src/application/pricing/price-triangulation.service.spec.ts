@@ -216,6 +216,27 @@ describe('PriceTriangulationService', () => {
     ]);
   });
 
+  it('searches with the vision search phrase instead of the coarse category', async () => {
+    const { dataSource } = makeDataSource({
+      item: { id: 'i1', condition: 'good', title: 'Unbenannter Artikel' },
+      attributes: [
+        attr('brand', 'Bosch'),
+        attr('category', 'Elektronik'),
+        attr('model', 'GBH 2-28 F'),
+        attr('searchTerms', 'Bosch GBH 2-28 F Schlagbohrmaschine'),
+      ],
+    });
+    marketProvider.search.mockResolvedValue(null);
+    buybackProvider.quote.mockResolvedValue(null);
+
+    await makeService(dataSource).research('i1');
+
+    expect(marketProvider.search).toHaveBeenCalledWith({
+      keywords: 'Bosch GBH 2-28 F Schlagbohrmaschine',
+      condition: 'good',
+    });
+  });
+
   it('skips the market lookup entirely when no brand/category attribute is known', async () => {
     const { dataSource } = makeDataSource({
       item: { id: 'i1', condition: 'good' },

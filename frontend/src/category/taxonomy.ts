@@ -35,14 +35,41 @@ export const ATTRIBUTE_LABELS: Record<string, string> = {
   color: 'Farbe',
   material: 'Material',
   condition: 'Zustand',
+  model: 'Modell',
+  title: 'Titel',
+  description: 'Beschreibung',
+  notable_features: 'Besonderheiten',
+  visible_defects: 'Sichtbare Mängel',
 };
+
+export function factLabel(key: string): string {
+  if (key.startsWith('spec:')) {
+    const name = key.slice('spec:'.length).trim();
+    return name || key;
+  }
+  return ATTRIBUTE_LABELS[key] ?? key;
+}
 
 const CATEGORY_KEYWORDS: { category: ResaleCategory; words: string[] }[] = [
   { category: 'Kleidung', words: ['handschuh', 'handschuhe'] },
   { category: 'Schuhe', words: ['schuh', 'schuhe', 'sneaker', 'stiefel', 'sandale', 'turnschuh', 'shoe', 'shoes'] },
   {
     category: 'Elektronik',
-    words: ['elektronik', 'electronic', 'electronics', 'handy', 'smartphone', 'laptop', 'computer', 'kamera', 'phone'],
+    words: [
+      'elektronik',
+      'electronic',
+      'electronics',
+      'handy',
+      'smartphone',
+      'laptop',
+      'computer',
+      'kamera',
+      'phone',
+      'bohrmaschine',
+      'akkuschrauber',
+      'waschmaschine',
+      'kuehlschrank',
+    ],
   },
   { category: 'Medien', words: ['medien', 'media', 'buch', 'buecher', 'book', 'books', 'dvd', 'vinyl', 'cd'] },
   { category: 'Möbel', words: ['moebel', 'furniture', 'sofa', 'schrank', 'tisch', 'stuhl', 'regal', 'bett', 'kommode'] },
