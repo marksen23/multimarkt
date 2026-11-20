@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { itemsApi } from '../api/items';
+import { moveItem } from '../lib/photo-order';
 import { Button, Icon, Notice, Spinner } from '../ui';
 import { VolatilePhotoStorageNotice } from './VolatilePhotoStorageNotice';
 
@@ -47,6 +48,11 @@ export function PhotoCapture({
     setConfirmRemoveIndex(null);
   };
 
+  const move = (index: number, direction: -1 | 1) => {
+    onChange(moveItem(files, index, direction));
+    setConfirmRemoveIndex(null);
+  };
+
   // Kleine Thumbnails im 3er-Grid sind leicht aus Versehen zu treffen —
   // erster Tap fragt nach, statt das Foto sofort ohne Rückfrage zu
   // entfernen (Foto ist danach nicht mehr wiederherstellbar).
@@ -87,30 +93,57 @@ export function PhotoCapture({
       {previews.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
           {previews.map((src, i) => (
-            <div key={src} className="relative aspect-square rounded-control overflow-hidden border border-line">
-              <img src={src} alt="" className="w-full h-full object-cover" />
-              <button
-                type="button"
-                onClick={() => requestRemove(i)}
-                className={
-                  confirmRemoveIndex === i
-                    ? 'absolute top-1 right-1 h-6 px-2 rounded-full bg-danger text-white text-label flex items-center justify-center backdrop-blur'
-                    : 'absolute top-1 right-1 w-7 h-7 rounded-full bg-ink/70 text-white flex items-center justify-center backdrop-blur'
-                }
-                aria-label={confirmRemoveIndex === i ? 'Wirklich entfernen?' : 'Foto entfernen'}
-              >
-                {confirmRemoveIndex === i ? 'Entfernen?' : <Icon name="x" size={15} strokeWidth={2.2} />}
-              </button>
-              {itemId && (
+            <div key={src} className="space-y-1">
+              <div className="relative aspect-square rounded-control overflow-hidden border border-line">
+                <img src={src} alt="" className="w-full h-full object-cover" />
                 <button
                   type="button"
-                  onClick={() => optimize(i)}
-                  disabled={optimizingIndex === i}
-                  className="absolute bottom-1 left-1 right-1 py-1 rounded-control bg-ink/70 text-white text-label flex items-center justify-center gap-1 disabled:opacity-60 backdrop-blur"
+                  onClick={() => requestRemove(i)}
+                  className={
+                    confirmRemoveIndex === i
+                      ? 'absolute top-1 right-1 h-6 px-2 rounded-full bg-danger text-white text-label flex items-center justify-center backdrop-blur'
+                      : 'absolute top-1 right-1 w-7 h-7 rounded-full bg-ink/70 text-white flex items-center justify-center backdrop-blur'
+                  }
+                  aria-label={confirmRemoveIndex === i ? `Foto ${i + 1} wirklich entfernen?` : `Foto ${i + 1} entfernen`}
                 >
-                  {optimizingIndex === i ? <Spinner /> : <Icon name="sparkle" size={13} />}
-                  {optimizingIndex === i ? 'Optimiert…' : 'Optimieren'}
+                  {confirmRemoveIndex === i ? 'Entfernen?' : <Icon name="x" size={15} strokeWidth={2.2} />}
                 </button>
+                {itemId && (
+                  <button
+                    type="button"
+                    onClick={() => optimize(i)}
+                    disabled={optimizingIndex === i}
+                    className="absolute bottom-1 left-1 right-1 py-1 rounded-control bg-ink/70 text-white text-label flex items-center justify-center gap-1 disabled:opacity-60 backdrop-blur"
+                  >
+                    {optimizingIndex === i ? <Spinner /> : <Icon name="sparkle" size={13} />}
+                    {optimizingIndex === i ? 'Optimiert…' : 'Optimieren'}
+                  </button>
+                )}
+              </div>
+              <p className="text-micro normal-case tracking-normal text-ink-faint text-center">
+                {i === 0 ? 'Titelbild' : `Foto ${i + 1}`}
+              </p>
+              {files.length > 1 && (
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => move(i, -1)}
+                    disabled={i === 0}
+                    aria-label={`Foto ${i + 1} nach vorn`}
+                    className="flex-1 h-8 rounded-control border border-line text-ink-muted flex items-center justify-center disabled:opacity-30 outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    <Icon name="chevronLeft" size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => move(i, 1)}
+                    disabled={i === files.length - 1}
+                    aria-label={`Foto ${i + 1} nach hinten`}
+                    className="flex-1 h-8 rounded-control border border-line text-ink-muted flex items-center justify-center disabled:opacity-30 outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    <Icon name="chevronRight" size={16} />
+                  </button>
+                </div>
               )}
             </div>
           ))}
@@ -120,21 +153,27 @@ export function PhotoCapture({
       {optimizeError && <Notice tone="danger">{optimizeError}</Notice>}
 
       {files.length === 0 ? (
-        <button
-          type="button"
-          onClick={() => cameraInputRef.current?.click()}
-          className="w-full p-6 rounded-card border-2 border-dashed border-line text-ink-muted text-body font-semibold hover:border-accent hover:bg-accent-soft/40 hover:text-accent transition-colors flex flex-col items-center gap-2"
-        >
-          <Icon name="camera" size={26} />
-          Foto aufnehmen
-        </button>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => cameraInputRef.current?.click()}
+            className="w-full p-6 rounded-card border-2 border-dashed border-line text-ink-muted hover:border-accent hover:bg-accent-soft/40 hover:text-accent transition-colors flex flex-col items-center gap-1 outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <Icon name="camera" size={26} />
+            <span className="text-body font-semibold">Fotos aufnehmen</span>
+            <span className="text-label font-normal">Mehrere Aufnahmen. Das erste Foto wird das Titelbild.</span>
+          </button>
+          <Button variant="secondary" block icon="image" onClick={() => galleryInputRef.current?.click()}>
+            Aus der Galerie
+          </Button>
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-2">
           <Button variant="secondary" icon="camera" onClick={() => cameraInputRef.current?.click()}>
-            Kamera
+            Weiteres Foto
           </Button>
           <Button variant="secondary" icon="image" onClick={() => galleryInputRef.current?.click()}>
-            Galerie
+            Aus der Galerie
           </Button>
         </div>
       )}

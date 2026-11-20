@@ -27,6 +27,7 @@ const PATHS = {
   euro: <path d="M18 7a7 7 0 100 10M4 10h10M4 14h10" />,
   sort: <path d="M3 6h13M3 12h9M3 18h5M17 10v10M14 17l3 3 3-3" />,
   download:<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />,
+  key: <><circle cx="8" cy="15" r="5" /><path d="M12 15h9M18 15v3M15 15v2" /></>,
 } as const;
 
 export type IconName = keyof typeof PATHS;

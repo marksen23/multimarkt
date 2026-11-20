@@ -18,7 +18,6 @@ import {
 } from '../../infrastructure/database/entities';
 import { EbaySellClient } from './ebay-sell.client';
 import { publishEbayListing } from './publish-ebay-listing';
-import { EbaySellTransport } from './ebay-sell.types';
 
 export function readEbaySellEnv(config: { get(key: string): string | undefined }): EbaySellEnv {
   return {
@@ -44,7 +43,6 @@ export class EbaySellAdapter implements MarketplaceAdapter {
   constructor(
     private readonly config: ConfigService,
     @InjectDataSource() private readonly dataSource: DataSource,
-    private readonly transport?: EbaySellTransport,
   ) {}
 
   async publish(input: MarketplacePublishInput): Promise<MarketplacePublishResult> {
@@ -56,8 +54,7 @@ export class EbaySellAdapter implements MarketplaceAdapter {
       });
     }
     const draft = await this.loadDraft(input);
-    const transport = this.transport ?? new EbaySellClient(env);
-    const result = await publishEbayListing(draft, env, transport);
+    const result = await publishEbayListing(draft, env, new EbaySellClient(env));
     return {
       externalPlatformId: result.externalPlatformId,
       requiresManualConfirmation: false,
@@ -74,8 +71,7 @@ export class EbaySellAdapter implements MarketplaceAdapter {
       );
     }
     const env = readEbaySellEnv(this.config);
-    const transport = this.transport ?? new EbaySellClient(env);
-    await transport.withdrawOffer(offerId.trim());
+    await new EbaySellClient(env).withdrawOffer(offerId.trim());
   }
 
   private async loadDraft(input: MarketplacePublishInput) {

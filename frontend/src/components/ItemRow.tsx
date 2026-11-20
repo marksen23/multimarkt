@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { ItemListEntry } from '../api/types';
+import { ChannelMarks } from './ChannelMarks';
 import { Icon, PhaseBadge, PHASE_BORDER, Spinner, statusInfo } from '../ui';
 import { formatEuro, relativeDate } from '../lib/format';
 
@@ -36,6 +37,7 @@ export function ItemRow({
           <PhaseBadge status={item.status} />
           {price != null && <span className="text-label tabular-nums text-ink-muted">{formatEuro(price)}</span>}
         </div>
+        <ChannelMarks listings={listings} />
       </div>
       {action ? (
         <span className="shrink-0 inline-flex items-center gap-1 h-8 px-3 rounded-full bg-accent text-accent-ink text-label">

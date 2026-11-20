@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { itemsApi } from '../api/items';
 import { ApiRequestError } from '../api/client';
+import { CaptureProgress } from '../components/CaptureProgress';
 import { PhotoCapture } from '../components/PhotoCapture';
-import { ActionBar, Button, Card, Field, Icon, Notice, PageHeader, inputClass } from '../ui';
+import { Button, Card, Field, Icon, Notice, PageHeader, inputClass } from '../ui';
 
 /**
  * README §3 Schritt 1: "Fotografieren statt Formulare ausfüllen." Der
@@ -64,11 +65,11 @@ export function NewItemPage() {
       <button
         type="button"
         onClick={() => navigate(-1)}
-        aria-label="Zurück zu Heute"
-        className="inline-flex items-center gap-1 h-10 pl-1 pr-3 -ml-1 rounded-full text-body text-ink-muted hover:bg-surface-hover hover:text-ink"
+        aria-label="Zurück"
+        className="inline-flex items-center gap-1 h-10 pl-1 pr-3 -ml-1 rounded-full text-body text-ink-muted hover:bg-surface-hover hover:text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <Icon name="chevronLeft" size={20} />
-        Heute
+        Zurück
       </button>
       <PageHeader
         title="Neuer Artikel"
@@ -114,32 +115,17 @@ export function NewItemPage() {
         </details>
 
         {error && <Notice tone="danger">{error}</Notice>}
-
-        {stage === 'uploading' && (
-          <div
-            role="progressbar"
-            aria-valuenow={Math.round(uploadProgress * 100)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Upload-Fortschritt"
-            className="w-full h-1.5 rounded-full bg-line overflow-hidden"
-          >
-            <div
-              className="h-full bg-accent transition-all duration-150"
-              style={{ width: `${Math.round(uploadProgress * 100)}%` }}
-            />
-          </div>
-        )}
       </Card>
 
-      <ActionBar>
-        <Button size="lg" loading={creating} disabled={creating || photos.length === 0} onClick={start}>
+      <div className="sticky bottom-above-nav z-10 -mx-4 px-4 pt-3 pb-3 bg-gradient-to-t from-bg via-bg/95 to-transparent space-y-2">
+        {stage !== 'idle' && <CaptureProgress stage={stage} uploadPercent={uploadProgress * 100} />}
+        <Button size="lg" block loading={creating} disabled={creating || photos.length === 0} onClick={start}>
           {stage === 'creating' && 'Artikel wird angelegt…'}
           {stage === 'uploading' && `Fotos werden hochgeladen… ${Math.round(uploadProgress * 100)}%`}
           {stage === 'analyzing' && 'KI analysiert die Fotos…'}
           {stage === 'idle' && 'Analysieren'}
         </Button>
-      </ActionBar>
+      </div>
     </div>
   );
 }

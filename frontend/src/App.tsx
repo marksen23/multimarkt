@@ -19,6 +19,7 @@ import { NegotiationPage } from './pages/NegotiationPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { SalesPage } from './pages/SalesPage';
 import { SicherungPage } from './pages/SicherungPage';
+import { EinrichtungPage } from './pages/EinrichtungPage';
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
               <Route path="/bundles/new" element={<NewBundlePage />} />
               <Route path="/bundles/:id" element={<BundleDetailPage />} />
               <Route path="/account" element={<AccountPage />} />
+              <Route path="/einrichtung" element={<EinrichtungPage />} />
               {import.meta.env.DEV && <Route path="/demo/negotiation" element={<NegotiationDemoPage />} />}
               {import.meta.env.DEV && <Route path="/demo/confidence-center" element={<ConfidenceCenterDemoPage />} />}
               <Route path="*" element={<NotFoundPage />} />
