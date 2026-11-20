@@ -21,7 +21,7 @@ export class FormattingHelperAdapter implements MarketplaceAdapter {
     return { externalPlatformId: null, requiresManualConfirmation: true };
   }
 
-  async delist(): Promise<void> {
+  async delist(_externalPlatformId?: string): Promise<void> {
     // Kein API-Zugriff möglich — Storno ist ausschließlich Nutzer-Aktion
     // (Doc 02 §9 Pfad B), siehe MarketplacePublishingService.confirmCancellation.
   }

@@ -66,6 +66,13 @@ export class MarketplaceProjectionEntity {
   @Column({ name: 'fallback_data', type: 'jsonb', default: {} })
   fallbackData: Record<string, unknown>;
 
+  /**
+   * Nur nach einem echten API-Publish: sku, offerId, listingId, Kategorie.
+   * Leer, solange die Karte ein Kopierweg ist.
+   */
+  @Column({ name: 'publish_meta', type: 'jsonb', default: {} })
+  publishMeta: Record<string, unknown>;
+
   // Start der Nachfass-Frist (Feature-Plan 3.6). Gesetzt beim Wechsel nach
   // ONLINE, danach nicht mehr verschoben.
   @Column({ name: 'online_since', type: 'timestamptz', nullable: true })

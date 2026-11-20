@@ -15,8 +15,8 @@ export const listingsApi = {
     api.post<MarketplaceProjectionSummary>(`/listings/${projectionId}/confirm-published`),
   cancel: (projectionId: string) =>
     api.post<MarketplaceProjectionSummary>(`/listings/${projectionId}/cancel`),
-  confirmCancellation: (projectionId: string) =>
-    api.post<MarketplaceProjectionSummary>(`/listings/${projectionId}/confirm-cancellation`),
+  confirmCancellation: (projectionId: string, manual = false) =>
+    api.post<MarketplaceProjectionSummary>(`/listings/${projectionId}/confirm-cancellation`, { manual }),
   markSold: (projectionId: string, draft: SaleCloseoutDraft) =>
     api.post<{ outcome: string }>(`/listings/${projectionId}/mark-sold`, {
       reportedPrice: draft.proceedsEur,

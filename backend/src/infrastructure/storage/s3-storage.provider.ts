@@ -2,8 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { extname } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { StorageProvider, StoredFile, UploadInput } from '../../domain/storage/storage-provider.interface';
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  assertStorageKey,
+  StorageProvider,
+  StoredFile,
+  UploadInput,
+} from '../../domain/storage/storage-provider.interface';
 
 const MIME_EXTENSIONS: Record<string, string> = {
   'image/jpeg': '.jpg',
@@ -65,6 +70,14 @@ export class S3StorageProvider implements StorageProvider {
 
     this.logger.log(`Stored upload ${key} (${input.buffer.length} bytes) in bucket ${this.bucket}`);
     return { url: `${this.publicUrlBase}/${key}`, key };
+  }
+
+  async read(key: string): Promise<Buffer> {
+    assertStorageKey(key);
+    const result = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+    const bytes = await result.Body?.transformToByteArray();
+    if (!bytes) throw new Error(`Empty object ${key}`);
+    return Buffer.from(bytes);
   }
 
   async delete(key: string): Promise<void> {

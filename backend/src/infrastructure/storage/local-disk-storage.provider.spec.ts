@@ -32,6 +32,16 @@ describe('LocalDiskStorageProvider', () => {
     expect(written.equals(buffer)).toBe(true);
   });
 
+  it('reads the stored bytes back and rejects a path outside the upload directory', async () => {
+    const stored = await provider.upload({
+      buffer: Buffer.from('jpeg-bytes'),
+      mimeType: 'image/jpeg',
+      originalName: 'foto.jpg',
+    });
+    expect((await provider.read(stored.key)).equals(Buffer.from('jpeg-bytes'))).toBe(true);
+    await expect(provider.read('../etc/passwd')).rejects.toThrow(/Unsafe storage key/);
+  });
+
   it('derives the extension from the mime type, not just the original filename', async () => {
     const result = await provider.upload({
       buffer: Buffer.from('x'),

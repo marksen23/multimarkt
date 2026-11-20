@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { CanonicalListingEntity, MarketplaceProjectionEntity } from '../../infrastructure/database/entities';
+import { shouldCallMarketplaceDelist } from './marketplace-publishing.service';
 
 export interface ListingSummary {
   id: string;
@@ -15,6 +16,7 @@ export interface ListingSummary {
     title: string | null;
     descriptionText: string | null;
     suggestedPrice: number | null;
+    canEndViaApi: boolean;
   }[];
 }
 
@@ -79,6 +81,7 @@ export class ListingSummaryService {
             title: p.title,
             descriptionText: p.descriptionText,
             suggestedPrice: p.suggestedPrice,
+            canEndViaApi: shouldCallMarketplaceDelist(p.marketplaceId, p.externalPlatformId, p.publishMeta),
           })),
       };
       result.set(ownerId, [...(result.get(ownerId) ?? []), summary]);

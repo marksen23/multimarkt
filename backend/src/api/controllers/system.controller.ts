@@ -20,6 +20,12 @@ export class SystemController {
       geminiApiKey: this.config.get<string>('GEMINI_API_KEY'),
       ebayClientId: this.config.get<string>('EBAY_CLIENT_ID'),
       ebayClientSecret: this.config.get<string>('EBAY_CLIENT_SECRET'),
+      ebayRefreshToken: this.config.get<string>('EBAY_REFRESH_TOKEN'),
+      ebayFulfillmentPolicyId: this.config.get<string>('EBAY_FULFILLMENT_POLICY_ID'),
+      ebayPaymentPolicyId: this.config.get<string>('EBAY_PAYMENT_POLICY_ID'),
+      ebayReturnPolicyId: this.config.get<string>('EBAY_RETURN_POLICY_ID'),
+      ebayMerchantLocationKey: this.config.get<string>('EBAY_MERCHANT_LOCATION_KEY'),
+      ebayEnvironment: this.config.get<string>('EBAY_ENVIRONMENT'),
       s3Bucket: this.config.get<string>('S3_BUCKET'),
     });
   }

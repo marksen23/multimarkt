@@ -10,6 +10,7 @@ jest.mock('@aws-sdk/client-s3', () => {
     S3Client: jest.fn().mockImplementation(() => ({ send: sendMock })),
     PutObjectCommand: FakeCommand,
     DeleteObjectCommand: FakeCommand,
+    GetObjectCommand: FakeCommand,
   };
 });
 
@@ -43,6 +44,16 @@ describe('S3StorageProvider', () => {
     expect(result.key).toMatch(/\.jpg$/);
     const command = sendMock.mock.calls[0][0];
     expect(command.input).toMatchObject({ Bucket: 'resale-os-photos', ContentType: 'image/jpeg' });
+  });
+
+  it('reads an object body back from the bucket', async () => {
+    sendMock.mockResolvedValueOnce({
+      Body: { transformToByteArray: async () => new Uint8Array(Buffer.from('jpeg-bytes')) },
+    });
+    const provider = new S3StorageProvider(makeConfig(baseConfig));
+    const bytes = await provider.read('foto.jpg');
+    expect(bytes.equals(Buffer.from('jpeg-bytes'))).toBe(true);
+    expect(sendMock.mock.calls[0][0].input).toMatchObject({ Bucket: 'resale-os-photos', Key: 'foto.jpg' });
   });
 
   it('does not throw when deleting a key fails (idempotent delete, like LocalDiskStorageProvider)', async () => {

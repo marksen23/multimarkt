@@ -8,6 +8,7 @@ import { InvalidStateTransitionException } from '../../domain/errors/state-trans
 import { ProjectionLifecycleState } from '../../domain/state-vocabulary';
 import {
   CanonicalListingEntity,
+  ItemAttributeEntity,
   ItemEntity,
   MarketplaceProjectionEntity,
 } from '../../infrastructure/database/entities';
@@ -15,6 +16,8 @@ import { PriceTriangulationService } from '../pricing/price-triangulation.servic
 import { StateGuardService } from '../state-guard/state-guard.service';
 import { TitleGapAnalysis, TitleTokenAnalysisService } from '../title-generation/title-token-analysis.service';
 import { TitleGenerationService } from '../title-generation/title-generation.service';
+import { buildListingCopyFacts, ListingCopyFacts } from '../../domain/listing/kleinanzeigen-category';
+import { shouldCallMarketplaceDelist } from './marketplace-publishing.service';
 import { CanonicalListingService } from './canonical-listing.service';
 import { VaguePhraseDetectorService, VaguePhraseMatch } from './vague-phrase-detector.service';
 
@@ -34,6 +37,9 @@ export interface ChannelCardView {
   descriptionText: string;
   suggestedPrice: number | null;
   status: ProjectionLifecycleState | null;
+  externalPlatformId: string | null;
+  /** True, wenn eBay die Anzeige über die gespeicherte Angebots-ID beenden kann. */
+  canEndViaApi: boolean;
   gapAnalysis: TitleGapAnalysis;
   vaguePhrases: VaguePhraseMatch[];
 }
@@ -43,6 +49,7 @@ export interface ChannelPackageView {
   listingId: string | null;
   persisted: boolean;
   cards: ChannelCardView[];
+  facts: ListingCopyFacts;
 }
 
 export interface ChannelCardInput {
@@ -84,10 +91,10 @@ export class ChannelPackageService {
     }
 
     if (item.status !== 'READY' && item.status !== 'LISTED') {
-      return { itemId, listingId: null, persisted: false, cards: [] };
+      return { itemId, listingId: null, persisted: false, cards: [], facts: await this.copyFacts(item) };
     }
 
-    return this.generatePreview(itemId, salesGoal);
+    return this.generatePreview(item, salesGoal);
   }
 
   async save(
@@ -179,7 +186,8 @@ export class ChannelPackageService {
     }
   }
 
-  private async generatePreview(itemId: string, salesGoal: SalesGoal | null): Promise<ChannelPackageView> {
+  private async generatePreview(item: ItemEntity, salesGoal: SalesGoal | null): Promise<ChannelPackageView> {
+    const itemId = item.id;
     const suggestedPrice = await this.suggestPrice(itemId, salesGoal);
     const listing = await this.findListing(this.dataSource.manager, itemId);
     const cards = await Promise.all(
@@ -195,12 +203,20 @@ export class ChannelPackageService {
           descriptionText: description.descriptionText,
           suggestedPrice,
           status: null,
+          externalPlatformId: null,
+          canEndViaApi: false,
           gapAnalysis: description.gapAnalysis,
           vaguePhrases: description.vaguePhrases,
         } satisfies ChannelCardView;
       }),
     );
-    return { itemId, listingId: listing?.id ?? null, persisted: false, cards };
+    return {
+      itemId,
+      listingId: listing?.id ?? null,
+      persisted: false,
+      cards,
+      facts: await this.copyFacts(item),
+    };
   }
 
   private async suggestPrice(itemId: string, salesGoal: SalesGoal | null): Promise<number | null> {
@@ -239,6 +255,8 @@ export class ChannelPackageService {
             descriptionText: '',
             suggestedPrice: null,
             status: null,
+            externalPlatformId: null,
+            canEndViaApi: false,
             gapAnalysis: { ownTokens: [], missingTokens: [] },
             vaguePhrases: [],
           } satisfies ChannelCardView;
@@ -252,18 +270,42 @@ export class ChannelPackageService {
           descriptionText,
           suggestedPrice: projection.suggestedPrice,
           status: projection.status,
+          externalPlatformId: projection.externalPlatformId,
+          canEndViaApi: shouldCallMarketplaceDelist(
+            channel,
+            projection.externalPlatformId,
+            projection.publishMeta,
+          ),
           gapAnalysis: analysis.gapAnalysis,
           vaguePhrases: analysis.vaguePhrases,
         } satisfies ChannelCardView;
       }),
     );
 
+    const item = await manager.findOneBy(ItemEntity, { id: itemId });
     return {
       itemId,
       listingId: listing.id,
       persisted: cards.every((card) => card.id !== null),
       cards,
+      facts: item
+        ? await this.copyFacts(item)
+        : buildListingCopyFacts({ category: null, categoryDetail: null, title: null, condition: null }),
     };
+  }
+
+  private async copyFacts(item: ItemEntity): Promise<ListingCopyFacts> {
+    const attributes = await this.dataSource.manager.find(ItemAttributeEntity, {
+      where: { itemId: item.id },
+    });
+    const value = (key: string) =>
+      attributes.find((attribute) => attribute.attributeKey === key)?.attributeValue ?? null;
+    return buildListingCopyFacts({
+      category: value('category'),
+      categoryDetail: value('categoryDetail'),
+      title: item.title,
+      condition: item.condition ?? value('condition'),
+    });
   }
 
   private async analyzeStoredText(

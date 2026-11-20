@@ -20,6 +20,8 @@ describe('integrationStatus', () => {
     ).toEqual({
       geminiLive: true,
       ebayLive: false,
+      ebayPublishReady: false,
+      ebayPublishMissing: expect.arrayContaining([expect.stringContaining('EBAY_CLIENT_SECRET')]),
       photoStorageDurable: true,
       buybackLive: false,
     });

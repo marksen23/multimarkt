@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsNumber,
   IsOptional,
   IsPositive,
@@ -17,6 +18,13 @@ export class CreateListingDto {
   @IsString()
   @MinLength(1)
   marketplaceId: string;
+}
+
+export class ConfirmCancellationDto {
+  /** Der Mensch hat die Anzeige selbst beendet. Dann kein API-Aufruf. */
+  @IsOptional()
+  @IsBoolean()
+  manual?: boolean;
 }
 
 export class MarkSoldDto {

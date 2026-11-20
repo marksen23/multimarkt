@@ -4,6 +4,7 @@ import { DataSource } from 'typeorm';
 import {
   canonicalCategory,
   CATEGORY_REQUIRED_FACTS,
+  factLabel,
   normalizeFunctionChecked,
 } from '../../domain/category/taxonomy';
 import {
@@ -58,7 +59,7 @@ export class CapabilityCheckService {
     // (1) Universelle Precondition — T02-2.
     if (!item.condition) {
       throw new UnconfirmedConditionException(
-        'Item condition must be USER_CONFIRMED before this listing can be published',
+        'Der Zustand ist noch nicht bestätigt. Bestätige ihn, bevor die Anzeige online geht.',
         { canonicalListingId, itemId: item.id },
       );
     }
@@ -88,8 +89,9 @@ export class CapabilityCheckService {
     }
 
     if (missing.length > 0) {
+      const label = marketplaceId === 'EBAY' ? 'eBay' : marketplaceId === 'KLEINANZEIGEN' ? 'Kleinanzeigen' : marketplaceId;
       throw new CapabilityCheckFailedException(
-        `Marketplace '${marketplaceId}' requires fields that are missing and have no generic fallback: ${missing.join(', ')}`,
+        `Für ${label} fehlen noch Angaben: ${missing.map((key) => factLabel(key)).join(', ')}.`,
         { canonicalListingId, marketplaceId, missing },
       );
     }
