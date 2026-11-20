@@ -15,6 +15,7 @@ export interface EbaySellTransport {
   createOffer(body: unknown): Promise<{ offerId: string }>;
   publishOffer(offerId: string): Promise<{ listingId: string }>;
   withdrawOffer(offerId: string): Promise<void>;
+  updateOfferPrice(input: { sku: string; offerId: string; priceEur: number }): Promise<void>;
 }
 
 export interface EbayPublishMeta {

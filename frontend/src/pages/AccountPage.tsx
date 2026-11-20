@@ -5,6 +5,7 @@ import { ApiRequestError } from '../api/client';
 import { clearAccessToken } from '../components/TokenGate';
 import { useTheme } from '../hooks/useTheme';
 import type { DeletionAuditLog, ItemListEntry } from '../api/types';
+import { MarkdownSettingsCard } from '../components/MarkdownPanel';
 import { Button, ButtonLink, Card, Icon, Notice, PageHeader, SectionLabel } from '../ui';
 import { formatEuro, realizedPrice } from '../lib/format';
 
@@ -107,6 +108,9 @@ export function AccountPage() {
           )}
         </div>
       )}
+
+      <SectionLabel>Preissenkung</SectionLabel>
+      <MarkdownSettingsCard />
 
       <SectionLabel>Darstellung</SectionLabel>
       <Card className="p-4 space-y-3">

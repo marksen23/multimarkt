@@ -115,6 +115,27 @@ export class UserEntity {
   @Column({ name: 'search_radius_km', type: 'int', default: DEFAULT_ANKAUF_RADIUS_KM })
   searchRadiusKm: number;
 
+  // Automatische Preissenkung. Aus, bis der Verkäufer sie einschaltet.
+  // Der Mindestpreis liegt am Artikel, nicht hier.
+  @Column({ name: 'markdown_enabled', type: 'boolean', default: false })
+  markdownEnabled: boolean;
+
+  @Column({
+    name: 'markdown_percent',
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    default: 10,
+    transformer: numericTransformer,
+  })
+  markdownPercent: number;
+
+  @Column({ name: 'markdown_interval_days', type: 'int', default: 7 })
+  markdownIntervalDays: number;
+
+  @Column({ name: 'attention_after_days', type: 'int', default: 21 })
+  attentionAfterDays: number;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

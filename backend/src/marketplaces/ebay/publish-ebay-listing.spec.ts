@@ -48,6 +48,7 @@ function transport(): EbaySellTransport & {
     createOffer: offer,
     publishOffer: publish,
     withdrawOffer: jest.fn(),
+    updateOfferPrice: jest.fn(),
   };
 }
 

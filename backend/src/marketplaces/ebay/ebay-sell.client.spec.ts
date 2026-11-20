@@ -117,6 +117,56 @@ describe('EbaySellClient', () => {
     await expect(client.createOffer({ sku: 'r-1' })).resolves.toEqual({ offerId: 'offer-existing' });
   });
 
+  it('sends the new price to the recorded bulk update and keeps the euro amount as a string', async () => {
+    const fetchMock = fakeFetch((url, init) => {
+      if (url.includes('/bulk_update_price_quantity')) {
+        return { status: 200, body: { responses: [{ statusCode: 200, sku: 'sku-1', offerId: 'offer-15' }] } };
+      }
+      return route(url, init);
+    });
+    const client = new EbaySellClient(env, fetchMock as unknown as typeof fetch);
+    await client.updateOfferPrice({ sku: 'sku-1', offerId: 'offer-15', priceEur: 32 });
+
+    const call = fetchMock.mock.calls.find((entry) => String(entry[0]).includes('/bulk_update_price_quantity'));
+    expect(call).toBeTruthy();
+    const init = call?.[1] as RequestInit;
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(String(init.body))).toEqual({
+      requests: [
+        {
+          sku: 'sku-1',
+          offers: [{ offerId: 'offer-15', price: { value: '32.00', currency: 'EUR' } }],
+        },
+      ],
+    });
+    expect(String(init.headers && JSON.stringify(init.headers))).toContain('EBAY_DE');
+  });
+
+  it('turns a recorded eBay price error into a German message and does not treat it as success', async () => {
+    const fetchMock = fakeFetch((url, init) => {
+      if (url.includes('/bulk_update_price_quantity')) {
+        return {
+          status: 200,
+          body: {
+            responses: [
+              {
+                statusCode: 400,
+                sku: 'sku-1',
+                offerId: 'offer-15',
+                errors: [{ errorId: 25002, message: 'Offer not available.' }],
+              },
+            ],
+          },
+        };
+      }
+      return route(url, init);
+    });
+    const client = new EbaySellClient(env, fetchMock as unknown as typeof fetch);
+    await expect(client.updateOfferPrice({ sku: 'sku-1', offerId: 'offer-15', priceEur: 32 })).rejects.toThrow(
+      /eBay meldet: Offer not available\. \(Fehler 25002\)/,
+    );
+  });
+
   it('turns an invalid refresh token into a German message and does not invent a listing', async () => {
     const fetchMock = fakeFetch(() => ({
       status: 400,

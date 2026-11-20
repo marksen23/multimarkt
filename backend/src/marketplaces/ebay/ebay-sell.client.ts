@@ -106,6 +106,34 @@ export class EbaySellClient implements EbaySellTransport {
     return { listingId };
   }
 
+  async updateOfferPrice(input: { sku: string; offerId: string; priceEur: number }): Promise<void> {
+    const token = await this.userTokenValue();
+    const url = new URL('/sell/inventory/v1/bulk_update_price_quantity', ebayApiHost(this.env.environment));
+    const body = {
+      requests: [
+        {
+          sku: input.sku,
+          offers: [
+            {
+              offerId: input.offerId,
+              price: { value: input.priceEur.toFixed(2), currency: 'EUR' },
+            },
+          ],
+        },
+      ],
+    };
+    const parsed = await this.send(url, token, 'POST', body, true);
+    const response = (parsed as { responses?: { statusCode?: number; errors?: unknown }[] } | null)
+      ?.responses?.[0];
+    if (!response) {
+      throw new EbaySellException('eBay hat die Preisänderung nicht bestätigt. Der Preis bleibt.');
+    }
+    const statusCode = response.statusCode ?? 500;
+    if (statusCode >= 400) {
+      throw new EbaySellException(germanEbayHttpError(statusCode, { errors: response.errors }));
+    }
+  }
+
   async withdrawOffer(offerId: string): Promise<void> {
     const token = await this.userTokenValue();
     const url = new URL(
