@@ -1,0 +1,291 @@
+# CI für Pull Requests und für Pushes auf main.
+#
+# Fünf getrennte Checks, damit ein roter Haken schon sagt, wo es klemmt:
+#   Backend        Lint, Typprüfung, Unit-Tests, Produktions-Compile
+#   Frontend       Lint, Vitest, tsc und Vite-Build
+#   Migrationen    Postgres 16, migration:run zweimal, Anzahl = Dateien
+#   Start          Postgres 16 + Redis 7, node dist/main, /healthz und /ready
+#   Docker-Image   Coolify-Dockerfile bauen und den Container starten
+#
+# Keine echten API-Schlüssel. Leere Anbieter-Variablen lassen Gemini, eBay
+# und S3 aus. Es werden keine Beispielpreise oder Anzeigen erfunden.
+# Node 20.20.2 ist dieselbe Version wie im Dockerfile und in engines.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Node.js 20.20.2
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20.20.2
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Abhängigkeiten installieren
+        working-directory: backend
+        run: npm ci
+
+      - name: Lint
+        working-directory: backend
+        run: npm run lint
+
+      - name: Typprüfung
+        working-directory: backend
+        run: npm run typecheck
+
+      - name: Tests
+        working-directory: backend
+        run: npm test -- --ci --maxWorkers=2
+
+      - name: Produktions-Compile
+        working-directory: backend
+        run: npm run build
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Node.js 20.20.2
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20.20.2
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Abhängigkeiten installieren
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Typprüfung und Build
+        working-directory: frontend
+        run: npm run build
+
+  migrationen:
+    name: Migrationen
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgres://resale:resale@127.0.0.1:5432/resale_os
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: resale
+          POSTGRES_PASSWORD: resale
+          POSTGRES_DB: resale_os
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U resale -d resale_os"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Node.js 20.20.2
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20.20.2
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Abhängigkeiten installieren
+        working-directory: backend
+        run: npm ci
+
+      - name: Migrationen anwenden
+        working-directory: backend
+        run: npm run migration:run
+
+      - name: Migrationen sind idempotent
+        working-directory: backend
+        run: npm run migration:run
+
+      - name: Jede Migrationsdatei ist angewendet
+        working-directory: backend
+        run: node ../scripts/ci-assert-migrations.cjs
+
+  start:
+    name: Start
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgres://resale:resale@127.0.0.1:5432/resale_os
+      REDIS_URL: redis://127.0.0.1:6379
+      PORT: "3000"
+      # NODE_ENV bleibt hier leer. production würde npm ci die devDependencies
+      # weglassen, und dann fehlt nest (devDependency) beim Build.
+      APP_USER_ID: "00000000-0000-0000-0000-000000000000"
+      APP_ACCESS_TOKEN: ci-not-a-secret
+      JWT_SECRET: ci-not-a-secret
+      INTERNAL_SERVICE_TOKEN: ci-not-a-secret
+      WEBHOOK_SECRET_KLEINANZEIGEN: ci-not-a-secret
+      PUBLIC_BASE_URL: http://127.0.0.1:3000
+      UPLOAD_DIR: uploads
+      SALE_CONFLICT_DEBOUNCE_MS: "15000"
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: resale
+          POSTGRES_PASSWORD: resale
+          POSTGRES_DB: resale_os
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U resale -d resale_os"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        # Service-Container haben kein command-Feld. Redis 7 startet mit
+        # maxmemory-policy noeviction, dem Default, den BullMQ braucht.
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Node.js 20.20.2
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20.20.2
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Abhängigkeiten installieren
+        working-directory: backend
+        run: npm ci
+
+      - name: Backend bauen
+        working-directory: backend
+        run: npm run build
+
+      - name: Migrationen anwenden
+        working-directory: backend
+        run: npm run migration:run
+
+      - name: Prozess starten, /healthz und /ready prüfen
+        env:
+          NODE_ENV: production
+        run: bash scripts/ci-boot-smoke.sh
+
+  docker:
+    name: Docker-Image
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DATABASE_URL: postgres://resale:resale@127.0.0.1:5432/resale_os
+      REDIS_URL: redis://127.0.0.1:6379
+      PORT: "3000"
+      APP_USER_ID: "00000000-0000-0000-0000-000000000000"
+      APP_ACCESS_TOKEN: ci-not-a-secret
+      JWT_SECRET: ci-not-a-secret
+      INTERNAL_SERVICE_TOKEN: ci-not-a-secret
+      WEBHOOK_SECRET_KLEINANZEIGEN: ci-not-a-secret
+      PUBLIC_BASE_URL: http://127.0.0.1:3000
+      UPLOAD_DIR: uploads
+      SALE_CONFLICT_DEBOUNCE_MS: "15000"
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: resale
+          POSTGRES_PASSWORD: resale
+          POSTGRES_DB: resale_os
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U resale -d resale_os"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        # Service-Container haben kein command-Feld. Redis 7 startet mit
+        # maxmemory-policy noeviction, dem Default, den BullMQ braucht.
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Node.js 20.20.2
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20.20.2
+
+      - name: Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Coolify-Image bauen
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: multimarkt:ci
+          provenance: false
+          sbom: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image starten, /healthz und /ready prüfen
+        run: bash scripts/ci-docker-smoke.sh multimarkt:ci
