@@ -90,12 +90,27 @@ export interface ListingSummary {
   projections: MarketplaceProjectionSummary[];
 }
 
+export type PhotoEnhancementStatus = 'pending' | 'processing' | 'ready' | 'failed' | 'skipped';
+
+export interface PhotoTip {
+  code: 'BLURRY' | 'TOO_DARK' | 'CUT_OFF';
+  message: string;
+  source: 'pixel' | 'gemini';
+}
+
 export interface ItemPhoto {
   id: string;
   itemId: string;
   url: string;
   shot: string | null;
   createdAt: string;
+  enhancedUrl?: string | null;
+  enhancementStatus?: PhotoEnhancementStatus;
+  preferEnhanced?: boolean;
+  displayUrl?: string;
+  tips?: PhotoTip[];
+  suggestedCover?: boolean;
+  sortOrder?: number;
 }
 
 export interface ItemDetail {

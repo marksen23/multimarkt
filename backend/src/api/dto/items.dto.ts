@@ -4,6 +4,7 @@ import {
   ArrayMinSize,
   ArrayNotEmpty,
   IsArray,
+  IsBoolean,
   IsIn,
   IsNumber,
   IsOptional,
@@ -69,6 +70,11 @@ export class AssignPhotoShotDto {
   @IsOptional()
   @IsIn(PHOTO_SHOTS)
   shot?: PhotoShot | null;
+
+  /** true zeigt die verbesserte Fassung, false das hochgeladene Original. */
+  @IsOptional()
+  @IsBoolean()
+  preferEnhanced?: boolean;
 }
 
 export class BundleItemsDto {

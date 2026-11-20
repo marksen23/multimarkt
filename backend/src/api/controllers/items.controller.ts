@@ -90,9 +90,11 @@ import {
   PriceResearchResult,
   PriceTriangulationService,
 } from '../../application/pricing/price-triangulation.service';
+import { PhotoEnhancementService } from '../../application/photo-enhancement/photo-enhancement.service';
 import { PhotoQualityService } from '../../application/photo-quality/photo-quality.service';
 import { buildListingCopyFacts } from '../../domain/listing/kleinanzeigen-category';
 import { buildStoreZip, photoZipName } from '../../domain/listing/photo-zip';
+import { coverThumbnailUrl, publishablePhoto, toPublicPhoto } from '../../domain/photo/publishable-photo';
 import { buildPhotoBriefing, isPhotoShot } from '../../domain/photo-quality/photo-briefing';
 import { PhotoQualityReport } from '../../domain/photo-quality/photo-quality.types';
 import {
@@ -146,6 +148,7 @@ export class ItemsController {
     private readonly dispositionEngine: DispositionEngineService,
     private readonly priceTriangulation: PriceTriangulationService,
     private readonly imageOptimization: ImageOptimizationService,
+    private readonly photoEnhancement: PhotoEnhancementService,
     private readonly photoQuality: PhotoQualityService,
     private readonly titleGeneration: TitleGenerationService,
     private readonly listingSummary: ListingSummaryService,
@@ -219,14 +222,9 @@ export class ItemsController {
       ? await this.dataSource.manager
           .createQueryBuilder(ItemPhotoEntity, 'p')
           .where('p.item_id IN (:...ids)', { ids: items.map((i) => i.id) })
-          .orderBy('p.created_at', 'ASC')
           .getMany()
       : [];
-    const thumbnailByItem = new Map<string, string>();
-    for (const photo of photos) {
-      if (!thumbnailByItem.has(photo.itemId))
-        thumbnailByItem.set(photo.itemId, photo.url);
-    }
+    const thumbnailByItem = coverThumbnailUrl(photos);
     // Tatsächlicher Verkaufspreis (Gewinner-SaleEvent) statt Listingpreis,
     // damit Erlös-Statistiken nicht den Angebotspreis aufsummieren.
     const winners: { itemId: string; price: string }[] = items.length
@@ -253,7 +251,7 @@ export class ItemsController {
     item: ItemEntity;
     attributes: ItemAttributeEntity[];
     listings: ListingSummary[];
-    photos: ItemPhotoEntity[];
+    photos: ReturnType<typeof toPublicPhoto>[];
   }> {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
     if (!item) throw new NotFoundException(`Item ${id} not found`);
@@ -261,11 +259,8 @@ export class ItemsController {
       where: { itemId: id },
     });
     const listings = await this.listingSummary.forItem(id);
-    const photos = await this.dataSource.manager.find(ItemPhotoEntity, {
-      where: { itemId: id },
-      order: { createdAt: 'ASC' },
-    });
-    return { item, attributes, listings, photos };
+    const photos = await this.photosFor(id);
+    return { item, attributes, listings, photos: photos.map((photo) => toPublicPhoto(photo)) };
   }
 
   /**
@@ -315,9 +310,10 @@ export class ItemsController {
     // Fotogalerie (September 2026): dauerhaft mit dem Item verknüpfen,
     // unabhängig vom Ausgang der KI-Analyse unten — die Fotos wurden
     // real hochgeladen, das bleibt so, auch wenn die Analyse scheitert.
-    await this.dataSource.manager.insert(
-      ItemPhotoEntity,
-      uploaded.map((f) => ({ itemId: id, url: f.url, storageKey: f.key })),
+    await this.storePhotos(
+      id,
+      uploaded.map((file) => ({ url: file.url, storageKey: file.key })),
+      null,
     );
 
     return this.productAnalysis.analyze(
@@ -377,9 +373,10 @@ export class ItemsController {
       ),
     );
 
-    await this.dataSource.manager.insert(
-      ItemPhotoEntity,
-      uploaded.map((f) => ({ itemId: id, url: f.url, storageKey: f.key })),
+    await this.storePhotos(
+      id,
+      uploaded.map((file) => ({ url: file.url, storageKey: file.key })),
+      null,
     );
 
     return this.productAnalysis.reanalyzeInPlace(id, { hint });
@@ -501,10 +498,7 @@ export class ItemsController {
   async photoQualityReport(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<PhotoQualityReport> {
-    const photos = await this.dataSource.manager.find(ItemPhotoEntity, {
-      where: { itemId: id },
-      order: { createdAt: 'ASC' },
-    });
+    const photos = await this.photosFor(id);
     const attributes = await this.dataSource.manager.find(ItemAttributeEntity, {
       where: { itemId: id },
     });
@@ -542,25 +536,23 @@ export class ItemsController {
   ): Promise<StreamableFile> {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
     if (!item) throw new NotFoundException(`Item ${id} not found`);
-    const photos = await this.dataSource.manager.find(ItemPhotoEntity, {
-      where: { itemId: id },
-      order: { createdAt: 'ASC' },
-    });
+    const photos = await this.photosFor(id);
     if (photos.length === 0) {
       throw new BadRequestException('Für diesen Artikel sind keine Fotos gespeichert.');
     }
 
     const files = [];
     for (const [index, photo] of photos.entries()) {
+      const published = publishablePhoto(photo);
       let bytes: Buffer;
       try {
-        bytes = await this.storage.read(photo.storageKey);
+        bytes = await this.storage.read(published.storageKey);
       } catch {
         throw new NotFoundException(
           'Ein Foto liegt nicht mehr im Speicher. Lade es erneut hoch, bevor du das Archiv herunterlädst.',
         );
       }
-      files.push({ name: photoZipName(index, photo.storageKey), bytes });
+      files.push({ name: photoZipName(index, published.storageKey), bytes });
     }
 
     res.setHeader('Content-Type', 'application/zip');
@@ -583,7 +575,7 @@ export class ItemsController {
     @Param('id', ParseUUIDPipe) id: string,
     @UploadedFiles() files: Express.Multer.File[],
     @Body('shot') shot?: string,
-  ): Promise<ItemPhotoEntity[]> {
+  ) {
     const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
     if (!item) throw new NotFoundException(`Item ${id} not found`);
     if (!files?.length) {
@@ -608,14 +600,10 @@ export class ItemsController {
         }),
       ),
     );
-    return this.dataSource.manager.save(
-      ItemPhotoEntity,
-      uploaded.map((file) => ({
-        itemId: id,
-        url: file.url,
-        storageKey: file.key,
-        shot: assigned,
-      })),
+    return this.storePhotos(
+      id,
+      uploaded.map((file) => ({ url: file.url, storageKey: file.key })),
+      assigned,
     );
   }
 
@@ -624,14 +612,28 @@ export class ItemsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Param('photoId', ParseUUIDPipe) photoId: string,
     @Body() dto: AssignPhotoShotDto,
-  ): Promise<ItemPhotoEntity> {
+  ) {
     const photo = await this.dataSource.manager.findOneBy(ItemPhotoEntity, {
       id: photoId,
       itemId: id,
     });
     if (!photo) throw new NotFoundException(`Photo ${photoId} not found`);
-    photo.shot = dto.shot ?? null;
-    return this.dataSource.manager.save(photo);
+    if (dto.preferEnhanced !== undefined) photo.preferEnhanced = dto.preferEnhanced;
+    if (dto.shot !== undefined || dto.preferEnhanced === undefined) photo.shot = dto.shot ?? null;
+    const saved = await this.dataSource.manager.save(photo);
+    return toPublicPhoto(saved);
+  }
+
+  /** Das gewählte Foto wird das Titelbild. Beide Fassungen werden neu gerechnet, damit der weiße Hintergrund mitwandert. */
+  @Post(':id/photos/:photoId/cover')
+  async makeCoverPhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('photoId', ParseUUIDPipe) photoId: string,
+  ) {
+    const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
+    if (!item) throw new NotFoundException(`Item ${id} not found`);
+    const photos = await this.photoEnhancement.makeCover(id, photoId);
+    return photos.map((photo) => toPublicPhoto(photo));
   }
 
   // §9e-Ergänzung (September 2026): reine Vorschau wie bei generate-description
@@ -940,6 +942,37 @@ export class ItemsController {
       .innerJoin(CanonicalListingEntity, 'l', 'l.id = p.canonical_listing_id')
       .where('l.item_id = :itemId', { itemId: id })
       .getMany();
+  }
+
+  private async photosFor(itemId: string): Promise<ItemPhotoEntity[]> {
+    const photos = await this.dataSource.manager.find(ItemPhotoEntity, { where: { itemId } });
+    photos.sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.getTime() - b.createdAt.getTime());
+    return photos;
+  }
+
+  private async storePhotos(
+    itemId: string,
+    uploaded: Array<{ url: string; storageKey: string }>,
+    shot: string | null,
+  ) {
+    const existing = await this.photosFor(itemId);
+    const start = existing.reduce((max, photo) => Math.max(max, photo.sortOrder), -1) + 1;
+    const saved = await this.dataSource.manager.save(
+      ItemPhotoEntity,
+      uploaded.map((file, index) => ({
+        itemId,
+        url: file.url,
+        storageKey: file.storageKey,
+        shot,
+        sortOrder: start + index,
+        enhancementStatus: 'pending' as const,
+        preferEnhanced: true,
+        tips: [],
+        suggestedCover: false,
+      })),
+    );
+    await this.photoEnhancement.enqueue(saved.map((photo) => photo.id));
+    return saved.map((photo) => toPublicPhoto(photo));
   }
 }
 

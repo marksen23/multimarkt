@@ -69,6 +69,10 @@ export const itemsApi = {
   },
   assignPhotoShot: (id: string, photoId: string, shot: string | null) =>
     api.patch<ItemPhoto>(`/items/${id}/photos/${photoId}`, { shot }),
+  setPhotoVersion: (id: string, photoId: string, preferEnhanced: boolean) =>
+    api.patch<ItemPhoto>(`/items/${id}/photos/${photoId}`, { preferEnhanced }),
+  makeCoverPhoto: (id: string, photoId: string) =>
+    api.post<ItemPhoto[]>(`/items/${id}/photos/${photoId}/cover`, {}),
   generateTitle: (id: string, channel: ListingChannel) =>
     api.get<TitleSuggestion>(`/items/${id}/generate-title?channel=${channel}`),
   updateTitle: (id: string, title: string) => api.patch<Item>(`/items/${id}/title`, { title }),

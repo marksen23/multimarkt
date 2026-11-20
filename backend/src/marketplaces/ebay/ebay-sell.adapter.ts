@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { EbaySellException } from '../../domain/errors/ebay-sell.exception';
+import { publishablePhoto } from '../../domain/photo/publishable-photo';
 import { EbaySellEnv, ebaySellGaps } from '../../domain/listing/ebay-sell-readiness';
 import {
   MarketplaceAdapter,
@@ -87,7 +88,7 @@ export class EbaySellAdapter implements MarketplaceAdapter {
       this.dataSource.manager.find(ItemAttributeEntity, { where: { itemId: listing.itemId } }),
       this.dataSource.manager.find(ItemPhotoEntity, {
         where: { itemId: listing.itemId },
-        order: { createdAt: 'ASC' },
+        order: { sortOrder: 'ASC', createdAt: 'ASC' },
       }),
     ]);
 
@@ -106,7 +107,7 @@ export class EbaySellAdapter implements MarketplaceAdapter {
       pickupOnly: Boolean(item.pickupOnly),
       attributes: values,
       brandFallback: input.fallbackData.brand ?? null,
-      photoUrls: photos.map((photo) => photo.url),
+      photoUrls: photos.map((photo) => publishablePhoto(photo).url),
     };
   }
 }

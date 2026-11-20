@@ -95,6 +95,16 @@ export function ItemDetailPage() {
     return () => clearInterval(interval);
   }, [status, reload]);
 
+  const photoProgress = detail?.photos
+    .map((photo) => `${photo.id}:${photo.enhancementStatus ?? ''}`)
+    .join('|');
+  useEffect(() => {
+    if (!photoProgress) return;
+    if (!photoProgress.includes('pending') && !photoProgress.includes('processing')) return;
+    const interval = setInterval(() => void reload(), 2000);
+    return () => clearInterval(interval);
+  }, [photoProgress, reload]);
+
   const prevStatus = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (prevStatus.current === 'ANALYZING' && status && status !== 'ANALYZING') {
@@ -199,6 +209,8 @@ export function ItemDetailPage() {
             busy={busy}
             onShotChange={(photoId, shot) => run(() => itemsApi.assignPhotoShot(id, photoId, shot))}
             onAdd={(file, shot) => run(() => itemsApi.addPhoto(id, file, shot))}
+            onPrefer={(photoId, preferEnhanced) => run(() => itemsApi.setPhotoVersion(id, photoId, preferEnhanced))}
+            onMakeCover={(photoId) => run(() => itemsApi.makeCoverPhoto(id, photoId))}
           />
           {DISCARDABLE.has(item.status) && (
             <PhotoQualityPanel itemId={id} photoCount={detail.photos.length} briefing={briefing} />
