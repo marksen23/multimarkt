@@ -22,6 +22,7 @@ const SIDEBAR_NAV: NavItem[] = [
   { to: '/bundles', label: 'Bundles', icon: 'package' },
   { to: '/verkaeufe', label: 'Verkäufe', icon: 'euro' },
   { to: '/sicherung', label: 'Sicherung', icon: 'download' },
+  { to: '/einrichtung', label: 'Einrichtung', icon: 'key' },
   { to: '/account', label: 'Konto', icon: 'user' },
 ];
 
@@ -31,7 +32,7 @@ const BOTTOM_LEFT: NavItem[] = [
 ];
 const BOTTOM_RIGHT: NavItem[] = [
   { to: '/ankauf', label: 'Ankauf', icon: 'search' },
-  { to: '/mehr', label: 'Mehr', icon: 'grid', alsoActive: ['/bundles', '/account', '/verkaeufe', '/sicherung'] },
+  { to: '/mehr', label: 'Mehr', icon: 'grid', alsoActive: ['/bundles', '/account', '/verkaeufe', '/sicherung', '/einrichtung'] },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

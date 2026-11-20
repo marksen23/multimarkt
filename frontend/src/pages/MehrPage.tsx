@@ -4,6 +4,7 @@ import { clearAccessToken } from '../components/TokenGate';
 import { Card, Icon, PageHeader, type IconName } from '../ui';
 
 const LINKS: { to: string; icon: IconName; title: string; text: string }[] = [
+  { to: '/einrichtung', icon: 'key', title: 'Einrichtung', text: 'Welche Dienste eingerichtet sind und was noch fehlt' },
   { to: '/bundles', icon: 'package', title: 'Bundles', text: 'Mehrere Artikel als Paket verkaufen' },
   { to: '/verkaeufe', icon: 'euro', title: 'Verkäufe', text: 'Monatsauswertung und abgeschlossene Verkäufe' },
   { to: '/sicherung', icon: 'download', title: 'Sicherung', text: 'Bestand exportieren und Fotos sichern' },

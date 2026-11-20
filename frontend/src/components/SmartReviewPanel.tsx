@@ -224,7 +224,7 @@ export function SmartReviewPanel({
           </div>
           {autoConfirmed.length > 0 && (
             <span className="inline-flex items-center gap-1 text-label bg-accent-soft text-accent px-2 py-1 rounded-full">
-              {autoConfirmed.length} auto <Icon name="check" size={12} strokeWidth={3} />
+              {autoConfirmed.length} erkannt <Icon name="check" size={12} strokeWidth={3} />
             </span>
           )}
         </div>

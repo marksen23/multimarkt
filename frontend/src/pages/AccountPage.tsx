@@ -5,8 +5,7 @@ import { ApiRequestError } from '../api/client';
 import { clearAccessToken } from '../components/TokenGate';
 import { useTheme } from '../hooks/useTheme';
 import type { DeletionAuditLog, ItemListEntry } from '../api/types';
-import { IntegrationBanner } from '../components/IntegrationBanner';
-import { Button, Card, Icon, Notice, PageHeader, SectionLabel } from '../ui';
+import { Button, ButtonLink, Card, Icon, Notice, PageHeader, SectionLabel } from '../ui';
 import { formatEuro, realizedPrice } from '../lib/format';
 
 /** Doc 04 §16 / Doc 01 §15 — Hard-Delete-Lifecycle (T08-1). */
@@ -69,9 +68,14 @@ export function AccountPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-5">
-      <PageHeader title="Konto" />
-
-      <IntegrationBanner verbose />
+      <PageHeader
+        title="Konto"
+        action={
+          <ButtonLink to="/einrichtung" variant="secondary" size="sm" icon="key">
+            Einrichtung
+          </ButtonLink>
+        }
+      />
 
       <SectionLabel>Statistik</SectionLabel>
 
@@ -154,7 +158,7 @@ export function AccountPage() {
       </Card>
 
       <div role="region" aria-label="Konto löschen" className="bg-danger-soft/40 border border-danger/20 rounded-card p-4 space-y-3">
-        <h2 className="text-title text-danger">Account löschen</h2>
+        <h2 className="text-title text-danger">Konto löschen</h2>
         <p className="text-label font-normal text-danger/90">
           Löscht unwiderruflich alle Items, Listings, Bundles und Verkaufsdaten (DB-Kaskade). Diese
           Aktion kann nicht rückgängig gemacht werden.

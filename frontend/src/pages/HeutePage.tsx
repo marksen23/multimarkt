@@ -142,7 +142,7 @@ function Stat({ icon, label, value, sub }: { icon: IconName; label: string; valu
 const STEPS: { icon: IconName; title: string; text: string }[] = [
   { icon: 'camera', title: 'Fotografieren', text: 'Artikel, Etikett oder Typenschild.' },
   { icon: 'sparkle', title: 'KI prüft', text: 'Titel, Zustand und Preis werden vorgeschlagen.' },
-  { icon: 'copy', title: 'Inserieren', text: 'Fertige Texte je Portal kopieren.' },
+  { icon: 'copy', title: 'Inserieren', text: 'Preis prüfen, dann kopieren oder auf eBay einstellen.' },
 ];
 
 function Onboarding() {

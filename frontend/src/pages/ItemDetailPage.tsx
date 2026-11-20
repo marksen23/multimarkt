@@ -18,6 +18,7 @@ import { LogisticsProfileForm } from '../components/LogisticsProfileForm';
 import { ListingsManager } from '../components/ListingsManager';
 import { SaleCloseoutForm } from '../components/SaleCloseoutForm';
 import { SaleResultPanel } from '../components/SaleResultPanel';
+import { CaptureProgress } from '../components/CaptureProgress';
 import { PhotoCapture } from '../components/PhotoCapture';
 import { PhotoGallery } from '../components/PhotoGallery';
 import { PhotoQualityPanel } from '../components/PhotoQualityPanel';
@@ -26,6 +27,7 @@ import { PurchasePanel } from '../components/PurchasePanel';
 import { DetailPageSkeleton } from '../components/Skeleton';
 import { useItems } from '../contexts/ItemsContext';
 import { formatEuro } from '../lib/format';
+import { nextStepHint } from '../lib/next-step';
 import {
   ActionBar,
   Button,
@@ -178,26 +180,14 @@ export function ItemDetailPage() {
           {item.condition && <span className="text-label font-normal text-ink-muted">{item.condition}</span>}
           {detail.listings[0] && <span className="text-label tabular-nums text-ink">{formatEuro(detail.listings[0].sellingPrice)}</span>}
         </div>
+        {nextStepHint(item.status) && (
+          <p className="text-body text-ink-muted">{nextStepHint(item.status)}</p>
+        )}
       </header>
 
       <PhaseStepper status={item.status} />
 
       {error && <Notice tone="danger">{error}</Notice>}
-
-      <div className="mb-4">
-        <PurchasePanel
-          key={[
-            item.purchasePriceEur,
-            item.purchasePortal,
-            item.purchaseDate,
-            item.purchaseCondition,
-            item.purchaseUrl,
-          ].join('|')}
-          item={item}
-          busy={busy}
-          onSave={(draft) => run(() => itemsApi.updatePurchase(id, draft))}
-        />
-      </div>
 
       {(detail.photos.length > 0 || briefing.category) && !FINISHED.has(item.status) && (
         <div className="space-y-3">
@@ -330,6 +320,29 @@ export function ItemDetailPage() {
           onRecordSale={(draft) => run(() => itemsApi.recordSaleCloseout(id, draft))}
         />
       )}
+
+      <details className="rounded-card border border-line bg-surface shadow-card">
+        <summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between gap-3 outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-card [&::-webkit-details-marker]:hidden">
+          <span className="text-body font-semibold text-ink">Einkauf</span>
+          <span className="text-label font-normal text-ink-faint">
+            {item.purchasePriceEur != null ? formatEuro(item.purchasePriceEur) : 'optional'}
+          </span>
+        </summary>
+        <div className="px-4 pb-4">
+          <PurchasePanel
+            key={[
+              item.purchasePriceEur,
+              item.purchasePortal,
+              item.purchaseDate,
+              item.purchaseCondition,
+              item.purchaseUrl,
+            ].join('|')}
+            item={item}
+            busy={busy}
+            onSave={(draft) => run(() => itemsApi.updatePurchase(id, draft))}
+          />
+        </div>
+      </details>
 
       <Sheet open={sheet === 'discard'} onClose={() => setSheet(null)} title="Artikel verwerfen?">
         <p className="text-body text-ink-muted mb-4">
@@ -486,14 +499,6 @@ function AnalyzeStep({
   const [photos, setPhotos] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploaded, setUploaded] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-
-  useEffect(() => {
-    if (!analyzing) return;
-    const start = Date.now();
-    const t = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
-    return () => clearInterval(t);
-  }, [analyzing]);
 
   const start = async () => {
     setUploadProgress(0);
@@ -505,35 +510,24 @@ function AnalyzeStep({
   };
 
   if (analyzing) {
-    return (
-      <Card role="status" aria-label="KI analysiert die Fotos" className="p-5 flex items-center gap-3">
-        <span className="w-10 h-10 rounded-full bg-phase-capture-soft text-phase-capture flex items-center justify-center">
-          <Spinner />
-        </span>
-        <div>
-          <p className="text-body font-semibold text-ink">KI analysiert die Fotos</p>
-          <p className="text-label font-normal text-ink-faint">
-            {elapsed > 0 ? `${elapsed} s · ` : 'Dauert meist 15–30 Sekunden. '}Du kannst die Seite verlassen.
-          </p>
-        </div>
-      </Card>
-    );
+    return <CaptureProgress stage="analyzing" leaveHint />;
   }
 
   return (
     <section aria-label="Fotos hinzufügen" className="space-y-3">
       <SectionLabel>Fotos hinzufügen</SectionLabel>
       <PhotoCapture files={photos} onChange={setPhotos} itemId={itemId} />
-      {busy && uploadProgress > 0 && !uploaded && (
-        <div className="h-1.5 rounded-full bg-line overflow-hidden" role="progressbar" aria-valuenow={Math.round(uploadProgress * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Upload-Fortschritt">
-          <div className="h-full bg-accent transition-all duration-150" style={{ width: `${Math.round(uploadProgress * 100)}%` }} />
-        </div>
-      )}
-      <ActionBar>
-        <Button size="lg" icon="sparkle" loading={busy} disabled={photos.length === 0} onClick={() => void start()}>
+      <div className="sticky bottom-above-nav z-10 -mx-4 px-4 pt-3 pb-3 bg-gradient-to-t from-bg via-bg/95 to-transparent space-y-2">
+        {busy && (
+          <CaptureProgress
+            stage={uploaded ? 'analyzing' : 'uploading'}
+            uploadPercent={uploadProgress * 100}
+          />
+        )}
+        <Button size="lg" block icon="sparkle" loading={busy} disabled={photos.length === 0} onClick={() => void start()}>
           {busy && uploaded ? 'KI analysiert…' : busy ? `Lädt hoch… ${Math.round(uploadProgress * 100)} %` : 'Analysieren'}
         </Button>
-      </ActionBar>
+      </div>
     </section>
   );
 }

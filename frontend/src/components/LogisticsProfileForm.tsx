@@ -89,7 +89,7 @@ export function LogisticsProfileForm({
   return (
     <Card className="p-4 space-y-3">
       <div>
-        <p className="text-micro uppercase text-ink-muted">Logistikprofil</p>
+        <p className="text-micro uppercase text-ink-muted">Versand und Abholung</p>
         <p className="text-label font-normal text-ink-faint mt-1">
           Gewicht, Maße, Sperrig, Abholung oder Versand, PLZ. Daraus folgen Kanal und Text.
         </p>

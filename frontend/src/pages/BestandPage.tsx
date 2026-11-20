@@ -3,6 +3,7 @@ import { ItemRow } from '../components/ItemRow';
 import { ListSkeleton } from '../components/Skeleton';
 import { useItems } from '../contexts/ItemsContext';
 import type { ItemListEntry } from '../api/types';
+import { CHANNEL_FILTERS, channelSearchText, matchesChannelFilter, type ChannelFilter } from '../lib/channel-status';
 import { Button, ButtonLink, EmptyState, Icon, Notice, PageHeader, inputClass, statusInfo, type Phase } from '../ui';
 
 type FilterKey = 'active' | Exclude<Phase, 'conflict'>;
@@ -66,6 +67,7 @@ function readSort(): SortKey {
 export function BestandPage() {
   const { entries, error, refresh } = useItems();
   const [filter, setFilter] = useState<FilterKey>('active');
+  const [channel, setChannel] = useState<ChannelFilter>('all');
   const [sort, setSort] = useState<SortKey>(readSort);
   const [search, setSearch] = useState('');
 
@@ -75,11 +77,14 @@ export function BestandPage() {
 
   const q = search.trim().toLowerCase();
   const searched =
-    entries?.filter(
-      (e) => !q || (e.item.title ?? '').toLowerCase().includes(q) || (e.item.condition ?? '').toLowerCase().includes(q),
-    ) ?? [];
+    entries?.filter((e) => {
+      if (!q) return true;
+      const haystack = `${e.item.title ?? ''} ${e.item.condition ?? ''} ${channelSearchText(e.listings)}`.toLowerCase();
+      return haystack.includes(q);
+    }) ?? [];
+  const inChannel = searched.filter((e) => matchesChannelFilter(e.listings, channel));
   const visible = sortEntries(
-    searched.filter((e) => matches(e, filter)),
+    inChannel.filter((e) => matches(e, filter)),
     sort,
   );
   const soldCount = entries?.filter((e) => e.item.status === 'SOLD').length ?? 0;
@@ -90,17 +95,15 @@ export function BestandPage() {
         title="Bestand"
         subtitle={
           entries
-            ? q
-              ? `${visible.length} Treffer · ${entries.length} gesamt`
-              : filter !== 'active'
+            ? q || filter !== 'active' || channel !== 'all'
               ? `${visible.length} angezeigt · ${entries.length} gesamt`
               : `${entries.length} Artikel insgesamt`
             : undefined
         }
         action={
           soldCount > 0 && entries ? (
-            <Button variant="ghost" size="sm" icon="download" onClick={() => exportSoldCsv(entries)}>
-              CSV
+            <Button variant="ghost" size="sm" icon="download" onClick={() => exportSoldCsv(entries)} aria-label="Verkaufte Artikel als CSV herunterladen">
+              Verkaufsliste
             </Button>
           ) : undefined
         }
@@ -147,9 +150,30 @@ export function BestandPage() {
               </select>
             </label>
           </div>
+          <div className="-mx-4 px-4 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]" role="tablist" aria-label="Kanal filtern">
+            {CHANNEL_FILTERS.map(({ key, label }) => {
+              const active = channel === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setChannel(key)}
+                  className={`shrink-0 h-8 px-3 rounded-full text-label border transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                    active
+                      ? 'bg-accent text-accent-ink border-accent'
+                      : 'bg-surface text-ink-muted border-line hover:text-ink hover:border-ink-faint'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
           <div className="-mx-4 px-4 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]" role="tablist" aria-label="Artikel filtern">
               {FILTERS.map(({ key, label }) => {
-                const count = searched.filter((e) => matches(e, key)).length;
+                const count = inChannel.filter((e) => matches(e, key)).length;
                 const active = filter === key;
                 return (
                   <button
@@ -158,7 +182,7 @@ export function BestandPage() {
                     role="tab"
                     aria-selected={active}
                     onClick={() => setFilter(key)}
-                    className={`shrink-0 h-8 px-3 rounded-full text-label border transition-colors ${
+                    className={`shrink-0 h-8 px-3 rounded-full text-label border transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                       active
                         ? 'bg-ink text-bg border-ink'
                         : 'bg-surface text-ink-muted border-line hover:text-ink hover:border-ink-faint'
@@ -187,13 +211,20 @@ export function BestandPage() {
       {entries && entries.length > 0 && visible.length === 0 && (
         <EmptyState
           icon="search"
-          title={q ? `Keine Treffer für „${search.trim()}“` : 'Keine Artikel in dieser Phase'}
+          title={
+            q
+              ? `Keine Treffer für „${search.trim()}“`
+              : channel !== 'all'
+                ? 'Keine Artikel für diesen Kanal'
+                : 'Keine Artikel in dieser Phase'
+          }
           action={
             <Button
               variant="secondary"
               size="sm"
               onClick={() => {
                 setFilter('active');
+                setChannel('all');
                 setSearch('');
               }}
             >

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { systemApi } from '../api/system';
 import type { IntegrationStatus } from '../api/types';
 import { Notice } from '../ui';
@@ -70,9 +71,12 @@ export function IntegrationBanner({ verbose = false }: { verbose?: boolean }) {
                 .{' '}
               </>
             )}
-            In Coolify bei der App unter Environment Variables eintragen und neu deployen. Nicht ins Git.
+            In Coolify bei der App unter Environment Variables eintragen und neu starten. Nicht ins Git.
           </span>
         )}
+        <Link to="/einrichtung" className="block mt-1 underline font-semibold">
+          Einrichtung ansehen
+        </Link>
       </span>
     </Notice>
   );

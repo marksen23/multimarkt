@@ -52,7 +52,7 @@ export function PurchasePanel({
   return (
     <Card className="p-4 space-y-3">
       <div>
-        <p className="text-micro uppercase text-ink-muted">Einstand</p>
+        <p className="text-micro uppercase text-ink-muted">Einkauf</p>
         <p className="text-label font-normal text-ink-faint mt-1">
           Einkauf von Hand: Preis, Portal, Datum, Zustand, Link.
         </p>
