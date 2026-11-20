@@ -27,11 +27,13 @@ import { BackupExportModule } from '../application/export/backup-export.module';
 import { SalesModule } from '../application/sales/sales.module';
 import { StateGuardModule } from '../application/state-guard/state-guard.module';
 import { WorklistModule } from '../application/worklist/worklist.module';
+import { MarkdownModule } from '../application/markdown/markdown.module';
 import { AccountController } from './controllers/account.controller';
 import { ExportController } from './controllers/export.controller';
 import { AnkaufController } from './controllers/ankauf.controller';
 import { BundlesController } from './controllers/bundles.controller';
 import { FollowUpsController } from './controllers/follow-ups.controller';
+import { MarkdownController } from './controllers/markdown.controller';
 import { ItemsController } from './controllers/items.controller';
 import { ListingsController } from './controllers/listings.controller';
 import { SaleEventsController } from './controllers/sale-events.controller';
@@ -71,10 +73,12 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     WebhooksModule,
     StorageModule,
     WorklistModule,
+    MarkdownModule,
   ],
   controllers: [
     ItemsController,
     FollowUpsController,
+    MarkdownController,
     ListingsController,
     BundlesController,
     SaleEventsController,

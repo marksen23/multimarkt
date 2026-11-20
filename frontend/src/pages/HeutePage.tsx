@@ -1,8 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { markdownApi, type MarkdownTask } from '../api/markdown';
 import type { ItemListEntry, Worklist, WorklistBundleEntry } from '../api/types';
 import { ItemRow } from '../components/ItemRow';
+import { MarkdownTaskList } from '../components/MarkdownTaskList';
 import { ListSkeleton } from '../components/Skeleton';
+import { useToast } from '../components/Toast';
 import { useItems } from '../contexts/ItemsContext';
 import { ButtonLink, Card, EmptyState, Icon, Notice, PageHeader, SectionLabel, type IconName } from '../ui';
 import { formatEuro, realizedPrice } from '../lib/format';
@@ -10,10 +13,31 @@ import { localSlotEntries, reasonMeta, REASON_ACTION, slotTitle, TODO_ORDER, typ
 
 export function HeutePage() {
   const { entries, worklist, error, refresh, pendingCount: todo } = useItems();
+  const toast = useToast();
+  const [tasks, setTasks] = useState<MarkdownTask[]>([]);
+  const [attentionCount, setAttentionCount] = useState(0);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([markdownApi.tasks(), markdownApi.attention()])
+      .then(([nextTasks, attention]) => {
+        if (!active) return;
+        setTasks(nextTasks);
+        setAttentionCount(attention.length);
+      })
+      .catch(() => {
+        if (!active) return;
+        setTasks([]);
+        setAttentionCount(0);
+      });
+    return () => {
+      active = false;
+    };
+  }, [entries]);
 
   const sections = entries && worklist ? buildSections(worklist, entries) : [];
 
@@ -31,9 +55,11 @@ export function HeutePage() {
             ? 'Lädt…'
             : (() => {
                 const analyzing = entries.filter((e) => e.item.status === 'ANALYZING').length;
-                if (todo === 0 && analyzing === 0) return 'Nichts zu tun.';
+                if (todo === 0 && analyzing === 0 && tasks.length === 0 && attentionCount === 0) return 'Nichts zu tun.';
                 const parts: string[] = [];
                 if (todo > 0) parts.push(`${todo} ${todo === 1 ? 'Artikel wartet' : 'Artikel warten'}`);
+                if (tasks.length > 0) parts.push(`${tasks.length} ${tasks.length === 1 ? 'Preis' : 'Preise'}`);
+                if (attentionCount > 0) parts.push('Wiedervorlage');
                 if (analyzing > 0) parts.push(`${analyzing} wird analysiert`);
                 return parts.join(' · ');
               })()
@@ -45,6 +71,28 @@ export function HeutePage() {
       {entries === null && !error && <ListSkeleton />}
 
       {entries && entries.length === 0 && <Onboarding />}
+
+      {(tasks.length > 0 || attentionCount > 0) && (
+        <section aria-label="Preise und Wiedervorlage" className="space-y-3">
+          {tasks.length > 0 && (
+            <>
+              <SectionLabel>Preise senken · {tasks.length}</SectionLabel>
+              <MarkdownTaskList
+                tasks={tasks}
+                onDone={(result) => {
+                  toast(result.message, result.applied ? 'success' : 'error');
+                  refresh();
+                }}
+              />
+            </>
+          )}
+          {attentionCount > 0 && (
+            <ButtonLink to="/wiedervorlage" variant="secondary" block>
+              Wiedervorlage · {attentionCount === 1 ? '1 Artikel' : `${attentionCount} Artikel`}
+            </ButtonLink>
+          )}
+        </section>
+      )}
 
       {entries && entries.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
@@ -62,7 +110,7 @@ export function HeutePage() {
         </section>
       ))}
 
-      {entries && entries.length > 0 && todo === 0 && (
+      {entries && entries.length > 0 && todo === 0 && tasks.length === 0 && attentionCount === 0 && (
         <EmptyState
           icon="check"
           title="Alles erledigt"

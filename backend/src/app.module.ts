@@ -10,6 +10,7 @@ import { CapabilityCheckModule } from './application/capability-check/capability
 import { DispositionEngineModule } from './application/disposition/disposition-engine.module';
 import { SaleIngestionModule } from './application/sale-conflict/sale-ingestion.module';
 import { SaleConflictWorkerModule } from './application/sale-conflict/sale-conflict-worker.module';
+import { MarkdownWorkerModule } from './application/markdown/markdown-worker.module';
 import { ApiModule } from './api/api.module';
 import { HealthModule } from './health/health.module';
 
@@ -37,6 +38,7 @@ import { HealthModule } from './health/health.module';
     DispositionEngineModule,
     SaleIngestionModule,
     SaleConflictWorkerModule,
+    MarkdownWorkerModule,
     ApiModule,
   ],
   controllers: [AppController],

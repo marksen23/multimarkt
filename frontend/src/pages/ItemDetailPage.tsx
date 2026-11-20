@@ -14,6 +14,7 @@ import { Angebotspaket } from '../components/Angebotspaket';
 import { SmartReviewPanel } from '../components/SmartReviewPanel';
 import { DispositionPanel } from '../components/DispositionPanel';
 import { FollowUpPanel } from '../components/FollowUpPanel';
+import { MarkdownPanel } from '../components/MarkdownPanel';
 import { LogisticsProfileForm } from '../components/LogisticsProfileForm';
 import { ListingsManager } from '../components/ListingsManager';
 import { SaleCloseoutForm } from '../components/SaleCloseoutForm';
@@ -265,6 +266,7 @@ export function ItemDetailPage() {
       {item.status === 'LISTED' && (
         <div className="space-y-5">
           <NegotiationEntry itemId={id} />
+          <MarkdownPanel itemId={id} onChanged={() => void reload()} />
           {followUp && <FollowUpPanel itemId={id} followUp={followUp} busy={busy} onRecord={run} />}
           <section aria-label="Online auf">
             <SectionLabel>Online auf</SectionLabel>

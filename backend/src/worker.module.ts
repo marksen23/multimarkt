@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { QueueModule } from './infrastructure/queue/bullmq.module';
 import { SaleConflictWorkerModule } from './application/sale-conflict/sale-conflict-worker.module';
+import { MarkdownWorkerModule } from './application/markdown/markdown-worker.module';
 
 /**
  * Root-Modul für den Render "Background Worker" Service (BullMQ-Consumer).
@@ -17,6 +18,7 @@ import { SaleConflictWorkerModule } from './application/sale-conflict/sale-confl
     DatabaseModule,
     QueueModule,
     SaleConflictWorkerModule,
+    MarkdownWorkerModule,
   ],
 })
 export class WorkerModule {}
