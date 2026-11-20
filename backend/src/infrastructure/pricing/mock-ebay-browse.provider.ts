@@ -4,17 +4,16 @@ import {
   MarketDistributionQuery,
   MarketDistributionResult,
 } from '../../domain/pricing/market-distribution-provider.interface';
+import { EBAY_MISSING_KEYS_MESSAGE, MarketSearchError } from '../../domain/pricing/market-search-error';
 
 /**
- * Ohne EBAY_CLIENT_ID und EBAY_CLIENT_SECRET. Liefert bewusst keine
- * Verteilung: erfundene Mediane (früher fest 34 €) sind als
- * Startpreis durchgegangen. Vergleichssuchen laufen als Links, die der
- * Nutzer selbst öffnet.
+ * Ohne echte EBAY_CLIENT_ID und EBAY_CLIENT_SECRET. Erfindet keine Preise.
+ * Eine Suche mit Begriffen meldet die fehlenden Schlüssel auf Deutsch.
  */
 @Injectable()
 export class MockEbayBrowseProvider implements MarketDistributionProvider {
   async search(query: MarketDistributionQuery): Promise<MarketDistributionResult | null> {
-    void query;
-    return null;
+    if (!query.keywords.trim()) return null;
+    throw new MarketSearchError('MISSING_KEYS', EBAY_MISSING_KEYS_MESSAGE);
   }
 }

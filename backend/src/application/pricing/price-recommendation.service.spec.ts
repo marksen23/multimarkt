@@ -170,8 +170,8 @@ describe('PriceRecommendationService', () => {
     expect(result.sampleSize).toBe(16);
     expect(result.rangeLow).toBe(70);
     expect(result.rangeHigh).toBe(130);
-    expect(result.priceBasisNote).toBe('Angebotspreise, nicht erzielte Verkäufe, Faktor 0,87');
     expect(result.priceBasisNote).toBe(ASKING_PRICE_NOTE);
+    expect(result.quickSalePrice).toBe(result.targetPrice);
     expect(result.startPriceRecommended).toBe(true);
   });
 
@@ -187,6 +187,43 @@ describe('PriceRecommendationService', () => {
     expect(four.reasoning.some((line) => line.includes('kein konkreter Startpreis'))).toBe(true);
     expect(four.reasoning.some((line) => line.includes('Startpreis +'))).toBe(false);
     expect(five.startPriceRecommended).toBe(true);
+  });
+
+  it('keeps the quick-sale price on the realized anchor while the sales goal only moves the start price', () => {
+    const fast = service.recommend([marketSource({ median: 100, sampleSize: 10 })], 'FAST_SALE')!;
+    const profit = service.recommend([marketSource({ median: 100, sampleSize: 10 })], 'MAX_PROFIT')!;
+
+    expect(fast.quickSalePrice).toBe(fast.listPrice);
+    expect(profit.quickSalePrice).toBe(fast.quickSalePrice);
+    expect(profit.listPrice).toBeGreaterThan(profit.quickSalePrice);
+  });
+
+  it('lowers a worn item and raises a like-new item against the same asking median', () => {
+    const good = service.recommend([marketSource({ median: 100, sampleSize: 10 })], 'FAST_SALE', {
+      condition: 'Gut',
+    })!;
+    const worn = service.recommend([marketSource({ median: 100, sampleSize: 10 })], 'FAST_SALE', {
+      condition: 'Gebraucht',
+    })!;
+    const fresh = service.recommend([marketSource({ median: 100, sampleSize: 10 })], 'FAST_SALE', {
+      condition: 'Wie neu',
+    })!;
+
+    expect(worn.quickSalePrice).toBeLessThan(good.quickSalePrice);
+    expect(fresh.quickSalePrice).toBeGreaterThan(good.quickSalePrice);
+    expect(worn.conditionNote).toMatch(/Spuren/);
+    expect(good.conditionFactor).toBe(1);
+  });
+
+  it('steps confidence down when the only usable search was the broad article type', () => {
+    const broad = service.recommend([marketSource({ sampleSize: 20, p25: 90, p75: 110 })], null, {
+      queryLevel: 'broad',
+      query: 'Schlagbohrmaschine',
+    })!;
+
+    expect(broad.confidence).toBe('MEDIUM');
+    expect(broad.confidenceNote).toMatch(/weit/);
+    expect(broad.reasoning.some((line) => line.includes('Schlagbohrmaschine'))).toBe(true);
   });
 
   it('always includes a human-readable reasoning trail (never a blackbox number)', () => {

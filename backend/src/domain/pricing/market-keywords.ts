@@ -67,6 +67,10 @@ const COARSE_CATEGORIES = new Set([
   'sonstiges',
 ]);
 
+export function isCoarseMarketCategory(value: string): boolean {
+  return isCoarseCategory(value);
+}
+
 function isCoarseCategory(value: string): boolean {
   return COARSE_CATEGORIES.has(value.toLocaleLowerCase('de-DE'));
 }

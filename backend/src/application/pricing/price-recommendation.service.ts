@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { SalesGoal } from '../../domain/ai/description-generation-provider.interface';
+import { conditionAdjustment } from '../../domain/pricing/condition-adjustment';
 import { MIN_MARKET_SAMPLE_SIZE } from '../../domain/pricing/market-distribution-provider.interface';
+import { MarketQueryLevel } from '../../domain/pricing/market-query-ladder';
 import { PriceConfidence, PriceRecommendation } from '../../domain/pricing/price-recommendation';
 import { PriceResearchSourceResult } from './price-triangulation.service';
 
@@ -14,8 +16,9 @@ import { PriceResearchSourceResult } from './price-triangulation.service';
 // BUYBACK_TO_RESALE_MULTIPLIER).
 export const ASKING_TO_REALIZED_FACTOR = 0.87;
 
-/** Sichtbarer Hinweis neben P_list, P_target und P_min (Feature 2.7). */
-export const ASKING_PRICE_NOTE = `Angebotspreise, nicht erzielte Verkäufe, Faktor ${ASKING_TO_REALIZED_FACTOR.toFixed(2).replace('.', ',')}`;
+/** Sichtbarer Hinweis neben Spanne und Schnellverkauf. */
+export const ASKING_PRICE_NOTE =
+  'Aktive Angebotspreise auf eBay.de in Euro, keine abgeschlossenen Verkäufe. Für einen schnellen Verkauf rechnen wir mit 87 % dieses Niveaus.';
 
 // §9e: grobe Verkaufsziel-Strategie (Markup fürs Startgebot / Abschlag für
 // die Schmerzgrenze), angelehnt an die Methodik-Vorlage Abschnitt 4.4.
@@ -65,11 +68,18 @@ function isIllustrativeBuyback(source: PriceResearchSourceResult): boolean {
  * Markt-Verteilungsquelle (eBay/Grounding) Daten geliefert hat — ein
  * Ankaufspreis allein ist kein Verkaufspreis-Vorschlag.
  */
+export interface PriceAdviceContext {
+  condition?: string | null;
+  query?: string | null;
+  queryLevel?: MarketQueryLevel | null;
+}
+
 @Injectable()
 export class PriceRecommendationService {
   recommend(
     sources: PriceResearchSourceResult[],
     salesGoal: SalesGoal | null,
+    context: PriceAdviceContext = {},
   ): PriceRecommendation | null {
     const marketSources = sources.filter(
       (s) =>
@@ -92,18 +102,27 @@ export class PriceRecommendationService {
       `Stichprobengröße: ${totalSamples}. Spanne ${rangeLow.toFixed(2)}–${rangeHigh.toFixed(2)} €. ${ASKING_PRICE_NOTE}.`,
     );
 
-    const estimatedRealized = weightedMedian * ASKING_TO_REALIZED_FACTOR;
+    const adjustment =
+      context.condition === undefined
+        ? { factor: 1, note: '' }
+        : conditionAdjustment(context.condition);
+    const estimatedRealized = weightedMedian * adjustment.factor * ASKING_TO_REALIZED_FACTOR;
     const band = STRATEGY_BANDS[salesGoal ?? 'BALANCED'];
-    const targetPrice = round2(estimatedRealized);
+    const quickSalePrice = round2(estimatedRealized);
+    const targetPrice = quickSalePrice;
     const listPrice = round2(estimatedRealized * (1 + band.markup));
     let minPrice = round2(estimatedRealized * (1 - band.discount));
 
+    if (context.query) {
+      reasoning.push(`Verwendete Suche: „${context.query}“ (${queryLevelLabel(context.queryLevel)}).`);
+    }
     if (startPriceRecommended) {
       reasoning.push(
         `Gewichteter Median aus ${marketSources.length} Quelle(n) (${totalSamples} Vergleichsangebote insgesamt): ${weightedMedian.toFixed(2)} €.`,
       );
+      if (adjustment.note) reasoning.push(adjustment.note);
       reasoning.push(
-        `Angebotspreise liegen erfahrungsgemäß über tatsächlich erzielten Preisen (keine echten Sold-Daten verfügbar) — Schätzfaktor ×${ASKING_TO_REALIZED_FACTOR} ergibt einen realistischeren Zielanker von ${estimatedRealized.toFixed(2)} €.`,
+        `Das sind Angebotspreise. Abgeschlossene Verkäufe liegen erfahrungsgemäß darunter — Faktor ×${ASKING_TO_REALIZED_FACTOR} ergibt den Schnellverkauf von ${quickSalePrice.toFixed(2)} €.`,
       );
       reasoning.push(
         `Verkaufsziel ${salesGoal ?? 'BALANCED'}: Startpreis +${Math.round(band.markup * 100)}%, Schmerzgrenze -${Math.round(band.discount * 100)}%.`,
@@ -135,13 +154,9 @@ export class PriceRecommendationService {
       }
     }
 
-    const confidence: PriceConfidence =
-      totalSamples >= HIGH_CONFIDENCE_SAMPLE_SIZE
-        ? 'HIGH'
-        : totalSamples >= MEDIUM_CONFIDENCE_SAMPLE_SIZE
-          ? 'MEDIUM'
-          : 'LOW';
-    reasoning.push(`Konfidenz: ${confidence} (basierend auf ${totalSamples} Vergleichsangeboten).`);
+    const confidence = confidenceFor(totalSamples, context.queryLevel, rangeLow, rangeHigh);
+    const confidenceNote = confidenceText(confidence, totalSamples, context.queryLevel);
+    reasoning.push(`Konfidenz: ${confidenceNote}`);
 
     return {
       listPrice,
@@ -155,8 +170,52 @@ export class PriceRecommendationService {
       rangeHigh,
       startPriceRecommended,
       priceBasisNote: ASKING_PRICE_NOTE,
+      quickSalePrice,
+      conditionFactor: adjustment.factor,
+      conditionNote: adjustment.note,
+      confidenceNote,
     };
   }
+}
+
+function confidenceFor(
+  sampleSize: number,
+  queryLevel: MarketQueryLevel | null | undefined,
+  rangeLow: number,
+  rangeHigh: number,
+): PriceConfidence {
+  let confidence: PriceConfidence =
+    sampleSize >= HIGH_CONFIDENCE_SAMPLE_SIZE
+      ? 'HIGH'
+      : sampleSize >= MEDIUM_CONFIDENCE_SAMPLE_SIZE
+        ? 'MEDIUM'
+        : 'LOW';
+  const spread = rangeLow > 0 ? rangeHigh / rangeLow : 1;
+  if (spread > 3 && confidence === 'HIGH') confidence = 'MEDIUM';
+  if (queryLevel === 'broad' && confidence === 'HIGH') confidence = 'MEDIUM';
+  if (spread > 4) confidence = 'LOW';
+  return confidence;
+}
+
+function confidenceText(
+  confidence: PriceConfidence,
+  sampleSize: number,
+  queryLevel: MarketQueryLevel | null | undefined,
+): string {
+  if (confidence === 'HIGH') {
+    return `Hoch: ${sampleSize} passende Angebote, die Preise liegen nah beieinander.`;
+  }
+  if (confidence === 'MEDIUM') {
+    const wide = queryLevel === 'broad' ? ' Die Suche ist weit gefasst.' : '';
+    return `Mittel: ${sampleSize} Angebote reichen für eine Spanne.${wide}`;
+  }
+  return `Niedrig: nur ${sampleSize} passende Angebote oder sehr streuende Preise. Die Links daneben prüfen.`;
+}
+
+function queryLevelLabel(level: MarketQueryLevel | null | undefined): string {
+  if (level === 'broader') return 'breiter, die enge Suche hatte zu wenig Treffer';
+  if (level === 'broad') return 'nur die Artikelart, die engere Suche hatte zu wenig Treffer';
+  return 'eng';
 }
 
 /** Sichtbare Spanne: niedrigstes p25 bis höchstes p75, nicht ein neuer Perzentil-Mix. */

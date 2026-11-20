@@ -7,6 +7,7 @@ import {
   MarketDistributionQuery,
   MarketDistributionResult,
 } from '../../domain/pricing/market-distribution-provider.interface';
+import { selectComparableListings } from '../../domain/pricing/comparable-listings';
 import { extractJsonObject } from '../ai/extract-json-object';
 
 const MODEL_ID = 'gemini-flash-latest';
@@ -46,7 +47,7 @@ export class RealGeminiGroundingProvider implements MarketDistributionProvider {
         input: prompt,
         tools: [{ type: 'google_search' }],
       });
-      return this.parseResponse(interaction.output_text);
+      return this.parseResponse(interaction.output_text, query);
     } catch (error) {
       this.logger.error(`Gemini grounding search failed: ${(error as Error).message}`);
       return null;
@@ -55,10 +56,10 @@ export class RealGeminiGroundingProvider implements MarketDistributionProvider {
 
   private buildPrompt(query: MarketDistributionQuery): string {
     return `Du bist ein Marktforschungs-Assistent für den deutschen Gebrauchtwarenmarkt.
-Recherchiere über die Google-Suche aktuelle Angebotspreise für: "${query.keywords}"${
+Recherchiere über die Google-Suche aktuelle Angebotspreise in Euro für: "${query.keywords}"${
       query.condition ? ` (Zustand: ${query.condition})` : ''
     }.
-Suche gezielt auf eBay, Kleinanzeigen, Vinted und vergleichbaren Plattformen nach AKTUELL AKTIVEN Angeboten (keine Neupreise, keine Schätzungen ohne Beleg).
+Suche auf eBay.de, Kleinanzeigen und vergleichbaren deutschen Plattformen nach AKTUELL AKTIVEN Angeboten. Das sind Angebotspreise, keine abgeschlossenen Verkäufe und keine Neupreise. Lass Zubehör, Hüllen, Ersatzteile, Defektware und Konvolute weg. Erfinde keine Preise.
 
 Antworte AUSSCHLIESSLICH mit einem JSON-Objekt in genau diesem Format, ohne Markdown-Codeblock, ohne Erklärtext davor oder danach:
 {"median": number|null, "p25": number|null, "p75": number|null, "sampleSize": number, "comparableListings": [{"title": string, "price": number, "url": string|null}]}
@@ -70,17 +71,29 @@ Regeln:
 - Erfinde NIEMALS einen Preis, einen Titel oder eine URL.`;
   }
 
-  private parseResponse(text: string | undefined): MarketDistributionResult | null {
+  private parseResponse(text: string | undefined, query: MarketDistributionQuery): MarketDistributionResult | null {
     const parsed = extractJsonObject(text);
     if (!parsed) {
       this.logger.warn('Gemini grounding response had no JSON object');
       return null;
     }
 
-    const listings = parseListings(parsed.comparableListings);
-    const statedMedian = finiteOrNull(parsed.median);
-    const statedP25 = finiteOrNull(parsed.p25);
-    const statedP75 = finiteOrNull(parsed.p75);
+    const parsedListings = parseListings(parsed.comparableListings);
+    const filtered = selectComparableListings(parsedListings, {
+      keywords: query.keywords,
+      brand: query.brand,
+      model: query.model,
+      product: query.product,
+      itemCondition: query.condition,
+      requireModel: query.requireModel,
+      requireBrand: query.requireBrand,
+    });
+    const dropped = filtered.excludedCount > 0;
+    if (parsedListings.length > 0 && filtered.kept.length === 0) return null;
+    const listings = dropped ? filtered.kept : parsedListings;
+    const statedMedian = dropped ? filtered.median : finiteOrNull(parsed.median);
+    const statedP25 = dropped ? filtered.p25 : finiteOrNull(parsed.p25);
+    const statedP75 = dropped ? filtered.p75 : finiteOrNull(parsed.p75);
     const fromListings = listings.length > 0 ? distributionFrom(listings.map((listing) => listing.price)) : null;
 
     // Dünne Stichproben lässt das Modell oft mit median=null stehen.
@@ -94,7 +107,9 @@ Regeln:
     // sampleSize darf größer sein als die mitgelieferten Beispiele:
     // das Modell fasst die Suche zusammen und zeigt nur ein paar Titel.
     const statedSample = finiteOrNull(parsed.sampleSize);
-    const sampleSize = Math.max(listings.length, statedSample !== null && statedSample > 0 ? statedSample : 0);
+    const sampleSize = dropped
+      ? listings.length
+      : Math.max(listings.length, statedSample !== null && statedSample > 0 ? statedSample : 0);
     if (sampleSize < 1) return null;
 
     return {
@@ -105,6 +120,9 @@ Regeln:
       currency: 'EUR',
       providerLabel: 'Gemini + Google Search Grounding',
       comparableListings: listings,
+      priceKind: 'ASKING',
+      excludedCount: filtered.excludedCount,
+      filterNote: filtered.filterNote,
     };
   }
 }

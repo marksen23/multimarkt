@@ -354,6 +354,9 @@ export class FollowUpService {
       byItem.set(row.itemId, [...(byItem.get(row.itemId) ?? []), row]);
     }
 
+    const items = await manager.find(ItemEntity, { where: { id: In(unique) } });
+    const conditionByItem = new Map(items.map((item) => [item.id, item.condition]));
+
     for (const [itemId, itemRows] of byItem) {
       const newest = itemRows[0].fetchedAt.getTime();
       const batch = itemRows.filter(
@@ -369,7 +372,9 @@ export class FollowUpService {
         currency: row.currency,
         detail: row.rawResponse ?? undefined,
       }));
-      const recommendation = this.priceRecommendation.recommend(sources, null);
+      const recommendation = this.priceRecommendation.recommend(sources, null, {
+        condition: conditionByItem.has(itemId) ? conditionByItem.get(itemId) ?? null : undefined,
+      });
       if (recommendation?.startPriceRecommended && recommendation.targetPrice > 0) {
         targets.set(itemId, recommendation.targetPrice);
       }

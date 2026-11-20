@@ -245,6 +245,8 @@ export interface ComparableListing {
   title: string;
   price: number;
   url?: string | null;
+  condition?: string | null;
+  shippingEur?: number | null;
 }
 
 export interface PriceResearchSourceResult {
@@ -260,6 +262,12 @@ export interface PriceResearchSourceResult {
     buybackPrice?: number;
     multiplier?: number;
     illustrative?: boolean;
+    excludedCount?: number;
+    filterNote?: string;
+    query?: string;
+    queryLevel?: 'specific' | 'broader' | 'broad';
+    priceKind?: 'ASKING';
+    marketplace?: string;
   };
 }
 
@@ -280,6 +288,11 @@ export interface PriceRecommendation {
   /** Unter fünf Vergleichen false: dann nur Spanne, keine Startpreis-Empfehlung. */
   startPriceRecommended: boolean;
   priceBasisNote: string;
+  /** Schnellverkauf, unabhängig vom Verkaufsziel. */
+  quickSalePrice?: number;
+  conditionFactor?: number;
+  conditionNote?: string;
+  confidenceNote?: string;
 }
 
 export interface MarketplaceSearchLink {
@@ -295,6 +308,7 @@ export interface PriceResearchResult {
   fetchedAt: string;
   recommendation: PriceRecommendation | null;
   query?: string;
+  queryLevel?: 'specific' | 'broader' | 'broad' | null;
   searchLinks?: MarketplaceSearchLink[];
   notice?: string | null;
 }

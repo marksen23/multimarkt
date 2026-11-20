@@ -5,14 +5,10 @@
  * begründete Zusammenfassung — ersetzt die Einzelquellen-Anzeige nicht
  * (§9d Punkt 3: Quellen nie zu einer Blackbox-Zahl vermischen).
  *
- * BEWUSST NICHT umgesetzt, aus der Methodik-Vorlage: die dortigen
- * γ(Zustand)/δ(Alter)/κ(Vollständigkeit)-Anpassungsfaktoren sind relativ
- * zu einem Neupreis-Anker (P_new) definiert, den dieses System nicht hat
- * (keine Idealo/Amazon-Anbindung) — sie auf Angebots-Mediane anzuwenden,
- * die bereits über eine zustandsgefilterte Suche entstanden sind, würde
- * den Zustand doppelt einpreisen. δ(Alter) und κ(Vollständigkeit) brauchen
- * zusätzlich Daten (Kaufdatum, OVP/Zubehör-Flag), die im Schema nicht
- * existieren — beides zu erfinden würde "Never silently invent" verletzen.
+ * Der Zustand wird einmal angepasst (condition-adjustment.ts), weil die
+ * Suche alle gebrauchten Zustände mischt und nicht schon auf genau diesen
+ * Zustand gefiltert ist. Alter und Vollständigkeit bleiben außen vor:
+ * Kaufdatum und ein belastbares Zubehör-Flag gibt es nicht.
  */
 export type PriceConfidence = 'LOW' | 'MEDIUM' | 'HIGH';
 
@@ -37,4 +33,15 @@ export interface PriceRecommendation {
   startPriceRecommended: boolean;
   /** Fester Hinweis: Angebotspreise, nicht erzielte Verkäufe, Faktor 0,87. */
   priceBasisNote: string;
+  /**
+   * Preis für einen schnellen Verkauf. Hängt nicht am Verkaufsziel:
+   * Median der Angebote, mal Zustandsfaktor, mal 0,87.
+   */
+  quickSalePrice: number;
+  /** 1 bei unbekanntem oder gutem Zustand. */
+  conditionFactor: number;
+  /** Deutscher Satz zum Zustandsfaktor. */
+  conditionNote: string;
+  /** Deutscher Satz, warum die Konfidenz so ist. */
+  confidenceNote: string;
 }

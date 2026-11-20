@@ -8,6 +8,15 @@
 export interface MarketDistributionQuery {
   keywords: string;
   condition: string | null;
+  brand?: string | null;
+  model?: string | null;
+  product?: string | null;
+  /** Deutsche PLZ, nur für den Standort-Header der Browse API. */
+  postalCode?: string | null;
+  /** Enge Suche: der Modellbegriff muss im Titel stehen. */
+  requireModel?: boolean;
+  /** Breite Suche nach der Artikelart verlangt die Marke nicht. */
+  requireBrand?: boolean;
 }
 
 /**
@@ -24,6 +33,12 @@ export interface ComparableListing {
   price: number;
   /** Direkte Anzeigen-URL — nur eBay Browse API liefert das zuverlässig. */
   url?: string | null;
+  /** Zustandsangabe der Anzeige, falls die Quelle eine nennt. */
+  condition?: string | null;
+  /** Versand in Euro, wenn die Quelle ihn als Festpreis nennt. Null bei kostenlos. */
+  shippingEur?: number | null;
+  /** Währung der Quelle. Fehlend heißt Euro, weil die Suche auf eBay.de läuft. */
+  currency?: string | null;
 }
 
 export interface MarketDistributionResult {
@@ -41,6 +56,14 @@ export interface MarketDistributionResult {
    * und keine Konfidenz begründen. Echte Provider lassen das weg.
    */
   illustrative?: boolean;
+  /** Aktive Angebotspreise, keine abgeschlossenen Verkäufe. */
+  priceKind?: 'ASKING';
+  /** Marktplatz der Suche, z. B. EBAY_DE. */
+  marketplace?: string;
+  /** Anzeigen, die vor der Spanne als unpassend ausgesondert wurden. */
+  excludedCount?: number;
+  /** Kurzer deutscher Hinweis, was ausgesondert wurde. */
+  filterNote?: string | null;
 }
 
 export interface MarketDistributionProvider {
