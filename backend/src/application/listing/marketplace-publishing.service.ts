@@ -11,15 +11,23 @@ import { CanonicalListingEntity, MarketplaceProjectionEntity } from '../../infra
 import { CapabilityCheckService } from '../capability-check/capability-check.service';
 import { StateGuardService } from '../state-guard/state-guard.service';
 
-/** Kopieren und selbst bestätigen. Kein Anlegen und kein Löschen über eine API. */
-const COPY_CONFIRM_MARKETPLACES = new Set(['KLEINANZEIGEN', 'EBAY', 'VINTED']);
+/** Kopieren und selbst bestätigen. Kein Löschen über eine API. */
+const COPY_CONFIRM_MARKETPLACES = new Set(['KLEINANZEIGEN', 'VINTED']);
 
 export function shouldCallMarketplaceDelist(
   marketplaceId: string,
   externalPlatformId: string | null,
+  publishMeta?: Record<string, unknown> | null,
 ): boolean {
   if (!externalPlatformId) return false;
-  return !COPY_CONFIRM_MARKETPLACES.has(marketplaceId);
+  if (COPY_CONFIRM_MARKETPLACES.has(marketplaceId)) return false;
+  if (marketplaceId === 'EBAY') {
+    // Der alte Test-Doppelgänger hat IDs erfunden. Die gelten nicht als Anzeige.
+    if (externalPlatformId.startsWith('ebay-mock-')) return false;
+    const offerId = publishMeta?.offerId;
+    return typeof offerId === 'string' && offerId.trim().length > 0;
+  }
+  return true;
 }
 
 /**
@@ -87,10 +95,11 @@ export class MarketplacePublishingService {
     let result: MarketplacePublishResult;
     try {
       result = await adapter.publish({
+        projectionId,
         canonicalListingId: listing.id,
         marketplaceId: publishing.marketplaceId,
-        sellingPrice: listing.sellingPrice,
-        descriptionText: listing.descriptionText,
+        sellingPrice: Number(publishing.suggestedPrice ?? listing.sellingPrice),
+        descriptionText: publishing.descriptionText ?? listing.descriptionText,
         // fallbackData ist JSONB (Record<string, unknown>), enthält aber laut
         // CapabilityCheckService (Quelle dieser Werte) ausschließlich Strings.
         fallbackData: publishing.fallbackData as Record<string, string>,
@@ -113,12 +122,10 @@ export class MarketplacePublishingService {
       throw error;
     }
 
-    if (result.externalPlatformId) {
-      await this.dataSource.manager.update(
-        MarketplaceProjectionEntity,
-        { id: projectionId },
-        { externalPlatformId: result.externalPlatformId },
-      );
+    if (result.externalPlatformId) publishing.externalPlatformId = result.externalPlatformId;
+    if (result.publishMeta) publishing.publishMeta = result.publishMeta;
+    if (result.externalPlatformId || result.publishMeta) {
+      await this.dataSource.manager.save(MarketplaceProjectionEntity, publishing);
     }
 
     if (result.requiresManualConfirmation) {
@@ -150,6 +157,7 @@ export class MarketplacePublishingService {
   async confirmCancellation(
     projectionId: string,
     actor: ActorContext,
+    manual = false,
   ): Promise<MarketplaceProjectionEntity> {
     const projection = await this.dataSource.manager.findOneBy(MarketplaceProjectionEntity, {
       id: projectionId,
@@ -158,13 +166,17 @@ export class MarketplacePublishingService {
 
     const adapter = this.adapters.get(projection.marketplaceId);
     if (
+      !manual &&
       adapter &&
-      shouldCallMarketplaceDelist(projection.marketplaceId, projection.externalPlatformId)
+      shouldCallMarketplaceDelist(
+        projection.marketplaceId,
+        projection.externalPlatformId,
+        projection.publishMeta,
+      )
     ) {
-      // Doc 03 §10 Pfad A gilt nur für einen echten API-Kanal. Kleinanzeigen,
-      // Vinted und eBay sind Kopierwege — der Mock-eBay-Adapter löscht nichts
-      // und gilt nicht als veröffentlicht.
-      await adapter.delist(projection.externalPlatformId!);
+      // Nur eine echte eBay-Angebots-ID wird über die Sell-API zurückgezogen.
+      // Kleinanzeigen und Vinted bleiben eine Bestätigung durch den Menschen.
+      await adapter.delist(projection.externalPlatformId!, { publishMeta: projection.publishMeta });
     }
 
     return this.stateGuard.transitionProjection(projectionId, {

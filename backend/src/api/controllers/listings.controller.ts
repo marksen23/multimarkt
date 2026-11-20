@@ -14,7 +14,7 @@ import { DataSource } from 'typeorm';
 import { CurrentActor } from '../auth/actor.decorator';
 import { ActorContextGuard } from '../auth/actor-context.guard';
 import { ResponseEnvelopeInterceptor } from '../interceptors/response-envelope.interceptor';
-import { CreateListingDto, MarkSoldDto } from '../dto/listings.dto';
+import { ConfirmCancellationDto, CreateListingDto, MarkSoldDto } from '../dto/listings.dto';
 import { ActorContext } from '../../domain/actor-context';
 import {
   HumanGateBypassException,
@@ -170,7 +170,8 @@ export class ListingsController {
   async confirmCancellation(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentActor() actor: ActorContext,
+    @Body() dto: ConfirmCancellationDto,
   ): Promise<MarketplaceProjectionEntity> {
-    return this.publishing.confirmCancellation(id, actor);
+    return this.publishing.confirmCancellation(id, actor, dto.manual === true);
   }
 }

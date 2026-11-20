@@ -10,6 +10,8 @@ import {
   Patch,
   Post,
   Query,
+  Res,
+  StreamableFile,
   UploadedFile,
   UploadedFiles,
   UseGuards,
@@ -18,6 +20,7 @@ import {
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import type { Response } from 'express';
 import { memoryStorage } from 'multer';
 import { CurrentActor } from '../auth/actor.decorator';
 import { ActorContextGuard } from '../auth/actor-context.guard';
@@ -88,6 +91,8 @@ import {
   PriceTriangulationService,
 } from '../../application/pricing/price-triangulation.service';
 import { PhotoQualityService } from '../../application/photo-quality/photo-quality.service';
+import { buildListingCopyFacts } from '../../domain/listing/kleinanzeigen-category';
+import { buildStoreZip, photoZipName } from '../../domain/listing/photo-zip';
 import { buildPhotoBriefing, isPhotoShot } from '../../domain/photo-quality/photo-briefing';
 import { PhotoQualityReport } from '../../domain/photo-quality/photo-quality.types';
 import {
@@ -511,6 +516,56 @@ export class ItemsController {
         photos.map((p) => p.shot),
       ),
     };
+  }
+
+  /** Kategorie, Zustand und Kleinanzeigen-Pfad für die Kopieransicht. Kein KI-Aufruf. */
+  @Get(':id/listing-copy')
+  async listingCopy(@Param('id', ParseUUIDPipe) id: string) {
+    const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
+    if (!item) throw new NotFoundException(`Item ${id} not found`);
+    const attributes = await this.dataSource.manager.find(ItemAttributeEntity, { where: { itemId: id } });
+    const value = (key: string) =>
+      attributes.find((attribute) => attribute.attributeKey === key)?.attributeValue ?? null;
+    return buildListingCopyFacts({
+      category: value('category'),
+      categoryDetail: value('categoryDetail'),
+      title: item.title,
+      condition: item.condition ?? value('condition'),
+    });
+  }
+
+  /** Fotos als ZIP zum Hochladen bei Kleinanzeigen. Kein Portal wird angesprochen. */
+  @Get(':id/photo-archive')
+  async photoArchive(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const item = await this.dataSource.manager.findOneBy(ItemEntity, { id });
+    if (!item) throw new NotFoundException(`Item ${id} not found`);
+    const photos = await this.dataSource.manager.find(ItemPhotoEntity, {
+      where: { itemId: id },
+      order: { createdAt: 'ASC' },
+    });
+    if (photos.length === 0) {
+      throw new BadRequestException('Für diesen Artikel sind keine Fotos gespeichert.');
+    }
+
+    const files = [];
+    for (const [index, photo] of photos.entries()) {
+      let bytes: Buffer;
+      try {
+        bytes = await this.storage.read(photo.storageKey);
+      } catch {
+        throw new NotFoundException(
+          'Ein Foto liegt nicht mehr im Speicher. Lade es erneut hoch, bevor du das Archiv herunterlädst.',
+        );
+      }
+      files.push({ name: photoZipName(index, photo.storageKey), bytes });
+    }
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', 'attachment; filename="anzeigen-fotos.zip"');
+    return new StreamableFile(buildStoreZip(files));
   }
 
   /**

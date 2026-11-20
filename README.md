@@ -53,6 +53,7 @@ Ohne echten Schlüssel, oder mit dem Platzhalter `unused-mock-provider-active`, 
 | `GEMINI_API_KEY` | ein echter Schlüssel, nicht der Platzhalter. Gilt für Bildanalyse, Titel, Beschreibung, Preisrecherche über Google-Suche, Ankaufsuche und Bildoptimierung. Anlegen unter [Google AI Studio](https://aistudio.google.com/apikey). |
 | `GEMINI_VISION_MODEL` | optional. Leer lässt `gemini-flash-latest` die Fotos lesen. |
 | `EBAY_CLIENT_ID` und `EBAY_CLIENT_SECRET` | beide gesetzt und die Client-ID kein Platzhalter. Dann kommen aktive Angebote aus der eBay Browse API. Abgeschlossene Verkäufe liefert diese API nicht. Production App ID (Client ID) und Cert ID (Client Secret) unter [eBay Developer](https://developer.ebay.com/my/keys). Sandbox-Schlüssel sehen den echten Markt nicht. |
+| `EBAY_REFRESH_TOKEN`, `EBAY_FULFILLMENT_POLICY_ID`, `EBAY_PAYMENT_POLICY_ID`, `EBAY_RETURN_POLICY_ID`, `EBAY_MERCHANT_LOCATION_KEY` | alle gesetzt. Dann legt „Auf eBay.de veröffentlichen“ die Anzeige über die Sell Inventory API an. Fehlt eines, nennt die eBay-Karte die Variable. Es wird keine Anzeigennummer erfunden. `EBAY_PICKUP_FULFILLMENT_POLICY_ID` nur für reine Abholung. `EBAY_ENVIRONMENT` leer oder `production`. |
 | `S3_BUCKET` zusammen mit `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` und `S3_PUBLIC_URL_BASE` | Fotos liegen in einem S3-kompatiblen Bucket, zum Beispiel Cloudflare R2. |
 
 Der Ankaufsanker (momox und vergleichbare Portale) bleibt ein Beispiel. Seine Zahl ist kein Marktpreis und hebt die Schmerzgrenze nicht an.
@@ -63,7 +64,7 @@ In Coolify stehen die Schlüssel als Environment Variables an der App, nicht in 
 
 ### Kleinanzeigen
 
-Kleinanzeigen lässt sich nicht über eine API veröffentlichen. Es gibt keine erlaubte Dritt-Schnittstelle. Die App bereitet Titel, Text und Preis vor. Du kopierst, stellst selbst ein und bestätigst in der App, dass die Anzeige online ist.
+Kleinanzeigen lässt sich nicht über eine API veröffentlichen. Es gibt keine erlaubte Dritt-Schnittstelle. Die App bereitet Titel, Text, Preis und einen Kategorie-Vorschlag vor, dazu die Fotos als ZIP. Du kopierst, stellst selbst ein und bestätigst in der App, dass die Anzeige online ist. Wird der Artikel woanders verkauft, bleibt die andere Anzeige als „noch beenden“ stehen, bis du das bestätigst.
 
 ### Fotos ohne Bucket
 

@@ -150,9 +150,29 @@ function ListingCard({
                   </>
                 )}
                 {p.status === 'CANCEL_PENDING' && (
-                  <Button size="sm" loading={busy} disabled={busy} onClick={() => void run(() => listingsApi.confirmCancellation(p.id))}>
-                    Storno bestätigen
-                  </Button>
+                  <div className="flex flex-col items-end gap-1">
+                    <p className="text-label font-normal text-warning text-right">
+                      {p.canEndViaApi
+                        ? 'Anderswo verkauft. eBay kann die Anzeige beenden.'
+                        : `Anderswo verkauft. Beende sie auf ${MP_LABELS[p.marketplaceId] ?? p.marketplaceId} selbst.`}
+                    </p>
+                    <div className="flex gap-1.5 flex-wrap justify-end">
+                      {p.canEndViaApi && (
+                        <Button size="sm" loading={busy} disabled={busy} onClick={() => void run(() => listingsApi.confirmCancellation(p.id))}>
+                          Auf eBay beenden
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant={p.canEndViaApi ? 'ghost' : 'secondary'}
+                        loading={busy}
+                        disabled={busy}
+                        onClick={() => void run(() => listingsApi.confirmCancellation(p.id, true))}
+                      >
+                        {p.canEndViaApi ? 'Selbst beendet' : 'Zurückziehen bestätigen'}
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

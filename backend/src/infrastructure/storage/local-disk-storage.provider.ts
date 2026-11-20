@@ -1,9 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { extname, join, resolve } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { StorageProvider, StoredFile, UploadInput } from '../../domain/storage/storage-provider.interface';
+import {
+  assertStorageKey,
+  StorageProvider,
+  StoredFile,
+  UploadInput,
+} from '../../domain/storage/storage-provider.interface';
 
 const MIME_EXTENSIONS: Record<string, string> = {
   'image/jpeg': '.jpg',
@@ -42,6 +47,11 @@ export class LocalDiskStorageProvider implements StorageProvider {
     await writeFile(join(this.uploadDir, key), input.buffer);
     this.logger.log(`Stored upload ${key} (${input.buffer.length} bytes)`);
     return { url: `/uploads/${key}`, key };
+  }
+
+  async read(key: string): Promise<Buffer> {
+    assertStorageKey(key);
+    return readFile(join(this.uploadDir, key));
   }
 
   async delete(key: string): Promise<void> {

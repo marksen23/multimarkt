@@ -17,6 +17,7 @@
  *   er es manuell eingestellt hat (Doc 02 §5 "API Success / User Copy").
  */
 export interface MarketplacePublishInput {
+  projectionId: string;
   canonicalListingId: string;
   marketplaceId: string;
   sellingPrice: number;
@@ -27,11 +28,17 @@ export interface MarketplacePublishInput {
 export interface MarketplacePublishResult {
   externalPlatformId: string | null;
   requiresManualConfirmation: boolean;
+  /** sku, offerId, listingId — nur gesetzt, wenn eine echte API veröffentlicht hat. */
+  publishMeta?: Record<string, unknown>;
+}
+
+export interface MarketplaceDelistContext {
+  publishMeta?: Record<string, unknown> | null;
 }
 
 export interface MarketplaceAdapter {
   publish(input: MarketplacePublishInput): Promise<MarketplacePublishResult>;
-  delist(externalPlatformId: string): Promise<void>;
+  delist(externalPlatformId: string, context?: MarketplaceDelistContext): Promise<void>;
 }
 
 export const MARKETPLACE_ADAPTERS = Symbol('MARKETPLACE_ADAPTERS');

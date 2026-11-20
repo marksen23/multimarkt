@@ -7,11 +7,9 @@ import {
 } from '../../domain/marketplace/marketplace-adapter.interface';
 
 /**
- * Stub für die echte eBay Sell-API (Inventory/Offer/Fulfillment, README
- * §4a/§4c) — OAuth, Sandbox vs. Production-Freigabe sind laut README noch
- * offene "Phase 0"-Punkte, die echte Entwickler-Credentials brauchen und
- * hier bewusst nicht simuliert werden. Bildet nur das PRINZIP korrekt ab
- * (Live-API = sofortiger, echter Abschluss mit externer ID).
+ * Nur ein Test-Doppelgänger für die Zustandsmaschine. Nicht im
+ * MarketplacePublishingModule registrieren: eine erfundene `ebay-mock-`-ID
+ * ist keine veröffentlichte Anzeige. Der Produktionsweg ist EbaySellAdapter.
  */
 @Injectable()
 export class MockEbayAdapter implements MarketplaceAdapter {

@@ -17,9 +17,17 @@ export interface StoredFile {
   key: string;
 }
 
+/** Schlüssel aus diesem Prozess, kein vom Client gesetzter Pfad. */
+export function assertStorageKey(key: string): void {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,200}$/.test(key) || key.includes('..')) {
+    throw new Error(`Unsafe storage key: ${key}`);
+  }
+}
+
 export interface StorageProvider {
   upload(input: UploadInput): Promise<StoredFile>;
   delete(key: string): Promise<void>;
+  read(key: string): Promise<Buffer>;
 }
 
 export const STORAGE_PROVIDER = Symbol('STORAGE_PROVIDER');

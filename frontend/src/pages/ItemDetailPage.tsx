@@ -326,6 +326,7 @@ export function ItemDetailPage() {
         <FinishedScreen
           detail={detail}
           busy={busy}
+          run={run}
           onRecordSale={(draft) => run(() => itemsApi.recordSaleCloseout(id, draft))}
         />
       )}
@@ -842,10 +843,12 @@ function ConflictResolutionPanel({
 function FinishedScreen({
   detail,
   busy,
+  run,
   onRecordSale,
 }: {
   detail: ItemDetail;
   busy: boolean;
+  run: (fn: () => Promise<unknown>) => Promise<void>;
   onRecordSale: (draft: Parameters<typeof itemsApi.recordSaleCloseout>[1]) => Promise<void>;
 }) {
   const { item, photos, listings } = detail;
@@ -858,6 +861,9 @@ function FinishedScreen({
   }, [item.id, item.status]);
 
   const sold = item.status === 'SOLD';
+  const stillOnline = listings.flatMap((listing) =>
+    listing.projections.filter((projection) => projection.status === 'CANCEL_PENDING'),
+  );
   const thumbnail = photos[0]?.url ?? null;
   const listing = listings[0] ?? null;
   const winner = saleEvents?.find((e) => e.isWinner === true) ?? null;
@@ -886,6 +892,42 @@ function FinishedScreen({
           )}
         </div>
       </Card>
+      {sold && stillOnline.length > 0 && (
+        <Notice tone="warning">
+          <p className="font-semibold">Noch woanders online</p>
+          <p className="font-normal mt-1">
+            Der Artikel ist verkauft. Diese Anzeigen laufen noch und sollten weg, sonst verkaufst du ihn ein zweites Mal.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {stillOnline.map((projection) => (
+              <li key={projection.id} className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="font-normal">{portalLabel(projection.marketplaceId)}</span>
+                <span className="flex gap-1.5">
+                  {projection.canEndViaApi && (
+                    <Button
+                      size="sm"
+                      loading={busy}
+                      disabled={busy}
+                      onClick={() => void run(() => listingsApi.confirmCancellation(projection.id))}
+                    >
+                      Auf eBay beenden
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant={projection.canEndViaApi ? 'ghost' : 'secondary'}
+                    loading={busy}
+                    disabled={busy}
+                    onClick={() => void run(() => listingsApi.confirmCancellation(projection.id, true))}
+                  >
+                    Ich habe sie beendet
+                  </Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Notice>
+      )}
       {sold && <SaleResultPanel item={item} busy={busy} onRecord={onRecordSale} />}
       <ActionBar>
         <ButtonLink to="/new" size="lg" icon="camera">

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { copyText } from '../lib/clipboard';
 import { itemsApi } from '../api/items';
 import { listingsApi } from '../api/listings';
+import { systemApi } from '../api/system';
 import { ApiRequestError } from '../api/client';
 import type {
   ChannelCard,
@@ -11,6 +12,7 @@ import type {
   EstimatedTimeToSale,
   IssueSeverity,
   ListingChannel,
+  ListingCopyFacts,
   MarketplaceProjectionSummary,
   MarketplaceRecommendation,
   PriceDescriptionAlignment,
@@ -22,6 +24,7 @@ import type {
 import { shippingPortalsAllowed, toLogisticsProfile } from '../logistics/profile';
 import { useToast } from './Toast';
 import { ActionBar, Button, Card, Field, Icon, Notice, PhaseBadge, SectionLabel, Sheet, Spinner, inputClass } from '../ui';
+import { ListingPreview } from './ListingPreview';
 
 const SHIPPING_PORTALS = new Set<SecondhandMarketplace>(['EBAY', 'VINTED']);
 
@@ -38,6 +41,13 @@ const EDITABLE_CARD_STATES = new Set<ProjectionLifecycleState>(['DRAFT', 'COPIED
 interface CardState {
   id: string;
   status: ProjectionLifecycleState;
+  externalPlatformId: string | null;
+  canEndViaApi: boolean;
+}
+
+function ebayItemUrl(id: string | null | undefined): string | null {
+  if (!id || !/^\d{10,15}$/.test(id)) return null;
+  return `https://www.ebay.de/itm/${id}`;
 }
 
 function errorMessage(e: unknown, fallback: string): string {
@@ -105,7 +115,14 @@ function draftFromCard(card: ChannelCard): PortalDraft {
 function cardStates(pack: ChannelPackage): Partial<Record<ListingChannel, CardState>> {
   const states: Partial<Record<ListingChannel, CardState>> = {};
   for (const card of pack.cards) {
-    if (card.id && card.status) states[card.marketplaceId] = { id: card.id, status: card.status };
+    if (card.id && card.status) {
+      states[card.marketplaceId] = {
+        id: card.id,
+        status: card.status,
+        externalPlatformId: card.externalPlatformId ?? null,
+        canEndViaApi: card.canEndViaApi ?? false,
+      };
+    }
   }
   return states;
 }
@@ -176,10 +193,29 @@ export function Angebotspaket({
   const [pickupOnlyNote, setPickupOnlyNote] = useState(false);
   const [fix, setFix] = useState<{ projectionId: string; missing: string[] } | null>(null);
   const [fixValues, setFixValues] = useState<Record<string, string>>({});
+  const [facts, setFacts] = useState<ListingCopyFacts | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [ebaySell, setEbaySell] = useState<{ ready: boolean; missing: string[] } | null>(null);
+  const [zipBusy, setZipBusy] = useState(false);
 
   useEffect(() => {
     draftsRef.current = drafts;
   }, [drafts]);
+
+  useEffect(() => {
+    let active = true;
+    systemApi
+      .integrations()
+      .then((status) => {
+        if (active) setEbaySell({ ready: status.ebayPublishReady, missing: status.ebayPublishMissing });
+      })
+      .catch(() => {
+        if (active) setEbaySell(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Status-Änderungen aus „Online auf“ (z. B. Online bestätigt, Storno) übernehmen.
   useEffect(() => {
@@ -190,8 +226,19 @@ export function Angebotspaket({
       for (const market of CARD_MARKETS) {
         const card = prev[market];
         const projection = card && projections.find((p) => p.id === card.id);
-        if (card && projection && projection.status !== card.status) {
-          next[market] = { ...card, status: projection.status };
+        if (
+          card &&
+          projection &&
+          (projection.status !== card.status ||
+            (projection.externalPlatformId ?? null) !== card.externalPlatformId ||
+            (projection.canEndViaApi ?? false) !== card.canEndViaApi)
+        ) {
+          next[market] = {
+            ...card,
+            status: projection.status,
+            externalPlatformId: projection.externalPlatformId,
+            canEndViaApi: projection.canEndViaApi ?? false,
+          };
           changed = true;
         }
       }
@@ -243,11 +290,14 @@ export function Angebotspaket({
       setLoadingRecs(true);
       setError(null);
       try {
-        const [detail, recResult, priceResult] = await Promise.all([
+        const [detail, recResult, priceResult, copyFacts] = await Promise.all([
           itemsApi.get(itemId),
           itemsApi.marketplaceRecommendations(itemId, goal),
           itemsApi.priceResearch(itemId, false, goal),
+          itemsApi.listingCopy(itemId),
         ]);
+        setFacts(copyFacts);
+        setPhotoUrl(detail.photos[0]?.url ?? null);
         // Nur nachladen, wenn es Kanal-Projektionen gibt — sonst würde der
         // Endpoint eine frische Vorschau mit drei Texten erzeugen.
         const hasCardProjections = detail.listings.some((l) =>
@@ -392,7 +442,45 @@ export function Angebotspaket({
   };
 
   const setCardStatus = (market: ListingChannel, projection: MarketplaceProjectionSummary) =>
-    setCards((prev) => ({ ...prev, [market]: { id: projection.id, status: projection.status } }));
+    setCards((prev) => ({
+      ...prev,
+      [market]: {
+        id: projection.id,
+        status: projection.status,
+        externalPlatformId: projection.externalPlatformId,
+        canEndViaApi: projection.canEndViaApi ?? prev[market]?.canEndViaApi ?? false,
+      },
+    }));
+
+  const publishEbay = (market: ListingChannel) =>
+    runCardAction(market, async () => {
+      const id = await ensureSavedCard(market);
+      const projection = await listingsApi.publish(id);
+      setCardStatus(market, projection);
+      const url = ebayItemUrl(projection.externalPlatformId);
+      return url ? 'Auf eBay.de veröffentlicht.' : 'Auf eBay.de veröffentlicht.';
+    });
+
+  const downloadPhotos = async () => {
+    setZipBusy(true);
+    try {
+      const file = await itemsApi.photoArchive(itemId);
+      const filename = file.filename ?? 'anzeigen-fotos.zip';
+      const url = URL.createObjectURL(file.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast('Fotos geladen. In Kleinanzeigen als Bilder hochladen.', 'success');
+    } catch (e) {
+      toast(errorMessage(e, 'Die Fotos konnten nicht geladen werden.'), 'error');
+    } finally {
+      setZipBusy(false);
+    }
+  };
 
   const markCopied = (market: ListingChannel) =>
     runCardAction(market, async () => {
@@ -414,10 +502,10 @@ export function Angebotspaket({
       return 'Als online bestätigt';
     });
 
-  const confirmCancellation = (market: ListingChannel) =>
+  const confirmCancellation = (market: ListingChannel, manual = false) =>
     runCardAction(market, async () => {
-      setCardStatus(market, await listingsApi.confirmCancellation(cards[market]!.id));
-      return 'Zurückziehen bestätigt';
+      setCardStatus(market, await listingsApi.confirmCancellation(cards[market]!.id, manual));
+      return manual ? 'Als beendet bestätigt' : 'Zurückziehen bestätigt';
     });
 
   const saveCards = () =>
@@ -652,10 +740,11 @@ export function Angebotspaket({
                   busy: cardBusy === market,
                   disabled: cardBusy !== null || cardsLoading,
                   createsListing: !hasListing,
+                  canEndViaApi: cards[market]?.canEndViaApi ?? false,
                   onMarkCopied: () => void markCopied(market),
                   onConfirmOnline: () => void confirmOnline(market),
                   onConfirmPublished: () => void confirmPublished(market),
-                  onConfirmCancellation: () => void confirmCancellation(market),
+                  onConfirmCancellation: (manual?: boolean) => void confirmCancellation(market, manual),
                 }
               : null;
             return (
@@ -666,6 +755,15 @@ export function Angebotspaket({
                 draft={draft}
                 price={channel ? cardPrice(draft) : price}
                 channel={channel}
+                facts={facts}
+                photoUrl={photoUrl}
+                ebaySell={market === 'EBAY' ? ebaySell : null}
+                listingUrl={market === 'EBAY' ? ebayItemUrl(cards[market]?.externalPlatformId) : null}
+                zipBusy={zipBusy}
+                onDownloadPhotos={() => void downloadPhotos()}
+                onPublishEbay={() => {
+                  if (isCardMarket(market)) publishEbay(market);
+                }}
                 onRetry={() => void loadPortalText(market, salesGoal)}
                 onTitleChange={(v) => updateDraft(market, 'title', v)}
                 onDescriptionChange={(v) => updateDraft(market, 'description', v)}
@@ -877,10 +975,11 @@ interface ChannelCardControls {
   disabled: boolean;
   /** Bereiter Artikel ohne Listing: der erste Schritt legt das Listing an. */
   createsListing: boolean;
+  canEndViaApi: boolean;
   onMarkCopied: () => void;
   onConfirmOnline: () => void;
   onConfirmPublished: () => void;
-  onConfirmCancellation: () => void;
+  onConfirmCancellation: (manual?: boolean) => void;
 }
 
 function PortalCard({
@@ -889,6 +988,13 @@ function PortalCard({
   draft,
   price,
   channel,
+  facts,
+  photoUrl,
+  ebaySell,
+  listingUrl,
+  zipBusy,
+  onDownloadPhotos,
+  onPublishEbay,
   onRetry,
   onTitleChange,
   onDescriptionChange,
@@ -899,6 +1005,13 @@ function PortalCard({
   draft: PortalDraft;
   price: string;
   channel: ChannelCardControls | null;
+  facts: ListingCopyFacts | null;
+  photoUrl: string | null;
+  ebaySell: { ready: boolean; missing: string[] } | null;
+  listingUrl: string | null;
+  zipBusy: boolean;
+  onDownloadPhotos: () => void;
+  onPublishEbay: () => void;
   onRetry: () => void;
   onTitleChange: (v: string) => void;
   onDescriptionChange: (v: string) => void;
@@ -907,7 +1020,9 @@ function PortalCard({
   const titleCopy = useCopy();
   const descCopy = useCopy();
   const allCopy = useCopy();
+  const categoryCopy = useCopy();
   const [showQuality, setShowQuality] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
   const loading = draft.loadState === 'loading';
   const locked = channel !== null && !channel.editable;
   const quality = draft.quality;
@@ -950,7 +1065,82 @@ function PortalCard({
       ) : (
         <div className="p-4 space-y-4">
           {channel?.status === 'CANCEL_PENDING' && (
-            <Notice tone="warning">Auf einem anderen Portal verkauft. Bitte die Anzeige auf {rec.label} zurückziehen und dann bestätigen.</Notice>
+            <Notice tone="warning">
+              Auf einem anderen Portal verkauft.{' '}
+              {channel.canEndViaApi
+                ? 'eBay kann diese Anzeige jetzt beenden.'
+                : `Beende die Anzeige auf ${rec.label} selbst und bestätige das danach hier.`}
+            </Notice>
+          )}
+
+          {!loading && showPreview && (
+            <ListingPreview
+              portal={rec.label}
+              title={draft.title}
+              price={price}
+              category={
+                rec.marketplace === 'KLEINANZEIGEN'
+                  ? facts?.kleinanzeigenCategory.path ?? null
+                  : rec.marketplace === 'EBAY'
+                    ? facts?.ebayCondition
+                      ? `Zustand ${facts.ebayCondition.label} (${facts.ebayCondition.conditionId})`
+                      : null
+                    : facts?.category ?? null
+              }
+              condition={rec.marketplace === 'EBAY' ? null : facts?.condition ?? null}
+              description={draft.description}
+              photoUrl={photoUrl}
+            />
+          )}
+          {!loading && (
+            <button type="button" onClick={() => setShowPreview((open) => !open)} className="text-label text-ink-muted hover:text-accent">
+              {showPreview ? 'Vorschau ausblenden' : 'Vorschau anzeigen'}
+            </button>
+          )}
+
+          {rec.marketplace === 'KLEINANZEIGEN' && facts && !loading && (
+            <Field
+              label="Kategorie bei Kleinanzeigen"
+              hint={facts.kleinanzeigenCategory.note}
+              action={
+                <CopyButton
+                  state={categoryCopy.state}
+                  onClick={() => void categoryCopy.copy(facts.kleinanzeigenCategory.path)}
+                />
+              }
+            >
+              <input readOnly value={facts.kleinanzeigenCategory.path} className={inputClass} />
+            </Field>
+          )}
+
+          {rec.marketplace === 'KLEINANZEIGEN' && !loading && (
+            <Button block variant="secondary" icon="download" loading={zipBusy} onClick={onDownloadPhotos}>
+              Fotos als ZIP
+            </Button>
+          )}
+
+          {rec.marketplace === 'EBAY' && !loading && facts?.ebayCondition && (
+            <p className="text-label font-normal text-ink-muted">
+              eBay-Zustand: {facts.ebayCondition.label}, Condition-ID {facts.ebayCondition.conditionId} ({facts.ebayCondition.code}). Die Kategorie wählt eBay aus dem Titel.
+            </p>
+          )}
+
+          {rec.marketplace === 'EBAY' && !loading && ebaySell && !ebaySell.ready && (channel?.status == null || channel.status === 'DRAFT' || channel.status === 'READY') && (
+            <Notice tone="warning">
+              <p className="font-semibold">Auf eBay.de einstellen geht noch nicht.</p>
+              <ul className="mt-2 space-y-1 font-normal">
+                {ebaySell.missing.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+              <p className="mt-2 font-normal">Bis dahin kannst du Titel, Preis und Text kopieren und die Anzeige selbst anlegen.</p>
+            </Notice>
+          )}
+
+          {listingUrl && (
+            <a href={listingUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-label text-accent">
+              Anzeige auf eBay öffnen <Icon name="external" size={13} />
+            </a>
           )}
 
           <Field
@@ -1034,22 +1224,52 @@ function PortalCard({
             </Button>
           )}
 
-          {!loading && channel && <ChannelSteps channel={channel} />}
+          {!loading && channel && (
+            <ChannelSteps
+              channel={channel}
+              marketplace={rec.marketplace}
+              ebayReady={ebaySell?.ready ?? false}
+              onPublishEbay={onPublishEbay}
+            />
+          )}
         </div>
       )}
     </Card>
   );
 }
 
-/** Kopiert → Online bestätigt. Status setzt immer der Mensch, kein Portal wird angesprochen. */
-function ChannelSteps({ channel }: { channel: ChannelCardControls }) {
+/** Kopiert → Online bestätigt. eBay kann stattdessen über die Sell-API online gehen. */
+function ChannelSteps({
+  channel,
+  marketplace,
+  ebayReady,
+  onPublishEbay,
+}: {
+  channel: ChannelCardControls;
+  marketplace: string;
+  ebayReady: boolean;
+  onPublishEbay: () => void;
+}) {
   const { status } = channel;
   const copied = status !== null && status !== 'DRAFT' && status !== 'READY' && status !== 'PUBLISHING';
   const online = status === 'ONLINE' || status === 'SOLD';
   if (status === 'CANCELLED') return null;
 
   let action: ReactNode = null;
-  if (status === null || status === 'DRAFT') {
+  if ((status === null || status === 'DRAFT' || status === 'READY') && marketplace === 'EBAY' && ebayReady) {
+    action = (
+      <div className="space-y-2">
+        <Button block icon="external" loading={channel.busy} disabled={channel.disabled} onClick={onPublishEbay}>
+          Auf eBay.de veröffentlichen
+        </Button>
+        {(status === null || status === 'DRAFT') && (
+          <Button block variant="ghost" loading={channel.busy} disabled={channel.disabled} onClick={channel.onMarkCopied}>
+            Stattdessen nur als kopiert markieren
+          </Button>
+        )}
+      </div>
+    );
+  } else if (status === null || status === 'DRAFT') {
     action = (
       <Button block icon="check" loading={channel.busy} disabled={channel.disabled} onClick={channel.onMarkCopied}>
         Als kopiert markieren
@@ -1069,9 +1289,22 @@ function ChannelSteps({ channel }: { channel: ChannelCardControls }) {
     );
   } else if (status === 'CANCEL_PENDING') {
     action = (
-      <Button block variant="secondary" loading={channel.busy} disabled={channel.disabled} onClick={channel.onConfirmCancellation}>
-        Zurückziehen bestätigen
-      </Button>
+      <div className="space-y-2">
+        {channel.canEndViaApi && (
+          <Button block variant="secondary" loading={channel.busy} disabled={channel.disabled} onClick={() => channel.onConfirmCancellation(false)}>
+            Auf eBay beenden
+          </Button>
+        )}
+        <Button
+          block
+          variant={channel.canEndViaApi ? 'ghost' : 'secondary'}
+          loading={channel.busy}
+          disabled={channel.disabled}
+          onClick={() => channel.onConfirmCancellation(true)}
+        >
+          {channel.canEndViaApi ? 'Ich habe sie selbst beendet' : 'Zurückziehen bestätigen'}
+        </Button>
+      </div>
     );
   }
 

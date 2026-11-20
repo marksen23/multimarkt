@@ -133,6 +133,23 @@ envVarGroups:
         sync: false
       - key: EBAY_CLIENT_SECRET
         sync: false
+      # Sell Inventory (Anzeigen auf ebay.de). Leer lassen, bis das User-Token
+      # und die Geschäftsrichtlinien existieren. sync: false, damit ein
+      # Blueprint-Sync gesetzte Geheimnisse nicht leert.
+      - key: EBAY_REFRESH_TOKEN
+        sync: false
+      - key: EBAY_FULFILLMENT_POLICY_ID
+        sync: false
+      - key: EBAY_PAYMENT_POLICY_ID
+        sync: false
+      - key: EBAY_RETURN_POLICY_ID
+        sync: false
+      - key: EBAY_MERCHANT_LOCATION_KEY
+        sync: false
+      - key: EBAY_PICKUP_FULFILLMENT_POLICY_ID
+        sync: false
+      - key: EBAY_ENVIRONMENT
+        sync: false
 
 services:
   # ------------------------------------------------------------------------

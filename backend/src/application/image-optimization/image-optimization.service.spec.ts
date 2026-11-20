@@ -8,7 +8,7 @@ describe('ImageOptimizationService', () => {
 
   beforeEach(() => {
     provider = { optimize: jest.fn() };
-    storage = { upload: jest.fn(), delete: jest.fn() };
+    storage = { upload: jest.fn(), delete: jest.fn(), read: jest.fn() };
   });
 
   it('uploads the optimized image as a NEW file and returns its url', async () => {

@@ -5,6 +5,7 @@ import type {
   CanonicalListing,
   ChannelPackage,
   DescriptionChannel,
+  ListingCopyFacts,
   DescriptionSuggestion,
   Item,
   ItemAttribute,
@@ -80,6 +81,8 @@ export const itemsApi = {
       `/items/${id}/generate-description${query ? `?${query}` : ''}`,
     );
   },
+  listingCopy: (id: string) => api.get<ListingCopyFacts>(`/items/${id}/listing-copy`),
+  photoArchive: (id: string) => api.download(`/items/${id}/photo-archive`),
   channelPackage: (id: string, salesGoal?: SalesGoal, fresh?: boolean) => {
     const params = new URLSearchParams();
     if (salesGoal) params.set('salesGoal', salesGoal);

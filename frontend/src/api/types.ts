@@ -80,6 +80,7 @@ export interface MarketplaceProjectionSummary {
   title?: string | null;
   descriptionText?: string | null;
   suggestedPrice?: number | null;
+  canEndViaApi?: boolean;
 }
 
 export interface ListingSummary {
@@ -316,6 +317,8 @@ export interface PriceResearchResult {
 export interface IntegrationStatus {
   geminiLive: boolean;
   ebayLive: boolean;
+  ebayPublishReady: boolean;
+  ebayPublishMissing: string[];
   photoStorageDurable: boolean;
   buybackLive: false;
 }
@@ -388,8 +391,18 @@ export interface ChannelCard {
   descriptionText: string;
   suggestedPrice: number | null;
   status: ProjectionLifecycleState | null;
+  externalPlatformId?: string | null;
+  canEndViaApi?: boolean;
   gapAnalysis: TitleGapAnalysis;
   vaguePhrases: VaguePhraseMatch[];
+}
+
+export interface ListingCopyFacts {
+  category: string | null;
+  categoryDetail: string | null;
+  condition: string | null;
+  ebayCondition: { code: string; conditionId: string; label: string } | null;
+  kleinanzeigenCategory: { path: string; note: string };
 }
 
 export interface ChannelPackage {
@@ -397,6 +410,7 @@ export interface ChannelPackage {
   listingId: string | null;
   persisted: boolean;
   cards: ChannelCard[];
+  facts?: ListingCopyFacts;
 }
 
 export interface DescriptionSuggestion {
