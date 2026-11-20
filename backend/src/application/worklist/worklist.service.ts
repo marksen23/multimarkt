@@ -9,6 +9,7 @@ import {
   ItemPhotoEntity,
   MarketplaceProjectionEntity,
 } from '../../infrastructure/database/entities';
+import { coverThumbnailUrl } from '../../domain/photo/publishable-photo';
 import {
   ListingSummary,
   ListingSummaryService,
@@ -168,13 +169,8 @@ export class WorklistService {
     const photos = await this.dataSource.manager
       .createQueryBuilder(ItemPhotoEntity, 'p')
       .where('p.item_id IN (:...itemIds)', { itemIds })
-      .orderBy('p.created_at', 'ASC')
       .getMany();
-    for (const photo of photos) {
-      if (!thumbnailByItem.has(photo.itemId))
-        thumbnailByItem.set(photo.itemId, photo.url);
-    }
-    return thumbnailByItem;
+    return coverThumbnailUrl(photos);
   }
 
   private async projectionsFor(

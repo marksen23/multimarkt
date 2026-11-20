@@ -25,8 +25,8 @@ export function setupRows(status: IntegrationStatus): SetupRow[] {
       state: status.geminiLive ? 'ready' : 'missing',
       stateLabel: status.geminiLive ? 'Bereit' : 'Fehlt',
       summary: status.geminiLive
-        ? 'Die KI kann Fotos lesen und Titel, Modell und Beschreibung vorschlagen. Unsicheres wird markiert.'
-        : 'Ohne Schlüssel liest niemand die Fotos. Die Felder bleiben leer, bis du sie selbst einträgst. Es werden keine Beispielwerte eingesetzt.',
+        ? 'Die KI kann Fotos lesen und Titel, Modell und Beschreibung vorschlagen. Unsicheres wird markiert. Unscharfe, dunkle oder angeschnittene Fotos bekommen einen kurzen Tipp.'
+        : 'Ohne Schlüssel liest niemand die Fotos. Die Felder bleiben leer, bis du sie selbst einträgst. Es werden keine Beispielwerte eingesetzt. Die Foto-Verbesserung läuft trotzdem, der Tipp kommt dann aus der Pixelprüfung.',
       detail: status.geminiLive
         ? 'Der Schlüssel liegt in Coolify, nicht in der App.'
         : 'In Coolify die Variable GEMINI_API_KEY setzen. Den Schlüssel legst du in Google AI Studio an. Danach die App neu starten.',

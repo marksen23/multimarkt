@@ -6,6 +6,13 @@ import {
   type MissingPhotoShot,
   type PhotoShotNeed,
 } from '../category/photo-briefing';
+import {
+  enhancementProgress,
+  photoTipLines,
+  publishVersionHint,
+  showingEnhanced,
+  shownPhotoUrl,
+} from '../lib/photo-display';
 import { Icon } from '../ui';
 
 /**
@@ -20,6 +27,8 @@ export function PhotoGallery({
   busy,
   onShotChange,
   onAdd,
+  onPrefer,
+  onMakeCover,
 }: {
   photos: ItemPhoto[];
   requiredShots?: PhotoShotNeed[];
@@ -27,6 +36,8 @@ export function PhotoGallery({
   busy?: boolean;
   onShotChange?: (photoId: string, shot: string | null) => void;
   onAdd?: (file: File, shot: string | null) => void;
+  onPrefer?: (photoId: string, preferEnhanced: boolean) => void;
+  onMakeCover?: (photoId: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [lightbox, setLightbox] = useState<number | null>(null);
@@ -38,6 +49,10 @@ export function PhotoGallery({
     setPicked(null);
   }
   const nextShot = picked ?? missingShots[0]?.shot ?? '';
+  const progress = enhancementProgress(photos);
+  const tips = photoTipLines(photos);
+  const versionHint = publishVersionHint(photos);
+  const suggestedIndex = photos.findIndex((photo, index) => photo.suggestedCover && index > 0);
 
   if (photos.length === 0 && !onAdd) return null;
 
@@ -49,6 +64,42 @@ export function PhotoGallery({
 
   return (
     <div className="space-y-3">
+      {progress.active && progress.text && (
+        <div className="space-y-1.5" role="status">
+          <p className="text-label text-ink-muted">{progress.text}</p>
+          <p className="text-label font-normal text-ink-faint">
+            Die fertige Version geht an eBay und in die Kleinanzeigen-ZIP. Solange sie noch läuft, wird das Original genommen.
+          </p>
+          <div
+            className="h-1.5 rounded-full bg-line overflow-hidden"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={progress.total}
+            aria-valuenow={progress.done}
+            aria-label="Foto-Verbesserung"
+          >
+            <div
+              className="h-full bg-accent transition-[width]"
+              style={{ width: `${progress.total === 0 ? 0 : Math.round((progress.done / progress.total) * 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {suggestedIndex >= 0 && onMakeCover && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-line px-3 py-2">
+          <p className="text-label text-ink min-w-0">Foto {suggestedIndex + 1} eignet sich besser als Titelbild.</p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onMakeCover(photos[suggestedIndex].id)}
+            className="shrink-0 px-2.5 py-1.5 rounded-control bg-accent text-white text-label font-semibold disabled:opacity-60"
+          >
+            Als Titelbild
+          </button>
+        </div>
+      )}
+
       {photos.length > 0 && (
       <div className="grid grid-cols-3 gap-2">
         {photos.map((photo, i) => {
@@ -56,16 +107,50 @@ export function PhotoGallery({
           if (isPhotoShot(photo.shot) && !options.some((shot) => shot.shot === photo.shot)) {
             options.unshift({ shot: photo.shot, label: PHOTO_SHOT_LABELS[photo.shot] });
           }
+          const enhanced = showingEnhanced(photo);
           return (
           <div key={photo.id} className="space-y-1">
           <button
             type="button"
             onClick={() => setLightbox(i)}
-            className="aspect-square w-full rounded-control overflow-hidden border border-line hover:opacity-90 transition focus:outline-none focus:ring-2 focus:ring-accent-soft"
+            className="relative aspect-square w-full rounded-control overflow-hidden border border-line hover:opacity-90 transition focus:outline-none focus:ring-2 focus:ring-accent-soft"
             aria-label={`Foto ${i + 1} vergrößern`}
           >
-            <img src={photo.url} alt="" className="w-full h-full object-cover" />
+            <img src={shownPhotoUrl(photo)} alt="" className="w-full h-full object-cover" />
+            {i === 0 && (
+              <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded-full bg-ink/70 text-white text-micro">
+                Titelbild
+              </span>
+            )}
           </button>
+          {(photo.enhancementStatus === 'pending' || photo.enhancementStatus === 'processing') && (
+            <p className="text-micro normal-case tracking-normal text-ink-faint text-center">Wird verbessert</p>
+          )}
+          {photo.enhancementStatus === 'failed' && (
+            <p className="text-micro normal-case tracking-normal text-ink-faint text-center">Original bleibt</p>
+          )}
+          {photo.enhancementStatus === 'ready' && photo.enhancedUrl && onPrefer && (
+            <div className="flex flex-col gap-1" role="group" aria-label={`Version für Foto ${i + 1}`}>
+              <button
+                type="button"
+                disabled={busy || !enhanced}
+                aria-pressed={!enhanced}
+                onClick={() => onPrefer(photo.id, false)}
+                className={`h-8 rounded-control text-micro normal-case tracking-normal ${enhanced ? 'border border-line text-ink-muted' : 'bg-ink text-white'}`}
+              >
+                Original
+              </button>
+              <button
+                type="button"
+                disabled={busy || enhanced}
+                aria-pressed={enhanced}
+                onClick={() => onPrefer(photo.id, true)}
+                className={`h-8 rounded-control text-micro normal-case tracking-normal ${enhanced ? 'bg-ink text-white' : 'border border-line text-ink-muted'}`}
+              >
+                Verbessert
+              </button>
+            </div>
+          )}
           {requiredShots.length > 0 && onShotChange && (
             <select
               aria-label={`Aufnahme für Foto ${i + 1}`}
@@ -87,6 +172,18 @@ export function PhotoGallery({
         })}
       </div>
       )}
+
+      {tips.length > 0 && (
+        <ul className="space-y-1.5">
+          {tips.map((tip) => (
+            <li key={`${tip.label}-${tip.message}`} className="text-label font-normal text-ink-muted">
+              <span className="font-semibold text-ink">{tip.label}.</span> {tip.message}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {versionHint && <p className="text-label font-normal text-ink-faint">{versionHint}</p>}
 
       {onAdd && (
         <div className="flex gap-2">
@@ -174,7 +271,7 @@ function PhotoLightbox({
     >
       {/* Main image */}
       <img
-        src={photos[index].url}
+        src={shownPhotoUrl(photos[index])}
         alt=""
         className="max-h-[85vh] max-w-[90vw] object-contain rounded-control shadow-float"
         onClick={(e) => e.stopPropagation()}

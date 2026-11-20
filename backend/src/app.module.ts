@@ -11,6 +11,7 @@ import { DispositionEngineModule } from './application/disposition/disposition-e
 import { SaleIngestionModule } from './application/sale-conflict/sale-ingestion.module';
 import { SaleConflictWorkerModule } from './application/sale-conflict/sale-conflict-worker.module';
 import { MarkdownWorkerModule } from './application/markdown/markdown-worker.module';
+import { PhotoEnhancementWorkerModule } from './application/photo-enhancement/photo-enhancement-worker.module';
 import { ApiModule } from './api/api.module';
 import { HealthModule } from './health/health.module';
 
@@ -39,6 +40,7 @@ import { HealthModule } from './health/health.module';
     SaleIngestionModule,
     SaleConflictWorkerModule,
     MarkdownWorkerModule,
+    PhotoEnhancementWorkerModule,
     ApiModule,
   ],
   controllers: [AppController],

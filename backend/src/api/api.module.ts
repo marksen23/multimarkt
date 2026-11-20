@@ -17,6 +17,7 @@ import { AccountDeletionModule } from '../application/deletion/account-deletion.
 import { DispositionEngineModule } from '../application/disposition/disposition-engine.module';
 import { ImageOptimizationModule } from '../application/image-optimization/image-optimization.module';
 import { MarketplacePublishingModule } from '../application/listing/marketplace-publishing.module';
+import { PhotoEnhancementModule } from '../application/photo-enhancement/photo-enhancement.module';
 import { PhotoQualityModule } from '../application/photo-quality/photo-quality.module';
 import { PriceTriangulationModule } from '../application/pricing/price-triangulation.module';
 import { ProductAnalysisModule } from '../application/product-analysis/product-analysis.module';
@@ -59,6 +60,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     PriceTriangulationModule,
     ImageOptimizationModule,
     PhotoQualityModule,
+    PhotoEnhancementModule,
     TitleGenerationModule,
     AnkaufModule,
     BundleAssignmentModule,

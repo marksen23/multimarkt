@@ -4,6 +4,7 @@ import { DatabaseModule } from './infrastructure/database/database.module';
 import { QueueModule } from './infrastructure/queue/bullmq.module';
 import { SaleConflictWorkerModule } from './application/sale-conflict/sale-conflict-worker.module';
 import { MarkdownWorkerModule } from './application/markdown/markdown-worker.module';
+import { PhotoEnhancementWorkerModule } from './application/photo-enhancement/photo-enhancement-worker.module';
 
 /**
  * Root-Modul für den Render "Background Worker" Service (BullMQ-Consumer).
@@ -19,6 +20,7 @@ import { MarkdownWorkerModule } from './application/markdown/markdown-worker.mod
     QueueModule,
     SaleConflictWorkerModule,
     MarkdownWorkerModule,
+    PhotoEnhancementWorkerModule,
   ],
 })
 export class WorkerModule {}
