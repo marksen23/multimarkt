@@ -54,7 +54,7 @@ export class NegotiationService {
     });
     if (!item) throw new NotFoundException(`Item ${input.itemId} not found`);
 
-    const prices = await this.prices(item.id);
+    const prices = await this.prices(item.id, item.condition);
     if (!prices) {
       throw new BadRequestException(
         'Für diesen Artikel fehlen Zielpreis und Schmerzgrenze. Zuerst die Preisrecherche ausführen.',
@@ -73,6 +73,7 @@ export class NegotiationService {
 
   private async prices(
     itemId: string,
+    condition: string | null,
   ): Promise<{ minPrice: number; targetPrice: number } | null> {
     const rows = await this.dataSource.manager.find(ItemPriceResearchEntity, {
       where: { itemId },
@@ -94,7 +95,7 @@ export class NegotiationService {
         detail: row.rawResponse ?? undefined,
       }));
 
-    const recommendation = this.priceRecommendation.recommend(sources, null);
+    const recommendation = this.priceRecommendation.recommend(sources, null, { condition });
     if (
       !recommendation?.startPriceRecommended ||
       recommendation.targetPrice <= 0 ||

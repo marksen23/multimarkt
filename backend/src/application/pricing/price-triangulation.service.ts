@@ -12,8 +12,16 @@ import {
   MarketDistributionProvider,
 } from '../../domain/pricing/market-distribution-provider.interface';
 import { buildMarketKeywords } from '../../domain/pricing/market-keywords';
+import {
+  MarketQueryLevel,
+  MarketQueryStep,
+  buildMarketQueryLadder,
+  marketProductLabel,
+} from '../../domain/pricing/market-query-ladder';
+import { marketSearchMessage } from '../../domain/pricing/market-search-error';
 import { PriceResearchSource } from '../../domain/pricing/price-research-vocabulary';
 import { PriceRecommendation } from '../../domain/pricing/price-recommendation';
+import { MIN_MARKET_SAMPLE_SIZE } from '../../domain/pricing/market-distribution-provider.interface';
 import { marketplaceSearchLinks, type MarketplaceSearchLink } from '../../domain/search/marketplace-search-links';
 import {
   ItemAttributeEntity,
@@ -72,6 +80,8 @@ export interface PriceResearchResult {
   recommendation: PriceRecommendation | null;
   /** Suchbegriff, mit dem die Quellen gefragt wurden. Leer, wenn nichts Identifizierendes da ist. */
   query: string;
+  /** Wie eng die verwendete Suche war. Null, wenn gar nicht gesucht wurde. */
+  queryLevel: MarketQueryLevel | null;
   /** Direkte Plattformsuchen. Kein Abruf der Seiten. */
   searchLinks: MarketplaceSearchLink[];
   /** Warum es keinen belastbaren Vorschlag gibt, sonst null. */
@@ -105,7 +115,7 @@ export class PriceTriangulationService {
     });
     const attributeValue = (key: string): string | null =>
       attributes.find((a) => a.attributeKey === key)?.attributeValue ?? null;
-    const keywords = buildMarketKeywords({
+    const keywordInput = {
       title: item.title,
       brand: attributeValue('brand'),
       model: attributeValue('model'),
@@ -113,7 +123,13 @@ export class PriceTriangulationService {
       categoryDetail: attributeValue('categoryDetail'),
       color: attributeValue('color'),
       searchTerms: attributeValue('searchTerms'),
-    });
+      specs: attributes
+        .filter((attribute) => attribute.attributeKey.startsWith('spec:') && attribute.attributeValue)
+        .map((attribute) => ({ key: attribute.attributeKey, value: attribute.attributeValue })),
+    };
+    const keywords = buildMarketKeywords(keywordInput);
+    const ladder = buildMarketQueryLadder(keywordInput);
+    const condition = item.condition?.trim() || attributeValue('condition');
     const place = /^\d{5}$/.test(item.postalCode?.trim() ?? '')
       ? { postalCode: item.postalCode!.trim(), radiusKm: 20 }
       : null;
@@ -121,31 +137,39 @@ export class PriceTriangulationService {
     if (!options.forceRefresh) {
       const cached = await this.readFreshCache(itemId);
       if (cached) {
-        return this.withAdvice(cached, options.salesGoal ?? null, keywords, place);
+        return this.withAdvice(cached, options.salesGoal ?? null, {
+          keywords,
+          ladder,
+          condition,
+          place,
+          ebayNotice: null,
+        });
       }
     }
 
     const brand = attributeValue('brand');
     const category = attributeValue('category');
+    const identity = {
+      brand,
+      model: attributeValue('model'),
+      product: marketProductLabel(keywordInput),
+    };
 
     const sources: PriceResearchSourceResult[] = [];
+    const ebay = await this.searchEbayLadder(ladder, condition, identity, place?.postalCode ?? null);
+    if (ebay.source) sources.push(ebay.source);
 
-    const marketResult = await this.researchMarketDistribution(
-      this.marketProvider,
-      'EBAY_ACTIVE_LISTINGS',
-      keywords,
-      item.condition,
-    );
-    if (marketResult) sources.push(marketResult);
-
-    // §9e: zusätzliche, getrennt ausgewiesene Quelle — nie mit der
-    // eBay-Verteilung vermischt. Dünne Stichproben bleiben erhalten;
-    // ein konkreter Startpreis entsteht erst in PriceRecommendationService.
+    // Eine Websuche, mit dem Begriff, den eBay behalten hat. Kein zweiter
+    // kostenpflichtiger Lauf über die ganze Leiter.
+    const groundingKeywords = ebay.step?.keywords ?? ladder[0]?.keywords ?? '';
     const groundingResult = await this.researchMarketDistribution(
       this.groundingProvider,
       'GEMINI_GROUNDING',
-      keywords,
-      item.condition,
+      groundingKeywords,
+      condition,
+      identity,
+      ebay.step?.level === 'specific',
+      ebay.step?.level !== 'broad',
     );
     if (groundingResult) sources.push(groundingResult);
 
@@ -158,18 +182,31 @@ export class PriceTriangulationService {
     return this.withAdvice(
       { itemId, sources, fetchedAt },
       options.salesGoal ?? null,
-      keywords,
-      place,
+      { keywords, ladder, condition, place, ebayNotice: ebay.notice, chosen: ebay.step },
     );
   }
 
   private withAdvice(
-    base: Omit<PriceResearchResult, 'recommendation' | 'query' | 'searchLinks' | 'notice'>,
+    base: Omit<PriceResearchResult, 'recommendation' | 'query' | 'queryLevel' | 'searchLinks' | 'notice'>,
     salesGoal: SalesGoal | null,
-    query: string,
-    place: { postalCode: string; radiusKm: number } | null,
+    advice: {
+      keywords: string;
+      ladder: MarketQueryStep[];
+      condition: string | null;
+      place: { postalCode: string; radiusKm: number } | null;
+      ebayNotice: string | null;
+      chosen?: MarketQueryStep | null;
+    },
   ): PriceResearchResult {
-    const recommendation = this.recommendationService.recommend(base.sources, salesGoal);
+    const stored = storedQuery(base.sources);
+    const chosen = advice.chosen ?? stored;
+    const query = chosen?.keywords || advice.keywords;
+    const queryLevel = chosen?.level ?? (query ? advice.ladder[0]?.level ?? 'specific' : null);
+    const recommendation = this.recommendationService.recommend(base.sources, salesGoal, {
+      condition: advice.condition,
+      query: query || null,
+      queryLevel,
+    });
     const liveMarket = base.sources.some(
       (source) =>
         (source.source === 'EBAY_ACTIVE_LISTINGS' || source.source === 'GEMINI_GROUNDING') &&
@@ -179,17 +216,55 @@ export class PriceTriangulationService {
     let notice: string | null = null;
     if (!query) {
       notice = 'Für einen Preisvergleich fehlen Marke, Artikelart oder Titel.';
+    } else if (advice.ebayNotice) {
+      notice = advice.ebayNotice;
     } else if (!liveMarket) {
       notice =
-        'Keine Vergleichsangebote von eBay oder der Websuche. Die Links öffnen dieselbe Suche, ohne Preise zu erfinden.';
+        'Keine passenden aktiven Angebote auf eBay.de. Die Links öffnen dieselbe Suche. Preise werden nicht erfunden.';
     }
     return {
       ...base,
       recommendation,
       query,
-      searchLinks: marketplaceSearchLinks(query, place),
+      queryLevel,
+      searchLinks: marketplaceSearchLinks(query, advice.place),
       notice,
     };
+  }
+
+  private async searchEbayLadder(
+    ladder: MarketQueryStep[],
+    condition: string | null,
+    identity: { brand: string | null; model: string | null; product: string | null },
+    postalCode: string | null,
+  ): Promise<{ source: PriceResearchSourceResult | null; step: MarketQueryStep | null; notice: string | null }> {
+    let best: { source: PriceResearchSourceResult; step: MarketQueryStep } | null = null;
+    let notice: string | null = null;
+
+    for (const step of ladder) {
+      try {
+        const source = await this.researchMarketDistribution(
+          this.marketProvider,
+          'EBAY_ACTIVE_LISTINGS',
+          step.keywords,
+          condition,
+          identity,
+          step.level === 'specific',
+          step.level !== 'broad',
+          postalCode,
+          step,
+        );
+        if (!source) continue;
+        if (!best || source.sampleSize > best.source.sampleSize) best = { source, step };
+        if (source.sampleSize >= MIN_MARKET_SAMPLE_SIZE) break;
+      } catch (error) {
+        notice = marketSearchMessage(error);
+        this.logger.warn(`EBAY_ACTIVE_LISTINGS search failed: ${notice}`);
+        break;
+      }
+    }
+
+    return { source: best?.source ?? null, step: best?.step ?? null, notice };
   }
 
   private async researchMarketDistribution(
@@ -197,13 +272,28 @@ export class PriceTriangulationService {
     source: PriceResearchSource,
     keywords: string,
     condition: string | null,
+    identity: { brand: string | null; model: string | null; product: string | null },
+    requireModel: boolean,
+    requireBrand: boolean,
+    postalCode: string | null = null,
+    step: MarketQueryStep | null = null,
   ): Promise<PriceResearchSourceResult | null> {
     if (!keywords.trim()) return null;
 
     let result: Awaited<ReturnType<MarketDistributionProvider['search']>>;
     try {
-      result = await provider.search({ keywords, condition });
+      result = await provider.search({
+        keywords,
+        condition,
+        brand: identity.brand,
+        model: identity.model,
+        product: identity.product,
+        postalCode,
+        requireModel,
+        requireBrand,
+      });
     } catch (error) {
+      if (source === 'EBAY_ACTIVE_LISTINGS') throw error;
       this.logger.warn(`${source} search failed: ${(error as Error).message}`);
       return null;
     }
@@ -224,6 +314,12 @@ export class PriceTriangulationService {
       // Beschreibungsvergleich, nicht nur der Preisrecherche.
       detail: {
         comparableListings: result.comparableListings,
+        query: step?.keywords ?? keywords,
+        queryLevel: step?.level,
+        ...(result.excludedCount ? { excludedCount: result.excludedCount } : {}),
+        ...(result.filterNote ? { filterNote: result.filterNote } : {}),
+        ...(result.priceKind ? { priceKind: result.priceKind } : {}),
+        ...(result.marketplace ? { marketplace: result.marketplace } : {}),
         ...(result.illustrative || /\(Mock\)/i.test(result.providerLabel) ? { illustrative: true } : {}),
       },
     };
@@ -266,7 +362,7 @@ export class PriceTriangulationService {
    */
   private async readFreshCache(
     itemId: string,
-  ): Promise<Omit<PriceResearchResult, 'recommendation' | 'query' | 'searchLinks' | 'notice'> | null> {
+  ): Promise<Omit<PriceResearchResult, 'recommendation' | 'query' | 'queryLevel' | 'searchLinks' | 'notice'> | null> {
     const rows = await this.dataSource.manager.find(ItemPriceResearchEntity, {
       where: { itemId },
       order: { fetchedAt: 'DESC' },
@@ -321,4 +417,15 @@ export class PriceTriangulationService {
       })) as any[],
     );
   }
+}
+
+function storedQuery(sources: PriceResearchSourceResult[]): MarketQueryStep | null {
+  const ebay = sources.find((source) => source.source === 'EBAY_ACTIVE_LISTINGS');
+  const query = ebay?.detail?.query;
+  if (typeof query !== 'string' || !query.trim()) return null;
+  const level = ebay?.detail?.queryLevel;
+  if (level === 'specific' || level === 'broader' || level === 'broad') {
+    return { keywords: query, level };
+  }
+  return { keywords: query, level: 'specific' };
 }

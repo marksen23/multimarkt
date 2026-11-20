@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { MarketDistributionProvider } from '../../domain/pricing/market-distribution-provider.interface';
+import { EBAY_MISSING_KEYS_MESSAGE, MarketSearchError } from '../../domain/pricing/market-search-error';
 import { BuybackAnchorProvider } from '../../domain/pricing/buyback-anchor-provider.interface';
 import {
   ItemAttributeEntity,
@@ -96,7 +97,9 @@ describe('PriceTriangulationService', () => {
     expect(result.recommendation?.buybackRecommended).toBe(false);
     expect(result.recommendation?.minPrice).toBeLessThan(15 * BUYBACK_TO_RESALE_MULTIPLIER);
     expect(result.recommendation?.reasoning.some((line) => line.includes('Beispiel'))).toBe(true);
-    expect(marketProvider.search).toHaveBeenCalledWith({ keywords: 'Nike Sneaker', condition: 'good' });
+    expect(marketProvider.search).toHaveBeenCalledWith(
+      expect.objectContaining({ keywords: 'Nike Sneaker', condition: 'good', brand: 'Nike' }),
+    );
     expect(insert).toHaveBeenCalledTimes(1);
     const insertedRows = insert.mock.calls[0][1] as Array<{ source: string }>;
     expect(insertedRows).toHaveLength(2);
@@ -153,7 +156,9 @@ describe('PriceTriangulationService', () => {
 
     expect(result.sources.map((s) => s.source)).toEqual(['GEMINI_GROUNDING']);
     expect(result.sources[0].median).toBe(36);
-    expect(groundingProvider.search).toHaveBeenCalledWith({ keywords: 'Nike Sneaker', condition: 'good' });
+    expect(groundingProvider.search).toHaveBeenCalledWith(
+      expect.objectContaining({ keywords: 'Nike Sneaker', condition: 'good' }),
+    );
   });
 
   it('keeps a thin market source and withholds the start price, leaving the span', async () => {
@@ -181,9 +186,8 @@ describe('PriceTriangulationService', () => {
     expect(result.recommendation?.sampleSize).toBe(2);
     expect(result.recommendation?.rangeLow).toBe(28);
     expect(result.recommendation?.rangeHigh).toBe(41);
-    expect(result.recommendation?.priceBasisNote).toBe(
-      'Angebotspreise, nicht erzielte Verkäufe, Faktor 0,87',
-    );
+    expect(result.recommendation?.priceBasisNote).toMatch(/keine abgeschlossenen Verkäufe/);
+    expect(result.recommendation?.quickSalePrice).toBe(result.recommendation?.targetPrice);
   });
 
   it('searches with the concrete article instead of only the coarse category', async () => {
@@ -202,12 +206,12 @@ describe('PriceTriangulationService', () => {
     const service = makeService(dataSource);
     const result = await service.research('i1');
 
-    expect(marketProvider.search).toHaveBeenCalledWith({
-      keywords: 'Nike Air Max 90 Schwarz',
-      condition: 'good',
-    });
+    expect(marketProvider.search).toHaveBeenCalledWith(
+      expect.objectContaining({ keywords: 'Nike Air Max 90 Schwarz', condition: 'good' }),
+    );
     expect(result.query).toBe('Nike Air Max 90 Schwarz');
-    expect(result.notice).toMatch(/Keine Vergleichsangebote/);
+    expect(result.queryLevel).toBe('specific');
+    expect(result.notice).toMatch(/Keine passenden aktiven Angebote/);
     expect(result.searchLinks.map((link) => link.platform)).toEqual([
       'KLEINANZEIGEN',
       'EBAY',
@@ -231,10 +235,72 @@ describe('PriceTriangulationService', () => {
 
     await makeService(dataSource).research('i1');
 
-    expect(marketProvider.search).toHaveBeenCalledWith({
-      keywords: 'Bosch GBH 2-28 F Schlagbohrmaschine',
-      condition: 'good',
+    expect(marketProvider.search).toHaveBeenCalledWith(
+      expect.objectContaining({ keywords: 'Bosch GBH 2-28 F Schlagbohrmaschine', condition: 'good' }),
+    );
+  });
+
+  it('uses the broader query once the specific one stays under five comps', async () => {
+    const { dataSource } = makeDataSource({
+      item: { id: 'i1', condition: 'Gut', title: 'Bohrmaschine' },
+      attributes: [
+        attr('brand', 'Bosch'),
+        attr('model', 'GBH 2-28 F'),
+        attr('category', 'Elektronik'),
+        attr('categoryDetail', 'Schlagbohrmaschine'),
+        attr('spec:Typ', '0611267000'),
+      ],
     });
+    marketProvider.search.mockImplementation(async (query: { keywords: string }) => {
+      if (query.keywords.includes('0611267000')) {
+        return {
+          median: 40,
+          p25: 40,
+          p75: 40,
+          sampleSize: 1,
+          currency: 'EUR',
+          providerLabel: 'eBay Browse API',
+          comparableListings: [],
+        };
+      }
+      if (query.keywords === 'Schlagbohrmaschine') return null;
+      return {
+        median: 90,
+        p25: 70,
+        p75: 120,
+        sampleSize: 8,
+        currency: 'EUR',
+        providerLabel: 'eBay Browse API',
+        comparableListings: [{ title: 'Bosch GBH 2-28 F', price: 90, url: 'https://www.ebay.de/itm/1' }],
+      };
+    });
+    buybackProvider.quote.mockResolvedValue(null);
+
+    const result = await makeService(dataSource).research('i1');
+
+    expect(result.query).toBe('Bosch GBH 2-28 F Schlagbohrmaschine');
+    expect(result.queryLevel).toBe('broader');
+    expect(result.recommendation?.startPriceRecommended).toBe(true);
+    expect(result.recommendation?.conditionNote).toMatch(/Zustand Gut/);
+    expect(result.sources[0].detail?.comparableListings).toEqual([
+      { title: 'Bosch GBH 2-28 F', price: 90, url: 'https://www.ebay.de/itm/1' },
+    ]);
+  });
+
+  it('surfaces a German message when eBay keys are missing and does not invent a price', async () => {
+    const { dataSource } = makeDataSource({
+      item: { id: 'i1', condition: 'Gut' },
+      attributes: [attr('brand', 'Bosch'), attr('categoryDetail', 'Schlagbohrmaschine')],
+    });
+    marketProvider.search.mockRejectedValue(new MarketSearchError('MISSING_KEYS', EBAY_MISSING_KEYS_MESSAGE));
+    buybackProvider.quote.mockResolvedValue(null);
+
+    const result = await makeService(dataSource).research('i1');
+
+    expect(result.recommendation).toBeNull();
+    expect(result.sources).toHaveLength(0);
+    expect(result.notice).toBe(EBAY_MISSING_KEYS_MESSAGE);
+    expect(marketProvider.search).toHaveBeenCalledTimes(1);
   });
 
   it('skips the market lookup entirely when no brand/category attribute is known', async () => {

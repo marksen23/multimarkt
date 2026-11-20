@@ -594,7 +594,8 @@ function PrepareListingStep({
       setDescriptionMissingTokens(descResult.gapAnalysis.missingTokens);
       setVaguePhrases(descResult.vaguePhrases);
       if (priceResult.recommendation?.startPriceRecommended) {
-        setPrice(String(priceResult.recommendation.listPrice));
+        const suggested = priceResult.recommendation.quickSalePrice ?? priceResult.recommendation.listPrice;
+        setPrice(String(suggested));
       }
     } catch {
       setGenerateError('Automatisches Ausfüllen fehlgeschlagen — bitte einzeln versuchen.');

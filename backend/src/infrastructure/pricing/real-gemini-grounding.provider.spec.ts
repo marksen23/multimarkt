@@ -84,6 +84,41 @@ describe('RealGeminiGroundingProvider', () => {
     expect(result).toBeNull();
   });
 
+  it('drops accessories, defects and bundles from a recorded grounded answer', async () => {
+    interactionsCreateMock.mockResolvedValue({
+      output_text: JSON.stringify({
+        median: 70,
+        p25: 25,
+        p75: 180,
+        sampleSize: 6,
+        comparableListings: [
+          { title: 'Bosch GBH 2-28 F gebraucht', price: 80, url: 'https://www.ebay.de/itm/1' },
+          { title: 'Bosch GBH 2-28 F', price: 100, url: 'https://www.ebay.de/itm/2' },
+          { title: 'Koffer für Bosch GBH 2-28', price: 25, url: 'https://www.ebay.de/itm/3' },
+          { title: 'Bosch GBH 2-28 defekt', price: 30, url: null },
+          { title: 'Konvolut 3 Stück Bosch', price: 150, url: null },
+          { title: 'Bosch GBH 2-28 F neu OVP', price: 180, url: null },
+        ],
+      }),
+    });
+
+    const provider = new RealGeminiGroundingProvider(makeConfig({ GEMINI_API_KEY: 'real-key' }));
+    const result = await provider.search({
+      keywords: 'Bosch GBH 2-28 F',
+      condition: 'Gut',
+      brand: 'Bosch',
+      model: 'GBH 2-28 F',
+      requireModel: true,
+      requireBrand: true,
+    });
+
+    expect(result?.comparableListings.map((listing) => listing.price)).toEqual([80, 100]);
+    expect(result?.median).toBe(90);
+    expect(result?.sampleSize).toBe(2);
+    expect(result?.priceKind).toBe('ASKING');
+    expect(result?.filterNote).toMatch(/Zubehör/);
+  });
+
   it('returns null instead of throwing when the response is not valid JSON', async () => {
     interactionsCreateMock.mockResolvedValue({ output_text: 'Sicher, hier ist eine Zusammenfassung: ...' });
 
