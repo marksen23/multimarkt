@@ -179,7 +179,8 @@ jobs:
           --health-retries 20
       redis:
         image: redis:7-alpine
-        command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory-policy", "noeviction"]
+        # Service-Container haben kein command-Feld. Redis 7 startet mit
+        # maxmemory-policy noeviction, dem Default, den BullMQ braucht.
         ports:
           - 6379:6379
         options: >-
@@ -247,7 +248,8 @@ jobs:
           --health-retries 20
       redis:
         image: redis:7-alpine
-        command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory-policy", "noeviction"]
+        # Service-Container haben kein command-Feld. Redis 7 startet mit
+        # maxmemory-policy noeviction, dem Default, den BullMQ braucht.
         ports:
           - 6379:6379
         options: >-
