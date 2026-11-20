@@ -154,7 +154,8 @@ jobs:
       DATABASE_URL: postgres://resale:resale@127.0.0.1:5432/resale_os
       REDIS_URL: redis://127.0.0.1:6379
       PORT: "3000"
-      NODE_ENV: production
+      # NODE_ENV bleibt hier leer. production würde npm ci die devDependencies
+      # weglassen, und dann fehlt nest (devDependency) beim Build.
       APP_USER_ID: "00000000-0000-0000-0000-000000000000"
       APP_ACCESS_TOKEN: ci-not-a-secret
       JWT_SECRET: ci-not-a-secret
@@ -214,6 +215,8 @@ jobs:
         run: npm run migration:run
 
       - name: Prozess starten, /healthz und /ready prüfen
+        env:
+          NODE_ENV: production
         run: bash scripts/ci-boot-smoke.sh
 
   docker:
