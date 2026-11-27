@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Item } from '../api/types';
+import { handoverFlags, handoverFrom, type Handover } from '../logistics/handover';
 import { shippingCostEur, shippingPortalsAllowed, type LogisticsDraft, type LogisticsProfile } from '../logistics/profile';
 import { Button, Card, Notice, inputClass } from '../ui';
 
@@ -41,6 +42,14 @@ export function LogisticsProfileForm({
   const [shippingPossible, setShippingPossible] = useState(item.shippingPossible);
   const [postalCode, setPostalCode] = useState(item.postalCode ?? '');
   const [saved, setSaved] = useState(false);
+  const [showMeasures, setShowMeasures] = useState(
+    () =>
+      item.weightGrams != null ||
+      item.lengthCm != null ||
+      item.widthCm != null ||
+      item.heightCm != null ||
+      Boolean(item.postalCode),
+  );
 
   const weightGrams = parseGrams(weight);
   const lengthCm = parseCm(length);
@@ -54,6 +63,14 @@ export function LogisticsProfileForm({
   const weightOk = weightGrams == null || (weightGrams >= 1 && weightGrams <= 500_000);
   const postalOk = postalCode.trim() === '' || /^\d{5}$/.test(postalCode.trim());
   const choice = bulky || pickupOnly || shippingPossible;
+  const handover = handoverFrom({ bulky, pickupOnly, shippingPossible });
+
+  const choose = (mode: Handover) => {
+    const next = handoverFlags(mode);
+    setBulky(next.bulky);
+    setPickupOnly(next.pickupOnly);
+    setShippingPossible(next.shippingPossible);
+  };
   const canSave = weightOk && dimensionsOk && postalOk && choice && !busy;
 
   const preview: LogisticsProfile = {
@@ -91,105 +108,107 @@ export function LogisticsProfileForm({
       <div>
         <p className="text-micro uppercase text-ink-muted">Versand und Abholung</p>
         <p className="text-label font-normal text-ink-faint mt-1">
-          Gewicht, Maße, Sperrig, Abholung oder Versand, PLZ. Daraus folgen Kanal und Text.
+          Eine Wahl. Daraus folgen Kanal und Text. Maße nur, wenn du sie weißt.
         </p>
       </div>
 
-      <input
-        type="text"
-        inputMode="numeric"
-        aria-label="Gewicht in Gramm"
-        placeholder="Gewicht in g"
-        value={weight}
-        onChange={(e) => setWeight(e.target.value)}
-        className={inputClass}
-      />
-      <div className="grid grid-cols-3 gap-2">
-        <input
-          type="text"
-          inputMode="decimal"
-          aria-label="Länge in cm"
-          placeholder="Länge cm"
-          value={length}
-          onChange={(e) => setLength(e.target.value)}
-          className={inputClass}
-        />
-        <input
-          type="text"
-          inputMode="decimal"
-          aria-label="Breite in cm"
-          placeholder="Breite cm"
-          value={width}
-          onChange={(e) => setWidth(e.target.value)}
-          className={inputClass}
-        />
-        <input
-          type="text"
-          inputMode="decimal"
-          aria-label="Höhe in cm"
-          placeholder="Höhe cm"
-          value={height}
-          onChange={(e) => setHeight(e.target.value)}
-          className={inputClass}
-        />
+      <div className="grid grid-cols-2 gap-2" role="group" aria-label="Abholung oder Versand">
+        <button
+          type="button"
+          aria-pressed={handover === 'pickup' || handover === 'bulky'}
+          onClick={() => choose(bulky ? 'bulky' : 'pickup')}
+          className={`h-11 rounded-control border text-body font-semibold outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+            handover === 'pickup' || handover === 'bulky'
+              ? 'bg-accent text-accent-ink border-accent'
+              : 'bg-surface text-ink-muted border-line'
+          }`}
+        >
+          Abholung
+        </button>
+        <button
+          type="button"
+          aria-pressed={handover === 'shipping'}
+          onClick={() => choose('shipping')}
+          className={`h-11 rounded-control border text-body font-semibold outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+            handover === 'shipping'
+              ? 'bg-accent text-accent-ink border-accent'
+              : 'bg-surface text-ink-muted border-line'
+          }`}
+        >
+          Versand
+        </button>
       </div>
-
       <label className="flex items-center gap-2 text-body text-ink-muted">
         <input
           type="checkbox"
           className="accent-accent"
           checked={bulky}
-          onChange={(e) => {
-            const checked = e.target.checked;
-            setBulky(checked);
-            if (checked) {
-              setPickupOnly(true);
-              setShippingPossible(false);
-            }
-          }}
+          onChange={(event) => choose(event.target.checked ? 'bulky' : 'pickup')}
         />
-        Sperrig
+        Sperrig, nur Abholung
       </label>
-      <label className="flex items-center gap-2 text-body text-ink-muted">
-        <input
-          type="checkbox"
-          className="accent-accent"
-          checked={pickupOnly}
-          onChange={(e) => {
-            const checked = e.target.checked;
-            setPickupOnly(checked);
-            if (checked) setShippingPossible(false);
-          }}
-        />
-        Nur Abholung
-      </label>
-      <label className="flex items-center gap-2 text-body text-ink-muted">
-        <input
-          type="checkbox"
-          className="accent-accent"
-          checked={shippingPossible}
-          onChange={(e) => {
-            const checked = e.target.checked;
-            setShippingPossible(checked);
-            if (checked) {
-              setPickupOnly(false);
-              setBulky(false);
-            }
-          }}
-        />
-        Versand möglich
-      </label>
-      <input
-        type="text"
-        inputMode="numeric"
-        autoComplete="postal-code"
-        aria-label="Postleitzahl"
-        placeholder="PLZ"
-        maxLength={5}
-        value={postalCode}
-        onChange={(e) => setPostalCode(e.target.value)}
-        className={inputClass}
-      />
+
+      <button
+        type="button"
+        aria-expanded={showMeasures}
+        onClick={() => setShowMeasures((open) => !open)}
+        className="text-label text-ink-muted outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-control"
+      >
+        {showMeasures ? 'Maße ausblenden' : 'Maße und PLZ, optional'}
+      </button>
+      {showMeasures && (
+        <div className="space-y-2">
+          <input
+            type="text"
+            inputMode="numeric"
+            aria-label="Gewicht in Gramm"
+            placeholder="Gewicht in g"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            className={inputClass}
+          />
+          <div className="grid grid-cols-3 gap-2">
+            <input
+              type="text"
+              inputMode="decimal"
+              aria-label="Länge in cm"
+              placeholder="Länge cm"
+              value={length}
+              onChange={(e) => setLength(e.target.value)}
+              className={inputClass}
+            />
+            <input
+              type="text"
+              inputMode="decimal"
+              aria-label="Breite in cm"
+              placeholder="Breite cm"
+              value={width}
+              onChange={(e) => setWidth(e.target.value)}
+              className={inputClass}
+            />
+            <input
+              type="text"
+              inputMode="decimal"
+              aria-label="Höhe in cm"
+              placeholder="Höhe cm"
+              value={height}
+              onChange={(e) => setHeight(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="postal-code"
+            aria-label="Postleitzahl"
+            placeholder="PLZ"
+            maxLength={5}
+            value={postalCode}
+            onChange={(e) => setPostalCode(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+      )}
 
       {!weightOk && <Notice tone="danger">Gewicht als ganze Grammzahl angeben.</Notice>}
       {!dimensionsOk && <Notice tone="danger">Maße vollständig angeben oder leer lassen.</Notice>}

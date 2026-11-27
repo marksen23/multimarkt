@@ -200,6 +200,16 @@ export function ItemDetailPage() {
 
       {error && <Notice tone="danger">{error}</Notice>}
 
+      {item.status === 'REVIEW_REQUIRED' && (
+        <SmartReviewPanel
+          detail={detail}
+          saving={busy}
+          onReload={() => void reload()}
+          onConfirmCondition={(condition) => run(() => itemsApi.confirmTruth(id, condition))}
+          onConfirmAttribute={(key, value) => run(() => itemsApi.confirmAttribute(id, key, value))}
+        />
+      )}
+
       {(detail.photos.length > 0 || briefing.category) && !FINISHED.has(item.status) && (
         <div className="space-y-3">
           <PhotoGallery
@@ -224,16 +234,6 @@ export function ItemDetailPage() {
           analyzing={item.status === 'ANALYZING'}
           busy={busy}
           onAnalyze={(files, onProgress) => run(() => itemsApi.analyze(id, files, onProgress))}
-        />
-      )}
-
-      {item.status === 'REVIEW_REQUIRED' && (
-        <SmartReviewPanel
-          detail={detail}
-          saving={busy}
-          onReload={() => void reload()}
-          onConfirmCondition={(condition) => run(() => itemsApi.confirmTruth(id, condition))}
-          onConfirmAttribute={(key, value) => run(() => itemsApi.confirmAttribute(id, key, value))}
         />
       )}
 
