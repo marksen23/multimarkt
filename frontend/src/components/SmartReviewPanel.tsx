@@ -262,6 +262,54 @@ export function SmartReviewPanel({
       </header>
 
       <div className="p-4 space-y-4">
+        <div
+          className={`p-4 rounded-card border-2 transition-all ${
+            isConditionConfirmed
+              ? 'bg-surface border-accent/30'
+              : aiConditionMapped
+                ? 'bg-accent-soft/30 border-accent/40'
+                : 'bg-danger/5 border-danger/30'
+          }`}
+        >
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <label className="block text-body font-bold text-ink">Wie ist der Zustand?</label>
+              {aiConditionMapped && !isConditionConfirmed && (
+                <p className={`text-label font-normal mt-0.5 ${isUncertain(aiConditionAttr?.confidence) ? 'text-warning' : 'text-accent'}`}>
+                  KI-Vorschlag: <strong>{aiConditionMapped}</strong>
+                  {isUncertain(aiConditionAttr?.confidence) ? ' — unsicher, bitte prüfen' : ' — bitte bestätigen'}
+                </p>
+              )}
+            </div>
+            {isConditionConfirmed && (
+              <span className="inline-flex items-center gap-1 text-label text-accent bg-accent-soft px-2 py-0.5 rounded-full">
+                <Icon name="check" size={12} strokeWidth={3} />
+                Bestätigt
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Zustand auswählen">
+            {CONDITION_OPTIONS.map((cond) => (
+              <button
+                key={cond}
+                type="button"
+                role="tab"
+                aria-selected={selectedCondition === cond}
+                onClick={() => setSelectedCondition(cond)}
+                className={`py-2.5 px-1 text-body rounded-control border font-bold transition-all outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                  selectedCondition === cond
+                    ? 'bg-accent border-accent text-accent-ink shadow-card'
+                    : cond === aiConditionMapped && !isConditionConfirmed
+                      ? 'bg-accent-soft border-accent/30 text-accent'
+                      : 'bg-surface border-line text-ink-muted hover:bg-surface-hover'
+                }`}
+              >
+                {cond}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <Card className="p-4 space-y-4">
           {showUncertainNote && (
             <Notice tone="warning">
@@ -503,62 +551,13 @@ export function SmartReviewPanel({
           </Card>
         )}
 
-        {/* Condition picker — always required */}
-        <div
-          className={`p-4 rounded-card border-2 transition-all ${
-            isConditionConfirmed
-              ? 'bg-surface border-accent/30'
-              : aiConditionMapped
-                ? 'bg-accent-soft/30 border-accent/40'
-                : 'bg-danger/5 border-danger/30'
-          }`}
-        >
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <label className="block text-body font-bold text-ink">Wie ist der Zustand?</label>
-              {aiConditionMapped && !isConditionConfirmed && (
-                <p className={`text-label font-normal mt-0.5 ${isUncertain(aiConditionAttr?.confidence) ? 'text-warning' : 'text-accent'}`}>
-                  KI-Vorschlag: <strong>{aiConditionMapped}</strong>
-                  {isUncertain(aiConditionAttr?.confidence) ? ' — unsicher, bitte prüfen' : ' — bitte bestätigen'}
-                </p>
-              )}
-            </div>
-            {isConditionConfirmed && (
-              <span className="inline-flex items-center gap-1 text-label text-accent bg-accent-soft px-2 py-0.5 rounded-full">
-                <Icon name="check" size={12} strokeWidth={3} />
-                Bestätigt
-              </span>
-            )}
-          </div>
-          <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Zustand auswählen">
-            {CONDITION_OPTIONS.map((cond) => (
-              <button
-                key={cond}
-                type="button"
-                role="tab"
-                aria-selected={selectedCondition === cond}
-                onClick={() => setSelectedCondition(cond)}
-                className={`py-2.5 px-1 text-body rounded-control border font-bold transition-all ${
-                  selectedCondition === cond
-                    ? 'bg-accent border-accent text-accent-ink shadow-card'
-                    : cond === aiConditionMapped && !isConditionConfirmed
-                      ? 'bg-accent-soft border-accent/30 text-accent'
-                      : 'bg-surface border-line text-ink-muted hover:bg-surface-hover'
-                }`}
-              >
-                {cond}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Auto-confirmed summary */}
         {autoConfirmed.length > 0 && (
           <details className="group">
             <summary className="flex items-center gap-2 cursor-pointer select-none py-1 px-1">
               <span className="w-1.5 h-1.5 rounded-full bg-accent" />
               <span className="text-micro uppercase text-ink-muted">
-                {autoConfirmed.length} Attribute automatisch erkannt
+                {autoConfirmed.length} Angaben erkannt
               </span>
               <Icon
                 name="chevronRight"
