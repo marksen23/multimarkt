@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { IntegrationStatus } from '../api/types';
-import { setupOpenCount, setupRows } from './setup-status';
+import { einrichtungOpenCount, setupOpenCount, setupRows } from './setup-status';
 
 function status(patch: Partial<IntegrationStatus> = {}): IntegrationStatus {
   return {
@@ -20,14 +20,14 @@ describe('setupRows', () => {
     expect(rows.map((row) => [row.id, row.state])).toEqual([
       ['gemini', 'missing'],
       ['ebay-prices', 'missing'],
-      ['ebay-publish', 'missing'],
       ['photos', 'missing'],
       ['buyback', 'info'],
     ]);
     expect(rows.find((row) => row.id === 'gemini')?.summary).toContain('keine Beispielwerte');
     expect(rows.find((row) => row.id === 'ebay-prices')?.summary).toContain('keine Preise erfunden');
-    expect(rows.find((row) => row.id === 'ebay-publish')?.missing[0]).toContain('EBAY_REFRESH_TOKEN');
-    expect(setupOpenCount(rows)).toBe(4);
+    expect(setupOpenCount(rows)).toBe(3);
+    expect(einrichtungOpenCount(rows, false)).toBe(4);
+    expect(einrichtungOpenCount(rows, true)).toBe(3);
   });
 
   it('drops the publish gap list once eBay publishing is ready', () => {
@@ -41,7 +41,7 @@ describe('setupRows', () => {
       }),
     );
     expect(setupOpenCount(rows)).toBe(0);
-    expect(rows.find((row) => row.id === 'ebay-publish')?.missing).toEqual([]);
+    expect(einrichtungOpenCount(rows, true)).toBe(0);
     expect(rows.find((row) => row.id === 'photos')?.summary).toContain('bleiben gespeichert');
     const text = JSON.stringify(rows);
     expect(text).not.toContain('sollte nicht mehr erscheinen');

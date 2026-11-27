@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { EbaySetupService } from '../../application/ebay/ebay-setup.service';
 import { EbaySellException } from '../../domain/errors/ebay-sell.exception';
 import { publishablePhoto } from '../../domain/photo/publishable-photo';
-import { EbaySellEnv, ebaySellGaps } from '../../domain/listing/ebay-sell-readiness';
+import { ebaySellGaps } from '../../domain/listing/ebay-sell-readiness';
 import {
   MarketplaceAdapter,
   MarketplacePublishInput,
@@ -20,34 +20,21 @@ import {
 import { EbaySellClient } from './ebay-sell.client';
 import { publishEbayListing } from './publish-ebay-listing';
 
-export function readEbaySellEnv(config: { get(key: string): string | undefined }): EbaySellEnv {
-  return {
-    clientId: config.get('EBAY_CLIENT_ID'),
-    clientSecret: config.get('EBAY_CLIENT_SECRET'),
-    refreshToken: config.get('EBAY_REFRESH_TOKEN'),
-    fulfillmentPolicyId: config.get('EBAY_FULFILLMENT_POLICY_ID'),
-    paymentPolicyId: config.get('EBAY_PAYMENT_POLICY_ID'),
-    returnPolicyId: config.get('EBAY_RETURN_POLICY_ID'),
-    merchantLocationKey: config.get('EBAY_MERCHANT_LOCATION_KEY'),
-    pickupFulfillmentPolicyId: config.get('EBAY_PICKUP_FULFILLMENT_POLICY_ID'),
-    environment: config.get('EBAY_ENVIRONMENT'),
-  };
-}
-
 /**
  * Offizielle eBay Sell Inventory API für ebay.de.
- * Ohne Token oder Geschäftsrichtlinien schlägt `publish` mit einer deutschen
+ * Token und Richtlinien kommen aus der gespeicherten Verbindung, sonst aus
+ * den Coolify-Variablen. Ohne sie schlägt `publish` mit einer deutschen
  * Meldung fehl. Es wird keine Anzeigen-ID erfunden.
  */
 @Injectable()
 export class EbaySellAdapter implements MarketplaceAdapter {
   constructor(
-    private readonly config: ConfigService,
+    private readonly ebaySetup: EbaySetupService,
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
   async publish(input: MarketplacePublishInput): Promise<MarketplacePublishResult> {
-    const env = readEbaySellEnv(this.config);
+    const env = await this.ebaySetup.resolve();
     const gaps = ebaySellGaps(env);
     if (gaps.length > 0) {
       throw new EbaySellException(gaps.map((gap) => gap.message).join(' '), {
@@ -71,7 +58,7 @@ export class EbaySellAdapter implements MarketplaceAdapter {
         'Diese eBay-Anzeige hat keine Angebots-ID. Beende sie selbst auf ebay.de und bestätige das Zurückziehen danach.',
       );
     }
-    const env = readEbaySellEnv(this.config);
+    const env = await this.ebaySetup.resolve();
     await new EbaySellClient(env).withdrawOffer(offerId.trim());
   }
 

@@ -1,7 +1,8 @@
-import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
+import { EbaySetupService } from '../../application/ebay/ebay-setup.service';
 import { EbaySellException } from '../../domain/errors/ebay-sell.exception';
 import { createMarketplaceAdapters } from '../../application/listing/marketplace-publishing.module';
+import { readEbaySellEnv } from '../../domain/listing/ebay-sell-readiness';
 import { FormattingHelperAdapter } from '../kleinanzeigen/formatting-helper.adapter';
 import { MockEbayAdapter } from './mock-ebay.adapter';
 import { EbaySellAdapter } from './ebay-sell.adapter';
@@ -12,7 +13,7 @@ describe('EbaySellAdapter', () => {
       throw new Error('database should not be read');
     });
     const adapter = new EbaySellAdapter(
-      { get: () => '' } as unknown as ConfigService,
+      { resolve: async () => readEbaySellEnv({ get: () => '' }) } as unknown as EbaySetupService,
       { manager: { findOneByOrFail } } as unknown as DataSource,
     );
 
@@ -44,7 +45,10 @@ describe('createMarketplaceAdapters', () => {
   it('registers the sell adapter and never the mock that invents listing ids', () => {
     const adapters = createMarketplaceAdapters(
       new FormattingHelperAdapter(),
-      new EbaySellAdapter({ get: () => '' } as unknown as ConfigService, {} as DataSource),
+      new EbaySellAdapter(
+        { resolve: async () => readEbaySellEnv({ get: () => '' }) } as unknown as EbaySetupService,
+        {} as DataSource,
+      ),
     );
     expect(adapters.get('EBAY')).toBeInstanceOf(EbaySellAdapter);
     expect(adapters.get('KLEINANZEIGEN')).toBeInstanceOf(FormattingHelperAdapter);

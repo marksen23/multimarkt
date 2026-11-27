@@ -28,8 +28,8 @@ services:
       # Must match the row inserted by migration SeedSingleUser.
       APP_USER_ID: "00000000-0000-0000-0000-000000000000"
       APP_ACCESS_TOKEN: ${SERVICE_PASSWORD_64_APPTOKEN}
-      # Present for parity with render.yaml. The running Nest process does
-      # not read JWT_SECRET; access control uses APP_ACCESS_TOKEN.
+      # Encrypts the eBay refresh token saved from the setup page (AES-256-GCM).
+      # Sign-in stays APP_ACCESS_TOKEN. EBAY_TOKEN_SECRET overrides this key.
       JWT_SECRET: ${SERVICE_REALBASE64_64_JWT}
       INTERNAL_SERVICE_TOKEN: ${SERVICE_PASSWORD_64_INTERNAL}
       WEBHOOK_SECRET_KLEINANZEIGEN: ${SERVICE_PASSWORD_64_WEBHOOK}
@@ -48,8 +48,10 @@ services:
       GEMINI_VISION_MODEL: ${GEMINI_VISION_MODEL:-}
       EBAY_CLIENT_ID: ${EBAY_CLIENT_ID:-}
       EBAY_CLIENT_SECRET: ${EBAY_CLIENT_SECRET:-}
-      # Leer lassen, bis User-Token und Geschäftsrichtlinien da sind.
-      # Ohne sie bleibt der eBay-Verkauf eine deutsche Fehlermeldung, kein Mock.
+      # RuName. Die angenommene Adresse ist {PUBLIC_BASE_URL}/api/system/ebay/callback.
+      # Konto, Richtlinien und Standort kommen aus der Seite Einrichtung.
+      # Die folgenden Werte sind nur noch Ersatz, wenn dort nichts gespeichert ist.
+      EBAY_RU_NAME: ${EBAY_RU_NAME:-}
       EBAY_REFRESH_TOKEN: ${EBAY_REFRESH_TOKEN:-}
       EBAY_FULFILLMENT_POLICY_ID: ${EBAY_FULFILLMENT_POLICY_ID:-}
       EBAY_PAYMENT_POLICY_ID: ${EBAY_PAYMENT_POLICY_ID:-}

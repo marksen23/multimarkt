@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { ApiRequestError } from '../api/client';
 import { systemApi } from '../api/system';
-import type { IntegrationStatus } from '../api/types';
+import type { EbaySetupView, IntegrationStatus } from '../api/types';
+import { EbaySetupCard } from '../components/EbaySetupCard';
 import { ListSkeleton } from '../components/Skeleton';
-import { setupOpenCount, setupRows, type SetupState } from '../lib/setup-status';
+import { einrichtungOpenCount, setupRows, type SetupState } from '../lib/setup-status';
 import { Card, Icon, Notice, PageHeader } from '../ui';
 
 const PILL: Record<SetupState, string> = {
@@ -13,7 +15,30 @@ const PILL: Record<SetupState, string> = {
 
 export function EinrichtungPage() {
   const [status, setStatus] = useState<IntegrationStatus | null>(null);
+  const [ebay, setEbay] = useState<EbaySetupView | null>(null);
+  const [ebayLoading, setEbayLoading] = useState(true);
+  const [ebayError, setEbayError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const loadEbay = useCallback((active: () => boolean = () => true) => {
+    setEbayLoading(true);
+    return systemApi
+      .ebay()
+      .then((next) => {
+        if (active()) {
+          setEbay(next);
+          setEbayError(null);
+        }
+      })
+      .catch((caught: unknown) => {
+        if (active()) {
+          setEbayError(caught instanceof ApiRequestError ? caught.body.message : 'Der eBay-Status ist gerade nicht erreichbar.');
+        }
+      })
+      .finally(() => {
+        if (active()) setEbayLoading(false);
+      });
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -25,13 +50,15 @@ export function EinrichtungPage() {
       .catch(() => {
         if (active) setError('Der Status ist gerade nicht erreichbar.');
       });
+    void loadEbay(() => active);
     return () => {
       active = false;
     };
-  }, []);
+  }, [loadEbay]);
 
   const rows = status ? setupRows(status) : [];
-  const open = setupOpenCount(rows);
+  const ebayReady = ebay?.publishReady ?? status?.ebayPublishReady ?? false;
+  const open = status ? einrichtungOpenCount(rows, ebayReady) : 0;
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-4">
@@ -52,6 +79,18 @@ export function EinrichtungPage() {
 
       {error && <Notice tone="danger">{error}</Notice>}
       {status === null && !error && <ListSkeleton count={3} />}
+
+      {(status || ebay || ebayLoading) && (
+        <EbaySetupCard
+          setup={ebay}
+          loading={ebayLoading}
+          error={ebayError}
+          onChange={(next) => {
+            setEbay(next);
+            setEbayError(null);
+          }}
+        />
+      )}
 
       {rows.length > 0 && (
         <ul className="space-y-3" aria-label="Integrationen">
@@ -93,7 +132,7 @@ export function EinrichtungPage() {
       )}
 
       <p className="text-label font-normal text-ink-faint">
-        Schlüssel und Richtlinien trägst du in Coolify bei der App unter Environment Variables ein, nicht ins Git. Danach die App neu starten.
+        Gemini, die Preissuche und die drei eBay-App-Werte trägst du in Coolify ein, nicht ins Git. Das Verkäuferkonto und die Richtlinien verbindest du oben. Danach die App neu starten, wenn du eine Variable geändert hast.
       </p>
     </div>
   );

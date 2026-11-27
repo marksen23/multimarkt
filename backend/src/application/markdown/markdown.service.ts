@@ -3,12 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { ebaySellGaps } from '../../domain/listing/ebay-sell-readiness';
+import { EbaySetupService } from '../ebay/ebay-setup.service';
 import {
   AttentionCard,
   DEFAULT_MARKDOWN_RETRY_MS,
 } from '../../domain/pricing/markdown-plan';
 import { ItemEntity } from '../../infrastructure/database/entities';
-import { readEbaySellEnv } from '../../marketplaces/ebay/ebay-sell.adapter';
 import { PriceRecommendationService } from '../pricing/price-recommendation.service';
 import { EbayOfferPriceUpdater } from './ebay-offer-price';
 import { runMarkdownItem } from './markdown-run';
@@ -34,6 +34,7 @@ export class MarkdownService {
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly prices: PriceRecommendationService,
     private readonly ebay: EbayOfferPriceUpdater,
+    private readonly ebaySetup: EbaySetupService,
     private readonly config: ConfigService,
   ) {}
 
@@ -88,7 +89,7 @@ export class MarkdownService {
     const options = {
       now,
       retryMs: this.retryMs(),
-      ebayApiConfigured: ebaySellGaps(readEbaySellEnv(this.config)).length === 0,
+      ebayApiConfigured: ebaySellGaps(await this.ebaySetup.resolve()).length === 0,
     };
     await this.dataSource.transaction((manager) =>
       runMarkdownItem(this.store(manager), this.ebay, itemId, options),

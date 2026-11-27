@@ -29,7 +29,7 @@ Coolify erzeugt die Werte zu den `SERVICE_*`-Namen beim Laden der Compose-Datei.
 | `SERVICE_USER_POSTGRES` | Datenbankbenutzer |
 | `SERVICE_PASSWORD_64_POSTGRES` | Datenbankpasswort, ohne Sonderzeichen, damit die URL gültig bleibt |
 | `SERVICE_PASSWORD_64_APPTOKEN` | `APP_ACCESS_TOKEN` |
-| `SERVICE_REALBASE64_64_JWT` | `JWT_SECRET` (der Prozess liest den Wert derzeit nicht; Zugang ist das Access-Token) |
+| `SERVICE_REALBASE64_64_JWT` | `JWT_SECRET`. Verschlüsselt das in der Einrichtung gespeicherte eBay-Refresh-Token (AES-256-GCM). Der Zugang zur App bleibt das Access-Token. |
 | `SERVICE_PASSWORD_64_INTERNAL` | `INTERNAL_SERVICE_TOKEN` |
 | `SERVICE_PASSWORD_64_WEBHOOK` | `WEBHOOK_SECRET_KLEINANZEIGEN` |
 
@@ -37,7 +37,7 @@ Coolify erzeugt die Werte zu den `SERVICE_*`-Namen beim Laden der Compose-Datei.
 
 `PUBLIC_BASE_URL` übernimmt die von Coolify erzeugte URL. Für Foto-Links, die ein externer Dienst abruft, muss diese URL von außen erreichbar sein.
 
-Leer lassen, solange Beispielwerte reichen: `GEMINI_API_KEY`, `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`, `EBAY_REFRESH_TOKEN`, `EBAY_FULFILLMENT_POLICY_ID`, `EBAY_PAYMENT_POLICY_ID`, `EBAY_RETURN_POLICY_ID`, `EBAY_MERCHANT_LOCATION_KEY`, `EBAY_PICKUP_FULFILLMENT_POLICY_ID`, `EBAY_ENVIRONMENT`, `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_URL_BASE`. Ein echter Wert wird nur im Coolify-UI eingetragen. Der Platzhalter `unused-mock-provider-active` lässt die Quelle ebenfalls aus. Welche Namen der Code liest, steht in `backend/.env.example`.
+Leer lassen, solange Beispielwerte reichen: `GEMINI_API_KEY`, `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`, `EBAY_RU_NAME`, `EBAY_REFRESH_TOKEN`, `EBAY_FULFILLMENT_POLICY_ID`, `EBAY_PAYMENT_POLICY_ID`, `EBAY_RETURN_POLICY_ID`, `EBAY_MERCHANT_LOCATION_KEY`, `EBAY_PICKUP_FULFILLMENT_POLICY_ID`, `EBAY_ENVIRONMENT`, `EBAY_TOKEN_SECRET`, `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_URL_BASE`. Ein echter Wert wird nur im Coolify-UI eingetragen. Der Platzhalter `unused-mock-provider-active` lässt die Quelle ebenfalls aus. Welche Namen der Code liest, steht in `backend/.env.example`.
 
 Ohne diese Schlüssel erfindet die App keine Fotomerksmale, keine Preise und keine Anzeigen. Oben in der Oberfläche steht dann, was fehlt. Stattdessen gibt es Links auf die Suche bei Kleinanzeigen, eBay, Vinted und Facebook. Die App ruft diese Seiten nicht ab.
 
@@ -51,17 +51,19 @@ So schaltest du eine Quelle scharf:
 | --- | --- | --- |
 | `GEMINI_API_KEY` | Bildanalyse, Titel, Beschreibung, Web-Preisrecherche, Ankaufsuche, Bildoptimierung | [Google AI Studio](https://aistudio.google.com/apikey), „API key“ anlegen |
 | `GEMINI_VISION_MODEL` | optional. Welches Modell die Fotos liest. Leer bleibt `gemini-flash-latest`. | nur setzen, wenn ein anderes Modell gewünscht ist, zum Beispiel `gemini-2.5-flash` |
-| `EBAY_CLIENT_ID` | aktive Angebote auf eBay.de (Browse API). Zusammen mit dem Secret. | [eBay Developer](https://developer.ebay.com/my/keys): Keyset **Production**, Feld App ID (Client ID). Sandbox-Schlüssel liefern nicht den echten Markt. Abgeschlossene Verkäufe gibt diese API nicht her. |
+| `EBAY_CLIENT_ID` | aktive Angebote auf eBay.de (Browse API) und der Start der Kontoverbindung. Zusammen mit dem Secret. | [eBay Developer](https://developer.ebay.com/my/keys): Keyset **Production**, Feld App ID (Client ID). Sandbox-Schlüssel liefern nicht den echten Markt. Abgeschlossene Verkäufe gibt diese API nicht her. |
 | `EBAY_CLIENT_SECRET` | dasselbe Keyset, Feld Cert ID (Client Secret) | dieselbe Seite |
-| `EBAY_REFRESH_TOKEN` | Anzeigen auf ebay.de anlegen und beenden. User-OAuth, nicht der Schlüssel der Preissuche. | eBay Developer Console, User Token, Authorization Code. Scopes `sell.inventory` und `sell.account`. Production für ebay.de. |
-| `EBAY_FULFILLMENT_POLICY_ID` | Geschäftsrichtlinie Versand | Verkäufer-Cockpit, Geschäftsrichtlinien |
-| `EBAY_PAYMENT_POLICY_ID` | Geschäftsrichtlinie Zahlung | dieselbe Seite |
-| `EBAY_RETURN_POLICY_ID` | Geschäftsrichtlinie Rückgabe, auch wenn keine Rückgabe angeboten wird | dieselbe Seite |
-| `EBAY_MERCHANT_LOCATION_KEY` | Lagerstandort. Bei Abholung der Abholort. | Inventory Location, der vergebene Schlüssel |
-| `EBAY_PICKUP_FULFILLMENT_POLICY_ID` | nur für Artikel, die nur abgeholt werden | Versandrichtlinie mit Abholung vor Ort |
+| `EBAY_RU_NAME` | RuName für „Mit eBay verbinden“. Die angenommene Weiterleitungsadresse muss `{PUBLIC_BASE_URL}/api/system/ebay/callback` sein. Scopes `sell.inventory`, `sell.account`, `commerce.identity.readonly`. | eBay-Entwicklerkonsole, User Tokens, RuName |
+| `EBAY_REFRESH_TOKEN` | nur noch Ersatz, wenn auf der Seite Einrichtung kein Konto verbunden ist | sonst nicht mehr eintragen |
+| `EBAY_FULFILLMENT_POLICY_ID` | nur noch Ersatz für die Versandrichtlinie | Seite Einrichtung |
+| `EBAY_PAYMENT_POLICY_ID` | nur noch Ersatz für die Zahlungsrichtlinie | Seite Einrichtung |
+| `EBAY_RETURN_POLICY_ID` | nur noch Ersatz für die Rückgaberichtlinie | Seite Einrichtung |
+| `EBAY_MERCHANT_LOCATION_KEY` | nur noch Ersatz für den Lagerstandort | Seite Einrichtung, oder dort anlegen |
+| `EBAY_PICKUP_FULFILLMENT_POLICY_ID` | nur noch Ersatz für die Abholung | Seite Einrichtung |
 | `EBAY_ENVIRONMENT` | leer oder `production`. `sandbox` nur mit Sandbox-Token | — |
+| `EBAY_TOKEN_SECRET` | optional. Überschreibt `JWT_SECRET` als Schlüssel für das gespeicherte Refresh-Token. | nur setzen, wenn ein eigener Schlüssel gewünscht ist |
 
-Ohne Refresh-Token und die drei Richtlinien plus Standort legt die App keine eBay-Anzeige an und erfindet keine Anzeigennummer. Die eBay-Karte nennt dann genau die fehlende Variable. Kleinanzeigen hat keine Schnittstelle: Titel, Text, Preis, Kategorie und ein Foto-ZIP werden zum Kopieren vorbereitet.
+Ohne verbundenes Konto und ohne die drei Richtlinien plus Standort legt die App keine eBay-Anzeige an und erfindet keine Anzeigennummer. Die Seite Einrichtung zeigt den nächsten Schritt. Ein gesetzter Coolify-Wert gilt nur, solange in der App nichts gespeichert ist. Kleinanzeigen hat keine Schnittstelle: Titel, Text, Preis, Kategorie und ein Foto-ZIP werden zum Kopieren vorbereitet.
 
 `PUBLIC_BASE_URL` setzt Coolify über `SERVICE_URL_APP_3000`. Die Bildanalyse liest lokale Fotos aus dem Volume `uploads` und muss diese URL dafür nicht von außen abrufen. Eine fremde http(s)-Bildadresse wird weiter über diese Basis geholt.
 

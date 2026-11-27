@@ -27,10 +27,10 @@ export function germanEbayHttpError(status: number, body: unknown): string {
   if (body && typeof body === 'object' && 'error' in body) {
     const code = String((body as { error?: unknown }).error ?? '');
     if (code === 'invalid_grant') {
-      return 'eBay hat das Refresh-Token abgelehnt. EBAY_REFRESH_TOKEN ist abgelaufen, widerrufen oder vom falschen Keyset (Sandbox gegen Production). Lege ein neues User-Token mit sell.inventory und sell.account an.';
+      return 'eBay hat das Refresh-Token abgelehnt. Es ist abgelaufen, widerrufen oder vom falschen Keyset (Sandbox gegen Production). Auf der Seite Einrichtung das Konto neu verbinden.';
     }
     if (code === 'invalid_scope') {
-      return 'Das eBay-Token darf keine Angebote anlegen. Beim User-Token die Scopes sell.inventory und sell.account mitgeben und EBAY_REFRESH_TOKEN danach neu setzen.';
+      return 'Das eBay-Token darf keine Angebote anlegen. Auf der Seite Einrichtung das Konto neu verbinden und die Scopes sell.inventory und sell.account erlauben.';
     }
     if (code === 'invalid_client') {
       return 'eBay akzeptiert EBAY_CLIENT_ID oder EBAY_CLIENT_SECRET nicht. Beide müssen zum selben Production-Keyset gehören wie das Refresh-Token.';
@@ -38,7 +38,7 @@ export function germanEbayHttpError(status: number, body: unknown): string {
   }
 
   if (status === 401) {
-    return 'eBay hat den Zugang abgelehnt (401). Prüfe EBAY_CLIENT_ID, EBAY_CLIENT_SECRET und EBAY_REFRESH_TOKEN. Der Token muss zum selben Keyset gehören.';
+    return 'eBay hat den Zugang abgelehnt. Auf der Seite Einrichtung das Konto neu verbinden. EBAY_CLIENT_ID und EBAY_CLIENT_SECRET müssen zum selben Keyset gehören.';
   }
 
   const first = parseEbayErrors(body)[0];

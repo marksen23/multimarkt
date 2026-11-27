@@ -29,6 +29,7 @@ import { SalesModule } from '../application/sales/sales.module';
 import { StateGuardModule } from '../application/state-guard/state-guard.module';
 import { WorklistModule } from '../application/worklist/worklist.module';
 import { MarkdownModule } from '../application/markdown/markdown.module';
+import { EbaySetupModule } from '../application/ebay/ebay-setup.module';
 import { AccountController } from './controllers/account.controller';
 import { ExportController } from './controllers/export.controller';
 import { AnkaufController } from './controllers/ankauf.controller';
@@ -40,6 +41,7 @@ import { ListingsController } from './controllers/listings.controller';
 import { SaleEventsController } from './controllers/sale-events.controller';
 import { SalesController } from './controllers/sales.controller';
 import { StorageController } from './controllers/storage.controller';
+import { EbaySetupController } from './controllers/ebay-setup.controller';
 import { SystemController } from './controllers/system.controller';
 import { WorklistController } from './controllers/worklist.controller';
 import { WebhooksModule } from './webhooks/webhooks.module';
@@ -76,6 +78,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     StorageModule,
     WorklistModule,
     MarkdownModule,
+    EbaySetupModule,
   ],
   controllers: [
     ItemsController,
@@ -91,6 +94,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     AnkaufController,
     WorklistController,
     SystemController,
+    EbaySetupController,
   ],
 })
 export class ApiModule {}

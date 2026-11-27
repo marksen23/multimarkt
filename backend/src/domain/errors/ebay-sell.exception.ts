@@ -6,7 +6,11 @@ import { HttpException } from '@nestjs/common';
  * Begründung bekommt. Kein stiller Ersatz durch eine erfundene Anzeigen-ID.
  */
 export class EbaySellException extends HttpException {
-  constructor(message: string, details: Record<string, unknown> = {}) {
+  /** True, wenn eBay den Zugang selbst abgelehnt hat (401 oder invalid_grant). */
+  readonly tokenRejected: boolean;
+
+  constructor(message: string, details: Record<string, unknown> = {}, tokenRejected = false) {
     super({ error_code: 'ERR_EBAY_SELL', message, details }, HttpStatus.UNPROCESSABLE_ENTITY);
+    this.tokenRejected = tokenRejected;
   }
 }

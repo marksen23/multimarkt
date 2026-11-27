@@ -1,5 +1,6 @@
 import { Controller, Get, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EbaySetupService } from '../../application/ebay/ebay-setup.service';
 import { integrationStatus, type IntegrationStatus } from '../../application/system/integration-status';
 import { ActorContextGuard } from '../auth/actor-context.guard';
 import { ResponseEnvelopeInterceptor } from '../interceptors/response-envelope.interceptor';
@@ -12,20 +13,24 @@ import { ResponseEnvelopeInterceptor } from '../interceptors/response-envelope.i
 @UseGuards(ActorContextGuard)
 @UseInterceptors(ResponseEnvelopeInterceptor)
 export class SystemController {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly ebay: EbaySetupService,
+  ) {}
 
   @Get('integrations')
-  integrations(): IntegrationStatus {
+  async integrations(): Promise<IntegrationStatus> {
+    const sell = await this.ebay.resolve();
     return integrationStatus({
       geminiApiKey: this.config.get<string>('GEMINI_API_KEY'),
-      ebayClientId: this.config.get<string>('EBAY_CLIENT_ID'),
-      ebayClientSecret: this.config.get<string>('EBAY_CLIENT_SECRET'),
-      ebayRefreshToken: this.config.get<string>('EBAY_REFRESH_TOKEN'),
-      ebayFulfillmentPolicyId: this.config.get<string>('EBAY_FULFILLMENT_POLICY_ID'),
-      ebayPaymentPolicyId: this.config.get<string>('EBAY_PAYMENT_POLICY_ID'),
-      ebayReturnPolicyId: this.config.get<string>('EBAY_RETURN_POLICY_ID'),
-      ebayMerchantLocationKey: this.config.get<string>('EBAY_MERCHANT_LOCATION_KEY'),
-      ebayEnvironment: this.config.get<string>('EBAY_ENVIRONMENT'),
+      ebayClientId: sell.clientId,
+      ebayClientSecret: sell.clientSecret,
+      ebayRefreshToken: sell.refreshToken,
+      ebayFulfillmentPolicyId: sell.fulfillmentPolicyId,
+      ebayPaymentPolicyId: sell.paymentPolicyId,
+      ebayReturnPolicyId: sell.returnPolicyId,
+      ebayMerchantLocationKey: sell.merchantLocationKey,
+      ebayEnvironment: sell.environment,
       s3Bucket: this.config.get<string>('S3_BUCKET'),
     });
   }

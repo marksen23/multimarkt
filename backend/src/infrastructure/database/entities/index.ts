@@ -1,4 +1,6 @@
 export * from './user.entity';
+export * from './ebay-connection.entity';
+export * from './ebay-oauth-state.entity';
 export * from './ankauf-search.entity';
 export * from './item.entity';
 export * from './item-attribute.entity';
