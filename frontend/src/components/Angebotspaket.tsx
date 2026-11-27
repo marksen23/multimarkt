@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { copyText } from '../lib/clipboard';
 import { itemsApi } from '../api/items';
 import { listingsApi } from '../api/listings';
@@ -1134,6 +1135,9 @@ function PortalCard({
                 ))}
               </ul>
               <p className="mt-2 font-normal">Bis dahin kannst du Titel, Preis und Text kopieren und die Anzeige selbst anlegen.</p>
+              <Link to="/einrichtung" className="mt-2 inline-block underline font-semibold">
+                In der Einrichtung verbinden
+              </Link>
             </Notice>
           )}
 

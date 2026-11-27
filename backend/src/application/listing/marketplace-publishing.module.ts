@@ -9,6 +9,7 @@ import { EbaySellAdapter } from '../../marketplaces/ebay/ebay-sell.adapter';
 import { CanonicalListingEntity, MarketplaceProjectionEntity } from '../../infrastructure/database/entities';
 import { CapabilityCheckModule } from '../capability-check/capability-check.module';
 import { StateGuardModule } from '../state-guard/state-guard.module';
+import { EbaySetupModule } from '../ebay/ebay-setup.module';
 import { MarketplacePublishingService } from './marketplace-publishing.service';
 
 /**
@@ -31,6 +32,7 @@ export function createMarketplaceAdapters(
     TypeOrmModule.forFeature([CanonicalListingEntity, MarketplaceProjectionEntity]),
     StateGuardModule,
     CapabilityCheckModule,
+    EbaySetupModule,
   ],
   providers: [
     MarketplacePublishingService,

@@ -133,9 +133,12 @@ envVarGroups:
         sync: false
       - key: EBAY_CLIENT_SECRET
         sync: false
-      # Sell Inventory (Anzeigen auf ebay.de). Leer lassen, bis das User-Token
-      # und die Geschäftsrichtlinien existieren. sync: false, damit ein
-      # Blueprint-Sync gesetzte Geheimnisse nicht leert.
+      # Sell Inventory. App-Schlüssel und RuName bleiben hier. Konto,
+      # Richtlinien und Standort speichert die Seite Einrichtung.
+      # Die Policy- und Token-Variablen sind nur noch Ersatz.
+      # JWT_SECRET verschlüsselt das gespeicherte Refresh-Token.
+      - key: EBAY_RU_NAME
+        sync: false
       - key: EBAY_REFRESH_TOKEN
         sync: false
       - key: EBAY_FULFILLMENT_POLICY_ID

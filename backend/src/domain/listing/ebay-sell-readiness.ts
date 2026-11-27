@@ -1,6 +1,6 @@
 const PLACEHOLDER = 'unused-mock-provider-active';
 
-function isConfigured(value: string | null | undefined): boolean {
+export function ebayValueConfigured(value: string | null | undefined): boolean {
   const trimmed = value?.trim() ?? '';
   return trimmed.length > 0 && trimmed !== PLACEHOLDER;
 }
@@ -39,7 +39,7 @@ export function ebayApiHost(environment: string | null | undefined): string {
 export function ebaySellGaps(env: EbaySellEnv, options?: { pickupOnly?: boolean }): EbaySellGap[] {
   const gaps: EbaySellGap[] = [];
   const missing = (key: string, message: string, value: string | null | undefined) => {
-    if (!isConfigured(value)) gaps.push({ key, message });
+    if (!ebayValueConfigured(value)) gaps.push({ key, message });
   };
 
   missing(
@@ -54,34 +54,34 @@ export function ebaySellGaps(env: EbaySellEnv, options?: { pickupOnly?: boolean 
   );
   missing(
     'EBAY_REFRESH_TOKEN',
-    'EBAY_REFRESH_TOKEN fehlt. Das ist das OAuth-Refresh-Token deines eBay-Verkäuferkontos, nicht der App-Schlüssel der Preissuche. In der eBay Developer Console ein User Token mit den Scopes https://api.ebay.com/oauth/api_scope/sell.inventory und https://api.ebay.com/oauth/api_scope/sell.account anlegen (Authorization Code). Für ebay.de ein Production-Token. Sandbox nur zusammen mit EBAY_ENVIRONMENT=sandbox.',
+    'Das eBay-Konto ist noch nicht verbunden. Auf der Seite Einrichtung „Mit eBay verbinden“ tippen. EBAY_REFRESH_TOKEN in Coolify gilt nur als Ersatz.',
     env.refreshToken,
   );
   missing(
     'EBAY_FULFILLMENT_POLICY_ID',
-    'EBAY_FULFILLMENT_POLICY_ID fehlt. Geschäftsrichtlinie „Versand“ im Verkäufer-Cockpit. Die Richtlinien-ID steht in der Konto-API oder in der URL der Richtlinie.',
+    'Die Versandrichtlinie fehlt. Auf der Seite Einrichtung eine Geschäftsrichtlinie wählen. EBAY_FULFILLMENT_POLICY_ID in Coolify gilt nur als Ersatz.',
     env.fulfillmentPolicyId,
   );
   missing(
     'EBAY_PAYMENT_POLICY_ID',
-    'EBAY_PAYMENT_POLICY_ID fehlt. Geschäftsrichtlinie „Zahlung“ im Verkäufer-Cockpit. eBay verlangt die ID beim Angebot.',
+    'Die Zahlungsrichtlinie fehlt. Auf der Seite Einrichtung eine Geschäftsrichtlinie wählen. EBAY_PAYMENT_POLICY_ID in Coolify gilt nur als Ersatz.',
     env.paymentPolicyId,
   );
   missing(
     'EBAY_RETURN_POLICY_ID',
-    'EBAY_RETURN_POLICY_ID fehlt. Geschäftsrichtlinie „Rückgabe“ im Verkäufer-Cockpit. Auch „keine Rückgabe“ ist eine Richtlinie mit eigener ID.',
+    'Die Rückgaberichtlinie fehlt. Auf der Seite Einrichtung eine Geschäftsrichtlinie wählen. EBAY_RETURN_POLICY_ID in Coolify gilt nur als Ersatz.',
     env.returnPolicyId,
   );
   missing(
     'EBAY_MERCHANT_LOCATION_KEY',
-    'EBAY_MERCHANT_LOCATION_KEY fehlt. Lagerstandort im Verkäuferkonto (Inventory Location). Bei Abholung ist das der Abholort. Der Schlüssel ist der Name, den du beim Anlegen vergeben hast.',
+    'Der Lagerstandort fehlt. Auf der Seite Einrichtung einen Standort wählen oder anlegen. EBAY_MERCHANT_LOCATION_KEY in Coolify gilt nur als Ersatz.',
     env.merchantLocationKey,
   );
 
   if (options?.pickupOnly) {
     missing(
       'EBAY_PICKUP_FULFILLMENT_POLICY_ID',
-      'Der Artikel ist nur zur Abholung. EBAY_PICKUP_FULFILLMENT_POLICY_ID fehlt: eine Versandrichtlinie mit Abholung vor Ort, nicht die Richtlinie für den Paketversand.',
+      'Der Artikel ist nur zur Abholung. Auf der Seite Einrichtung eine Versandrichtlinie mit Abholung vor Ort wählen. EBAY_PICKUP_FULFILLMENT_POLICY_ID in Coolify gilt nur als Ersatz.',
       env.pickupFulfillmentPolicyId,
     );
   }
@@ -100,4 +100,19 @@ export function ebaySellGaps(env: EbaySellEnv, options?: { pickupOnly?: boolean 
 export function fulfillmentPolicyId(env: EbaySellEnv, pickupOnly: boolean): string {
   if (pickupOnly) return env.pickupFulfillmentPolicyId?.trim() ?? '';
   return env.fulfillmentPolicyId?.trim() ?? '';
+}
+
+/** Umgebungsvariablen. Eine gespeicherte Verbindung ersetzt Token und Richtlinien später. */
+export function readEbaySellEnv(config: { get(key: string): string | undefined }): EbaySellEnv {
+  return {
+    clientId: config.get('EBAY_CLIENT_ID'),
+    clientSecret: config.get('EBAY_CLIENT_SECRET'),
+    refreshToken: config.get('EBAY_REFRESH_TOKEN'),
+    fulfillmentPolicyId: config.get('EBAY_FULFILLMENT_POLICY_ID'),
+    paymentPolicyId: config.get('EBAY_PAYMENT_POLICY_ID'),
+    returnPolicyId: config.get('EBAY_RETURN_POLICY_ID'),
+    merchantLocationKey: config.get('EBAY_MERCHANT_LOCATION_KEY'),
+    pickupFulfillmentPolicyId: config.get('EBAY_PICKUP_FULFILLMENT_POLICY_ID'),
+    environment: config.get('EBAY_ENVIRONMENT'),
+  };
 }

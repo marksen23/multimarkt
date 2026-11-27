@@ -43,24 +43,11 @@ export function setupRows(status: IntegrationStatus): SetupRow[] {
         ? 'Aktive Angebote auf eBay.de können den Schnellverkaufspreis stützen. Abgeschlossene Verkäufe liefert diese Suche nicht.'
         : 'Ohne die beiden eBay-Schlüssel gibt es keine Vergleichspreise. Du bekommst Links und suchst selbst. Es werden keine Preise erfunden.',
       detail: status.ebayLive
-        ? 'Dafür reichen App ID und Cert ID. Zum Einstellen einer Anzeige brauchst du zusätzlich das Verkäuferkonto, siehe unten.'
+        ? 'Dafür reichen App ID und Cert ID. Zum Einstellen verbindest du das Verkäuferkonto oben auf dieser Seite.'
         : 'EBAY_CLIENT_ID und EBAY_CLIENT_SECRET: Production App ID und Cert ID. Ein Sandbox-Schlüssel sieht den echten Markt nicht.',
       missing: [],
       href: status.ebayLive ? undefined : EBAY_URL,
       linkLabel: status.ebayLive ? undefined : 'eBay-Schlüssel öffnen',
-    },
-    {
-      id: 'ebay-publish',
-      title: 'Auf eBay einstellen',
-      state: status.ebayPublishReady ? 'ready' : 'missing',
-      stateLabel: status.ebayPublishReady ? 'Bereit' : 'Fehlt',
-      summary: status.ebayPublishReady
-        ? 'Anzeigen können von hier aus auf eBay.de online gehen und später auch beendet werden.'
-        : 'Zum Einstellen fehlt noch etwas. Die Preissuche allein reicht nicht. Bis dahin kopierst du Titel, Preis und Text und legst die Anzeige selbst an.',
-      detail: status.ebayPublishReady
-        ? 'Kleinanzeigen hat keine Schnittstelle. Dort bleibt es beim Kopieren.'
-        : 'Was fehlt, steht hier. Die Werte kommen in Coolify unter Environment Variables, nicht ins Git.',
-      missing: status.ebayPublishReady ? [] : status.ebayPublishMissing,
     },
     {
       id: 'photos',
@@ -89,4 +76,9 @@ export function setupRows(status: IntegrationStatus): SetupRow[] {
 
 export function setupOpenCount(rows: SetupRow[]): number {
   return rows.filter((row) => row.state === 'missing').length;
+}
+
+/** Die eBay-Karte zählt extra, sie steht nicht mehr in der allgemeinen Liste. */
+export function einrichtungOpenCount(rows: SetupRow[], ebayPublishReady: boolean): number {
+  return setupOpenCount(rows) + (ebayPublishReady ? 0 : 1);
 }

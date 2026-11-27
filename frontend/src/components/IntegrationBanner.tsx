@@ -34,7 +34,7 @@ export function IntegrationBanner({ verbose = false }: { verbose?: boolean }) {
         Gemini und die eBay-Preissuche sind aktiv. Ankaufportale haben keine Schnittstelle, ihr Richtwert bleibt ein Beispiel.
         {!status.ebayPublishReady && (
           <span className="block mt-1 font-normal">
-            Anzeigen auf eBay.de einstellen braucht noch das User-Token und die Geschäftsrichtlinien. Was fehlt, steht an der eBay-Karte des Artikels.
+            Anzeigen auf eBay.de verbindest du auf der Seite Einrichtung. Was noch fehlt, steht dort.
           </span>
         )}
       </Notice>

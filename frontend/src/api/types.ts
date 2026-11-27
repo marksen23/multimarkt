@@ -338,6 +338,65 @@ export interface IntegrationStatus {
   buybackLive: false;
 }
 
+export type EbayValueSource = 'database' | 'environment' | null;
+
+export interface EbayPolicyOption {
+  id: string;
+  name: string;
+  localPickup: boolean;
+  stale?: boolean;
+}
+
+export interface EbayLocationOption {
+  key: string;
+  name: string;
+  city: string | null;
+  postalCode: string | null;
+  country: string | null;
+  status: string | null;
+  stale?: boolean;
+}
+
+export interface EbaySelection {
+  fulfillmentPolicyId: string | null;
+  paymentPolicyId: string | null;
+  returnPolicyId: string | null;
+  pickupFulfillmentPolicyId: string | null;
+  merchantLocationKey: string | null;
+}
+
+export interface EbaySetupView {
+  environment: 'production' | 'sandbox';
+  environmentInvalid: boolean;
+  callbackUrl: string;
+  clientIdReady: boolean;
+  clientSecretReady: boolean;
+  ruNameReady: boolean;
+  encryptionReady: boolean;
+  oauthReady: boolean;
+  connected: boolean;
+  connectionSource: EbayValueSource;
+  username: string | null;
+  refreshExpiresAt: string | null;
+  refreshExpired: boolean;
+  refreshExpiresSoon: boolean;
+  health: 'unknown' | 'ok' | 'error';
+  healthMessage: string | null;
+  tokenUnreadable: boolean;
+  policiesOptedIn: boolean | null;
+  policiesHint: string | null;
+  catalogError: string | null;
+  fulfillmentPolicies: EbayPolicyOption[];
+  paymentPolicies: EbayPolicyOption[];
+  returnPolicies: EbayPolicyOption[];
+  locations: EbayLocationOption[];
+  selection: EbaySelection;
+  selectionSource: Record<keyof EbaySelection, EbayValueSource>;
+  autoSelected: Array<keyof EbaySelection>;
+  publishReady: boolean;
+  publishMissing: string[];
+}
+
 export type ListingChannel = 'KLEINANZEIGEN' | 'EBAY' | 'VINTED';
 
 export interface TitleGapAnalysis {
