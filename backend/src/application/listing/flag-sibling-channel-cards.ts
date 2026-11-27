@@ -1,6 +1,9 @@
 import { EntityManager } from 'typeorm';
 import { ProjectionLifecycleState } from '../../domain/state-vocabulary';
-import { MarketplaceProjectionEntity } from '../../infrastructure/database/entities';
+import {
+  CanonicalListingEntity,
+  MarketplaceProjectionEntity,
+} from '../../infrastructure/database/entities';
 import { StateGuardService } from '../state-guard/state-guard.service';
 
 const ALREADY_SETTLED: ReadonlySet<ProjectionLifecycleState> = new Set([
@@ -32,6 +35,34 @@ export async function flagSiblingChannelCards(
     if (sibling.id === winningProjectionId) continue;
     if (ALREADY_SETTLED.has(sibling.status)) continue;
     await stateGuard.transitionProjectionWithManager(manager, sibling.id, {
+      type: 'CANCEL_PENDING_TRIGGERED',
+      actor: { type: 'SYSTEM' },
+    });
+  }
+}
+
+/**
+ * Verkauf ohne passende Kanal-Karte: jede noch offene Karte des Artikels
+ * soll zurückgezogen werden. Die verkaufte Karte selbst gibt es hier nicht.
+ */
+export async function flagOpenChannelCards(
+  manager: EntityManager,
+  stateGuard: StateGuardService,
+  itemId: string,
+): Promise<void> {
+  const cards = await manager
+    .createQueryBuilder(MarketplaceProjectionEntity, 'projection')
+    .innerJoin(
+      CanonicalListingEntity,
+      'listing',
+      'listing.id = projection.canonical_listing_id',
+    )
+    .where('listing.item_id = :itemId', { itemId })
+    .getMany();
+
+  for (const card of cards) {
+    if (ALREADY_SETTLED.has(card.status)) continue;
+    await stateGuard.transitionProjectionWithManager(manager, card.id, {
       type: 'CANCEL_PENDING_TRIGGERED',
       actor: { type: 'SYSTEM' },
     });

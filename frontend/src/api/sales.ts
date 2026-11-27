@@ -1,40 +1,69 @@
 import { api } from './client';
-import type { ItemLifecycleState } from './types';
 
-export interface SalesWeek {
-  weekStart: string;
-  weekEnd: string;
+export type SalesPeriod = 'this_month' | 'last_month' | 'this_year' | 'last_year' | 'all';
+
+export interface SalesKpis {
   salesCount: number;
+  proceedsEur: number;
+  proceedsMissingCount: number;
+  feesAndShippingEur: number;
+  purchaseCostEur: number;
+  purchaseRecordedCount: number;
+  purchaseMissingCount: number;
+  netProfitEur: number | null;
+  averageDaysToSale: number | null;
+  daysToSaleCount: number;
+}
+
+export interface SalesChannel {
+  channel: string;
+  salesCount: number;
+  proceedsEur: number;
+  feesAndShippingEur: number;
+  purchaseCostEur: number;
   netProfitEur: number | null;
 }
 
-export interface OpenSaleItem {
-  id: string;
-  title: string | null;
-  status: ItemLifecycleState;
-  purchasePriceEur: number | null;
-  askingPriceEur: number | null;
+export interface Dac7Progress {
+  channel: string;
+  year: number;
+  salesCount: number;
+  proceedsEur: number;
+  salesThreshold: number;
+  proceedsThresholdEur: number;
+  salesReached: boolean;
+  proceedsReached: boolean;
+  thresholdReached: boolean;
 }
 
 export interface SoldSaleItem {
   id: string;
   title: string | null;
-  soldAt: string | null;
-  portal: string | null;
+  saleDate: string | null;
+  createdOn: string | null;
+  channel: string;
   proceedsEur: number | null;
   feeEur: number | null;
   shippingEur: number | null;
-  paymentMethod: string | null;
   purchasePriceEur: number | null;
   netProfitEur: number | null;
+  buyer: string | null;
+  notes: string | null;
+  paymentMethod: string | null;
 }
 
 export interface SalesOverview {
-  weeks: SalesWeek[];
-  openItems: OpenSaleItem[];
-  soldItems: SoldSaleItem[];
+  period: SalesPeriod;
+  from: string | null;
+  to: string | null;
+  year: number;
+  kpis: SalesKpis;
+  channels: SalesChannel[];
+  dac7: Dac7Progress[];
+  items: SoldSaleItem[];
 }
 
 export const salesApi = {
-  overview: () => api.get<SalesOverview>('/sales'),
+  overview: (period: SalesPeriod) => api.get<SalesOverview>(`/sales?period=${period}`),
+  csv: (period: SalesPeriod) => api.download(`/sales/csv?period=${period}`),
 };

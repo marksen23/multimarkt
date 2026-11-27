@@ -7,7 +7,7 @@ const LINKS: { to: string; icon: IconName; title: string; text: string }[] = [
   { to: '/einrichtung', icon: 'key', title: 'Einrichtung', text: 'Welche Dienste eingerichtet sind und was noch fehlt' },
   { to: '/wiedervorlage', icon: 'inbox', title: 'Wiedervorlage', text: 'Artikel, die lange online sind und nicht verkauft wurden' },
   { to: '/bundles', icon: 'package', title: 'Bundles', text: 'Mehrere Artikel als Paket verkaufen' },
-  { to: '/verkaeufe', icon: 'euro', title: 'Verkäufe', text: 'Monatsauswertung und abgeschlossene Verkäufe' },
+  { to: '/verkaeufe', icon: 'euro', title: 'Verkäufe & Gewinn', text: 'Zeitraum, Gewinn, Plattform-Zähler und CSV' },
   { to: '/sicherung', icon: 'download', title: 'Sicherung', text: 'Bestand exportieren und Fotos sichern' },
   { to: '/account', icon: 'user', title: 'Konto & Einstellungen', text: 'Statistik, Darstellung, Daten löschen' },
 ];

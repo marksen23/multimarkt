@@ -38,6 +38,9 @@ export interface BackupArticleSource {
   salePurchasePriceEur: number | null;
   saleNetProfitEur: number | null;
   soldAt: Date | null;
+  saleDate?: string | null;
+  saleBuyer?: string | null;
+  saleNotes?: string | null;
 }
 
 export interface BackupPhotoSource {
@@ -89,6 +92,9 @@ export interface BackupSale {
   salePaymentMethod: string | null;
   salePurchasePriceEur: number | null;
   saleNetProfitEur: number | null;
+  saleDate: string | null;
+  saleBuyer: string | null;
+  saleNotes: string | null;
 }
 
 export interface BackupPhoto {
@@ -183,6 +189,9 @@ function toSale(item: BackupArticleSource): BackupSale {
     salePaymentMethod: item.salePaymentMethod,
     salePurchasePriceEur: item.salePurchasePriceEur,
     saleNetProfitEur: item.saleNetProfitEur,
+    saleDate: item.saleDate ?? null,
+    saleBuyer: item.saleBuyer ?? null,
+    saleNotes: item.saleNotes ?? null,
   };
 }
 

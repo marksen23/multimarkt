@@ -123,6 +123,9 @@ describe('buildBackupDocument', () => {
         salePaymentMethod: 'PayPal',
         salePurchasePriceEur: 4,
         saleNetProfitEur: 8,
+        saleDate: null,
+        saleBuyer: null,
+        saleNotes: null,
       },
     ]);
     expect(document.photos).toEqual([

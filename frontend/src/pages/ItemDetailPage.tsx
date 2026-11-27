@@ -415,68 +415,47 @@ function SoldSheet({
   busy: boolean;
   onConfirm: (fn: () => Promise<unknown>) => void;
 }) {
-  const online = detail.listings.flatMap((l) => l.projections.filter((p) => p.status === 'ONLINE').map((p) => ({ p, listing: l })));
-  const [projectionId, setProjectionId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    setProjectionId(online[0]?.p.id ?? null);
-    // Nur beim Öffnen vorbelegen, nicht bei jeder Eingabe überschreiben.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  const selected = online.find(({ p }) => p.id === projectionId) ?? online[0];
+  const online = detail.listings.flatMap((l) =>
+    l.projections.filter((p) => p.status === 'ONLINE').map((p) => ({ p, listing: l })),
+  );
+  const priceByPortal: Record<string, number> = {};
+  for (const { p, listing } of online) {
+    priceByPortal[portalLabel(p.marketplaceId)] = p.suggestedPrice ?? listing.sellingPrice;
+  }
+  const fallbackPrice = detail.listings[0]?.sellingPrice ?? null;
+  const initialPortal = online[0] ? portalLabel(online[0].p.marketplaceId) : 'Kleinanzeigen';
+  const initialProceeds = priceByPortal[initialPortal] ?? fallbackPrice;
 
   return (
-    <Sheet open={open} onClose={onClose} title="Verkauft!">
-      <div className="space-y-4">
-        {online.length > 0 && selected ? (
-          <>
-            {online.length === 1 && (
-              <p className="text-label font-normal text-ink-muted">
-                Verkauft über <span className="font-semibold text-ink">{portalLabel(selected.p.marketplaceId)}</span>
-              </p>
-            )}
-            {online.length > 1 && (
-              <Field label="Verkauft über">
-                <select value={projectionId ?? ''} onChange={(e) => setProjectionId(e.target.value)} className={inputClass}>
-                  {online.map(({ p }) => (
-                    <option key={p.id} value={p.id}>
-                      {portalLabel(p.marketplaceId)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            )}
-            <SaleCloseoutForm
-              key={selected.p.id}
-              initialProceeds={selected.p.suggestedPrice ?? selected.listing.sellingPrice}
-              initialPortal={portalLabel(selected.p.marketplaceId)}
-              purchasePriceEur={detail.item.purchasePriceEur}
-              showProfit
-              busy={busy}
-              submitLabel="Verkauf speichern"
-              onSubmit={(draft) => onConfirm(() => listingsApi.markSold(selected.p.id, draft))}
-              onCancel={onClose}
-            />
-          </>
-        ) : (
-          <>
-            <p className="text-body text-ink-muted">
-              Der Artikel wird als verkauft abgeschlossen. Da kein Portal verfolgt wird, wird kein Verkaufspreis gespeichert.
+    <Sheet open={open} onClose={onClose} title="Verkauft">
+      {open && (
+        <div className="space-y-3">
+          <p className="text-label font-normal text-ink-muted">
+            Preis und Kanal sind vorausgefüllt. Speichern reicht, den Rest kannst du offen lassen.
+          </p>
+          {online.length > 0 && (
+            <p className="text-label font-normal text-ink-muted">
+              Anzeigen, die woanders noch laufen, werden danach zum Beenden vorgemerkt.
             </p>
-            <p className="text-label font-normal text-ink-faint">Das lässt sich nicht rückgängig machen.</p>
-            <div className="flex gap-2 [&>*]:flex-1">
-              <Button variant="secondary" onClick={onClose}>
-                Abbrechen
-              </Button>
-              <Button loading={busy} onClick={() => onConfirm(() => itemsApi.markSold(detail.item.id))}>
-                Verkauft
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
+          )}
+          <SaleCloseoutForm
+            initialProceeds={initialProceeds}
+            initialPortal={initialPortal}
+            priceByPortal={priceByPortal}
+            pickupOnly={detail.item.pickupOnly}
+            purchasePriceEur={detail.item.purchasePriceEur}
+            showProfit
+            busy={busy}
+            submitLabel="Verkauf speichern"
+            onSubmit={(draft) => {
+              const match = online.find(({ p }) => portalLabel(p.marketplaceId) === draft.portal);
+              if (match) onConfirm(() => listingsApi.markSold(match.p.id, draft));
+              else onConfirm(() => itemsApi.markSold(detail.item.id, draft));
+            }}
+            onCancel={onClose}
+          />
+        </div>
+      )}
     </Sheet>
   );
 }
@@ -875,8 +854,11 @@ function FinishedScreen({
   const thumbnail = photos[0]?.url ?? null;
   const listing = listings[0] ?? null;
   const winner = saleEvents?.find((e) => e.isWinner === true) ?? null;
-  const soldPrice = winner?.reportedPrice ?? listing?.sellingPrice ?? null;
-  const date = new Date(winner?.reportedAt ?? item.updatedAt).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
+  const soldPrice = item.saleProceedsEur ?? winner?.reportedPrice ?? listing?.sellingPrice ?? null;
+  const dateSource = item.saleDate
+    ? `${item.saleDate}T12:00:00Z`
+    : (winner?.reportedAt ?? item.soldAt ?? item.updatedAt);
+  const date = new Date(dateSource).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Berlin' });
 
   return (
     <div className="space-y-4">

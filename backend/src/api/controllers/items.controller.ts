@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Inject,
+  Logger,
   NotFoundException,
   Param,
   ParseUUIDPipe,
@@ -40,7 +41,7 @@ import { CreateFromPurchaseDto, UpdatePurchaseDto } from '../dto/purchase.dto';
 import { UpdateLogisticsProfileDto } from '../dto/logistics-profile.dto';
 import { SuggestNegotiationDto } from '../dto/negotiation.dto';
 import { RecordPriceDropDto } from '../dto/price-drop.dto';
-import { RecordSaleCloseoutDto } from '../dto/sale-closeout.dto';
+import { ManualMarkSoldDto, RecordSaleCloseoutDto } from '../dto/sale-closeout.dto';
 import { EvaluateDispositionDto } from '../dto/disposition.dto';
 import { ActorContext } from '../../domain/actor-context';
 import { DescriptionChannel, SalesGoal } from '../../domain/ai/description-generation-provider.interface';
@@ -107,6 +108,8 @@ import {
   NegotiationSuggestion,
 } from '../../application/negotiation/negotiation.service';
 import { SaleCloseoutService } from '../../application/sales/sale-closeout.service';
+import { flagOpenChannelCards } from '../../application/listing/flag-sibling-channel-cards';
+import { resolveSaleDate } from '../../domain/sales/sale-date';
 import { toLogisticsProfile } from '../../domain/logistics/logistics-profile';
 import { StateGuardService } from '../../application/state-guard/state-guard.service';
 import {
@@ -433,9 +436,30 @@ export class ItemsController {
   @Post(':id/mark-sold')
   async markSold(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ManualMarkSoldDto,
     @CurrentActor() actor: ActorContext,
   ): Promise<ItemEntity> {
-    return this.stateGuard.transitionItem(id, { type: 'MARK_SOLD_MANUALLY', actor });
+    if (actor.type !== 'USER') {
+      throw new HumanGateBypassException('Only a USER actor may manually report a sale');
+    }
+    const draft = manualCloseout(dto ?? {});
+    const item = await this.stateGuard.transitionItem(id, { type: 'MARK_SOLD_MANUALLY', actor });
+    if (!draft) return item;
+    const saved = await this.saleCloseout.recordForSoldItem(id, draft);
+    try {
+      await this.dataSource.transaction(async (manager) => {
+        await flagOpenChannelCards(manager, this.stateGuard, id);
+      });
+    } catch (error) {
+      // Der Abschluss ist gespeichert. Die Erinnerung an andere Anzeigen
+      // bleibt aus, wenn eine Karte den Übergang nicht annimmt.
+      new Logger(ItemsController.name).warn(
+        `Verkauf gespeichert, andere Anzeigen nicht vorgemerkt: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+    return saved;
   }
 
   @Post(':id/confirm-truth')
@@ -877,6 +901,9 @@ export class ItemsController {
       feeEur: dto.feeEur,
       shippingEur: dto.shippingEur,
       paymentMethod: dto.paymentMethod ?? null,
+      soldOn: dto.soldOn ?? null,
+      buyer: dto.buyer ?? null,
+      notes: dto.notes ?? null,
     });
   }
 
@@ -974,6 +1001,37 @@ export class ItemsController {
     await this.photoEnhancement.enqueue(saved.map((photo) => photo.id));
     return saved.map((photo) => toPublicPhoto(photo));
   }
+}
+
+function manualCloseout(dto: ManualMarkSoldDto) {
+  const portal = blankToNull(dto.portal);
+  const touched =
+    dto.proceedsEur != null ||
+    dto.feeEur != null ||
+    dto.shippingEur != null ||
+    portal != null ||
+    blankToNull(dto.paymentMethod) != null ||
+    blankToNull(dto.soldOn) != null ||
+    blankToNull(dto.buyer) != null ||
+    blankToNull(dto.notes) != null;
+  if (!touched) return null;
+  if (dto.proceedsEur == null || portal == null) {
+    throw new BadRequestException('Verkaufspreis und Kanal gehören zusammen.');
+  }
+  if (dto.soldOn != null && dto.soldOn.trim() !== '') {
+    const resolved = resolveSaleDate(dto.soldOn, new Date());
+    if (!resolved.ok) throw new BadRequestException(resolved.message);
+  }
+  return {
+    proceedsEur: dto.proceedsEur,
+    portal,
+    feeEur: dto.feeEur ?? 0,
+    shippingEur: dto.shippingEur ?? 0,
+    paymentMethod: dto.paymentMethod ?? null,
+    soldOn: dto.soldOn ?? null,
+    buyer: dto.buyer ?? null,
+    notes: dto.notes ?? null,
+  };
 }
 
 function blankToNull(value: string | null | undefined): string | null {

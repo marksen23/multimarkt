@@ -5,6 +5,7 @@ import {
   IsPositive,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -57,4 +58,21 @@ export class MarkSoldDto {
   @IsString()
   @MaxLength(80)
   paymentMethod?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'Das Verkaufsdatum muss die Form JJJJ-MM-TT haben.',
+  })
+  soldOn?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  buyer?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  notes?: string | null;
 }
