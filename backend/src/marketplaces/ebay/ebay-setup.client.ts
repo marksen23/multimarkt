@@ -47,9 +47,19 @@ interface CallResult {
  * `fetch` ist austauschbar, damit Tests aufgezeichnete Antworten einspeisen.
  * Zugangstoken werden nicht geloggt.
  */
+/**
+ * Nest baut diese Klasse ohne Argumente. `fetch` darf nicht im Konstruktor
+ * stehen: `typeof fetch` wird zur Laufzeit zu `Object`, und Nest sucht dann
+ * einen Provider, den es nicht gibt. Der Prozess stirbt beim Start.
+ */
 @Injectable()
 export class EbaySetupClient {
-  constructor(private readonly fetchImpl: typeof fetch = fetch) {}
+  private fetchImpl: typeof fetch = fetch;
+
+  /** Tests speisen aufgezeichnete Antworten ein. Produktion bleibt bei global fetch. */
+  bindFetch(fetchImpl: typeof fetch): void {
+    this.fetchImpl = fetchImpl;
+  }
 
   async exchangeCode(creds: EbayAppCredentials, code: string): Promise<EbayTokenSet> {
     const body = new URLSearchParams({

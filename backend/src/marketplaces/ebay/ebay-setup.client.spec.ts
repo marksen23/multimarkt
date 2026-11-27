@@ -1,3 +1,4 @@
+import { Test } from '@nestjs/testing';
 import { EbaySellException } from '../../domain/errors/ebay-sell.exception';
 import { EbaySellEnv } from '../../domain/listing/ebay-sell-readiness';
 import { EbaySetupClient } from './ebay-setup.client';
@@ -80,6 +81,12 @@ const RECORDED_NOT_OPTED_IN = {
   ],
 };
 
+function clientWith(fetchMock: unknown): EbaySetupClient {
+  const client = new EbaySetupClient();
+  client.bindFetch(fetchMock as typeof fetch);
+  return client;
+}
+
 function jsonResponse(status: number, body: unknown): Response {
   return {
     ok: status >= 200 && status < 300,
@@ -99,7 +106,7 @@ describe('EbaySetupClient', () => {
       }
       return jsonResponse(200, RECORDED_CODE_TOKEN);
     });
-    const client = new EbaySetupClient(fetchMock as unknown as typeof fetch);
+    const client = clientWith(fetchMock);
 
     const tokens = await client.exchangeCode(
       { clientId: 'app-id', clientSecret: 'cert-secret-value', ruName: 'Markus-Ru', environment: 'production' },
@@ -148,7 +155,7 @@ describe('EbaySetupClient', () => {
       if (href.includes('/location')) return jsonResponse(200, RECORDED_LOCATIONS);
       return jsonResponse(404, {});
     });
-    const client = new EbaySetupClient(fetchMock as unknown as typeof fetch);
+    const client = clientWith(fetchMock);
     const access = await client.userAccessToken(env);
     expect(access).toBe('user-access');
     const identity = await client.identity(env, access);
@@ -178,7 +185,7 @@ describe('EbaySetupClient', () => {
       if (href.includes('/location')) return jsonResponse(200, RECORDED_LOCATIONS);
       return jsonResponse(400, RECORDED_NOT_OPTED_IN);
     });
-    const client = new EbaySetupClient(fetchMock as unknown as typeof fetch);
+    const client = clientWith(fetchMock);
     const catalog = await client.loadCatalog(env, 'user-access');
     expect(catalog.optedIn).toBe(false);
     expect(catalog.hint).toMatch(/Geschäftsrichtlinien/);
@@ -194,7 +201,7 @@ describe('EbaySetupClient', () => {
       calls.push({ url: String(url), init: init ?? {} });
       return jsonResponse(204, null);
     });
-    const client = new EbaySetupClient(fetchMock as unknown as typeof fetch);
+    const client = clientWith(fetchMock);
     await client.createLocation(
       { ...env, environment: 'sandbox' },
       'user-access',
@@ -213,5 +220,11 @@ describe('EbaySetupClient', () => {
     expect(JSON.stringify(calls[0].init.headers)).toContain('Bearer user-access');
     expect(JSON.stringify(calls[0].init.headers)).toContain('EBAY_DE');
     expect(JSON.stringify(calls)).not.toContain('stored-refresh-secret');
+  });
+
+  it('starts under Nest without a fetch provider', async () => {
+    const moduleRef = await Test.createTestingModule({ providers: [EbaySetupClient] }).compile();
+    expect(moduleRef.get(EbaySetupClient)).toBeInstanceOf(EbaySetupClient);
+    await moduleRef.close();
   });
 });
