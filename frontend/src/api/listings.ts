@@ -24,6 +24,9 @@ export const listingsApi = {
       feeEur: draft.feeEur,
       shippingEur: draft.shippingEur,
       paymentMethod: draft.paymentMethod,
+      soldOn: draft.soldOn ?? null,
+      buyer: draft.buyer ?? null,
+      notes: draft.notes ?? null,
     }),
   markCopied: (projectionId: string) =>
     api.post<MarketplaceProjectionSummary>(`/listings/${projectionId}/mark-copied`),

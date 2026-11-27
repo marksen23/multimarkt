@@ -108,9 +108,9 @@ export class BackupExportService {
       FROM items
       WHERE user_id = $1
         AND status = 'SOLD'
-        AND sold_at IS NOT NULL
-        AND (sold_at AT TIME ZONE 'Europe/Berlin')::date >= $2::date
-        AND (sold_at AT TIME ZONE 'Europe/Berlin')::date <= $3::date
+        AND (sale_date IS NOT NULL OR sold_at IS NOT NULL)
+        AND COALESCE(sale_date, (sold_at AT TIME ZONE 'Europe/Berlin')::date) >= $2::date
+        AND COALESCE(sale_date, (sold_at AT TIME ZONE 'Europe/Berlin')::date) <= $3::date
       `,
       [userId, start, end],
     );

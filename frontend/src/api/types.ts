@@ -47,6 +47,9 @@ export interface Item {
   salePaymentMethod: string | null;
   salePurchasePriceEur: number | null;
   saleNetProfitEur: number | null;
+  saleDate: string | null;
+  saleBuyer: string | null;
+  saleNotes: string | null;
   soldAt: string | null;
   weightGrams: number | null;
   lengthCm: number | null;

@@ -108,6 +108,17 @@ export class ItemEntity {
   @Column({ name: 'sale_payment_method', type: 'text', nullable: true })
   salePaymentMethod: string | null;
 
+  // Buchungsdatum (Kalendertag). `soldAt` bleibt der Zeitpunkt.
+  // Alte Zeilen haben hier NULL und nutzen in der Auswertung den Berlin-Tag von `soldAt`.
+  @Column({ name: 'sale_date', type: 'date', nullable: true })
+  saleDate: string | null;
+
+  @Column({ name: 'sale_buyer', type: 'text', nullable: true })
+  saleBuyer: string | null;
+
+  @Column({ name: 'sale_notes', type: 'text', nullable: true })
+  saleNotes: string | null;
+
   @Column({
     name: 'sale_purchase_price_eur',
     type: 'numeric',

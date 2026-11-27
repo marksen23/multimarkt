@@ -114,7 +114,22 @@ export const itemsApi = {
     return api.postForm<Item>(`/items/${id}/upload-more-photos`, form, onProgress);
   },
   discard: (id: string) => api.post<Item>(`/items/${id}/discard`),
-  markSold: (id: string) => api.post<Item>(`/items/${id}/mark-sold`),
+  markSold: (id: string, draft?: SaleCloseoutDraft) =>
+    api.post<Item>(
+      `/items/${id}/mark-sold`,
+      draft
+        ? {
+            proceedsEur: draft.proceedsEur,
+            portal: draft.portal,
+            feeEur: draft.feeEur,
+            shippingEur: draft.shippingEur,
+            paymentMethod: draft.paymentMethod,
+            soldOn: draft.soldOn ?? null,
+            buyer: draft.buyer ?? null,
+            notes: draft.notes ?? null,
+          }
+        : undefined,
+    ),
   confirmAttribute: (id: string, key: string, value?: string) =>
     api.post<ItemAttribute>(`/items/${id}/attributes/${key}/confirm`, { value }),
   prepareListing: (id: string, sellingPrice: number, descriptionText?: string) =>

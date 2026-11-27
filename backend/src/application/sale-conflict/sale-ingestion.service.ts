@@ -103,7 +103,11 @@ export class SaleIngestionService {
    * eine bewusste Einzelmeldung durch den Verkäufer selbst hat kein
    * Race-Problem mit einem zweiten, gleichzeitigen Report).
    */
-  async reportAndEvaluate(projectionId: string, reportedPrice: number): Promise<EvaluateSaleOutcome> {
+  async reportAndEvaluate(
+    projectionId: string,
+    reportedPrice: number,
+    reportedAt?: Date,
+  ): Promise<EvaluateSaleOutcome> {
     const projection = await this.dataSource.manager.findOneBy(MarketplaceProjectionEntity, {
       id: projectionId,
     });
@@ -117,6 +121,7 @@ export class SaleIngestionService {
       projectionId,
       externalEventId: `manual-${randomUUID()}`,
       reportedPrice,
+      reportedAt,
     });
 
     // Bundle-XOR (Doc 01 §3): genau eines von beiden ist gesetzt.

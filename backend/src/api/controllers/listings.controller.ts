@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -27,6 +28,7 @@ import {
 import { ChannelPackageService } from '../../application/listing/channel-package.service';
 import { MarketplacePublishingService } from '../../application/listing/marketplace-publishing.service';
 import { SaleCloseoutService } from '../../application/sales/sale-closeout.service';
+import { resolveSaleDate, saleInstant } from '../../domain/sales/sale-date';
 import {
   EvaluateSaleOutcome,
   SaleIngestionService,
@@ -152,7 +154,13 @@ export class ListingsController {
         { projectionId: id, currentState: projection.status },
       );
     }
-    const outcome = await this.saleIngestion.reportAndEvaluate(id, dto.reportedPrice);
+    let reportedAt: Date | undefined;
+    if (dto.soldOn != null && dto.soldOn.trim() !== '') {
+      const resolved = resolveSaleDate(dto.soldOn, new Date());
+      if (!resolved.ok) throw new BadRequestException(resolved.message);
+      reportedAt = saleInstant(resolved.date);
+    }
+    const outcome = await this.saleIngestion.reportAndEvaluate(id, dto.reportedPrice, reportedAt);
     const portal = dto.portal?.trim();
     if (outcome === 'SOLD' && portal) {
       await this.saleCloseout.recordForListingProjection(id, {
@@ -161,6 +169,9 @@ export class ListingsController {
         feeEur: dto.feeEur ?? 0,
         shippingEur: dto.shippingEur ?? 0,
         paymentMethod: dto.paymentMethod ?? null,
+        soldOn: dto.soldOn ?? null,
+        buyer: dto.buyer ?? null,
+        notes: dto.notes ?? null,
       });
     }
     return { outcome };

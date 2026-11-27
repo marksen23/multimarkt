@@ -63,6 +63,7 @@ export function SaleResultPanel({
         <Figure label="Gebühren" value={formatEur(item.saleFeeEur)} />
         <Figure label="Versand" value={formatEur(item.saleShippingEur)} />
         <Figure label="Zahlungsweg" value={item.salePaymentMethod ?? '—'} />
+        <Figure label="Käufer" value={item.saleBuyer ?? '—'} />
         <Figure label="Einstand" value={formatEur(item.salePurchasePriceEur)} />
         <Figure label="Netto" value={formatEur(result.netEur)} />
         <Figure
@@ -78,12 +79,13 @@ export function SaleResultPanel({
           negative={result.netProfitEur != null && result.netProfitEur < 0}
         />
       </dl>
+      {item.saleNotes && <p className="text-label font-normal text-ink-muted">{item.saleNotes}</p>}
       {result.netProfitEur == null && (
-        <p className="text-label font-normal text-ink-muted">Einstand fehlt — Nettogewinn ist nicht gerechnet.</p>
+        <p className="text-label font-normal text-ink-muted">Einkaufspreis fehlt — der Gewinn ist nicht gerechnet.</p>
       )}
-      <p className="text-label font-normal text-ink-faint">Nettogewinn = Erlös − Gebühren − Versand − Einstand.</p>
+      <p className="text-label font-normal text-ink-faint">Gewinn = Erlös − Gebühren − Versand − Einkauf.</p>
       <Link to="/verkaeufe" className="inline-flex items-center gap-1 text-label text-accent hover:text-accent-hover transition-colors">
-        Zur Verkaufsliste
+        Zu Verkäufe & Gewinn
         <Icon name="chevronRight" size={14} />
       </Link>
     </Card>

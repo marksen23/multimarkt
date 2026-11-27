@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager } from 'typeorm';
 import { computeSaleCloseout } from '../../domain/pricing/sale-closeout';
+import { berlinIsoDate } from '../../domain/sales/recent-weeks';
+import { resolveSaleDate, saleInstant } from '../../domain/sales/sale-date';
 import {
   CanonicalListingEntity,
   ItemEntity,
@@ -15,6 +17,9 @@ export interface SaleCloseoutDraft {
   feeEur: number;
   shippingEur: number;
   paymentMethod: string | null;
+  soldOn?: string | null;
+  buyer?: string | null;
+  notes?: string | null;
 }
 
 /**
@@ -82,14 +87,26 @@ export class SaleCloseoutService {
       shippingEur: draft.shippingEur,
       purchasePriceEur: item.purchasePriceEur,
     });
+    const eventAt = await this.winningReportedAt(manager, item.id);
+    const explicitDate = draft.soldOn != null && draft.soldOn.trim() !== '';
+    const resolved = explicitDate ? resolveSaleDate(draft.soldOn, new Date()) : null;
+    if (resolved && !resolved.ok) throw new BadRequestException(resolved.message);
     item.saleProceedsEur = result.proceedsEur;
     item.salePortal = portal;
     item.saleFeeEur = result.feeEur;
     item.saleShippingEur = result.shippingEur;
     item.salePaymentMethod = blankToNull(draft.paymentMethod);
+    item.saleBuyer = blankToNull(draft.buyer);
+    item.saleNotes = blankToNull(draft.notes);
     item.salePurchasePriceEur = result.purchasePriceEur;
     item.saleNetProfitEur = result.netProfitEur;
-    item.soldAt = await this.winningReportedAt(manager, item.id);
+    if (resolved?.ok) {
+      item.saleDate = resolved.date;
+      item.soldAt = saleInstant(resolved.date);
+    } else {
+      item.soldAt = eventAt;
+      item.saleDate = berlinIsoDate(eventAt);
+    }
     return manager.save(item);
   }
 

@@ -8,6 +8,9 @@ export interface SaleCloseoutDraft {
   feeEur: number;
   shippingEur: number;
   paymentMethod: string | null;
+  soldOn?: string | null;
+  buyer?: string | null;
+  notes?: string | null;
 }
 
 export interface SaleCloseout {
@@ -58,7 +61,31 @@ export function formatEur(value: number | null | undefined): string {
   return value == null ? '—' : `${value.toFixed(2)} €`;
 }
 
-export const SALE_PORTALS = ['Kleinanzeigen', 'Vinted', 'eBay', 'Facebook'] as const;
+export const SALE_PORTALS = ['eBay', 'Kleinanzeigen', 'Vinted', 'Sonstiges'] as const;
+
+const PORTAL_CHANNEL: Record<string, 'EBAY' | 'KLEINANZEIGEN' | 'VINTED'> = {
+  eBay: 'EBAY',
+  Kleinanzeigen: 'KLEINANZEIGEN',
+  Vinted: 'VINTED',
+};
+
+/** Kanal-Annahme, sonst 0. Sonstiges und unbekannte Kanäle starten bei 0 €. */
+export function suggestedSaleFeeEur(
+  proceedsEur: number,
+  portal: string,
+  channels: {
+    EBAY: { percent: number; fixedEur: number };
+    KLEINANZEIGEN: { percent: number; fixedEur: number };
+    VINTED: { percent: number; fixedEur: number };
+  } | null,
+): number {
+  const key = PORTAL_CHANNEL[portal];
+  if (!channels || !key) return 0;
+  const rate = channels[key];
+  const price = roundMoney(proceedsEur);
+  const percentFee = roundMoney(price * (rate.percent / 100));
+  return roundMoney(percentFee + roundMoney(rate.fixedEur));
+}
 
 export const PAYMENT_METHODS = ['Bar', 'PayPal', 'Überweisung'] as const;
 
